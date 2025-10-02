@@ -196,7 +196,7 @@ export default function GradeCalculator() {
         <div className="mb-8 text-center">
           <div className="mb-4 flex items-center justify-center gap-3">
             <GraduationCap className="h-10 w-10 text-primary" />
-            <h1 className="font-sans text-4xl font-bold text-primary">Grade Calculator</h1>
+            <h1 className="font-sans text-4xl font-bold text-primary">CourseGrade</h1>
           </div>
           <p className="text-lg text-muted-foreground">
             Track your course grades with weighted criteria and calculate your overall GPA
