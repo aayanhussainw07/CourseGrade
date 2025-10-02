@@ -1,4 +1,1 @@
-# CourseGrade
-
-## Overview
-Grade calculator and logger.
+# Course Grade
