@@ -120,7 +120,7 @@ export function CourseSidebar({
     <>
       <div
         className={`fixed left-0 top-0 h-screen border-r-2 border-primary/20 bg-card overflow-y-auto transition-all duration-300 flex flex-col ${
-          isCollapsed ? "w-16" : "w-64"
+          isCollapsed ? "w-20" : "w-64"
         }`}
       >
         <div className="flex items-center justify-between border-b-2 border-primary/20 p-3">
@@ -314,7 +314,7 @@ export function CourseSidebar({
             variant="ghost"
             size={isCollapsed ? "icon" : "default"}
             onClick={onToggleTheme}
-            className={`${isCollapsed ? "h-10 w-10" : "w-full justify-start"}`}
+            className={`${isCollapsed ? "h-10 w-10 w-full" : "w-full justify-start"}`}
             title={`Switch to ${theme === "light" ? "dark" : "light"} mode`}
           >
             {theme === "light" ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
