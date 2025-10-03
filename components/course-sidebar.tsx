@@ -126,7 +126,8 @@ export function CourseSidebar({
         <div className="flex items-center justify-between border-b-2 border-primary/20 p-3">
           {!isCollapsed && (
             <div className="flex items-center gap-2">
-              <BookOpen className="h-5 w-5 text-primary flex" />
+              <BookOpen className="h-5 w-5 text-primary" />
+              <h2 className="font-sans text-base font-semibold text-primary">Manager</h2>
             </div>
           )}
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setIsCollapsed(!isCollapsed)}>
@@ -261,7 +262,7 @@ export function CourseSidebar({
                         >
                           {isCollapsed ? (
                             <div className="flex flex-col items-center w-full text-xs">
-                              <span className="font-bold text-foreground">{index + 1}</span>
+                              <span className="font-bold text-foreground ">{course.name}</span>
                               <span className="font-semibold" style={{ color: gradeColor }}>
                                 {letterGrade}
                               </span>
