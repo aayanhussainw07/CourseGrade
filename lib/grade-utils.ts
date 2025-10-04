@@ -100,3 +100,28 @@ export function calculateGradeDistribution(courses: Course[]): Record<string, nu
 
   return distribution
 }
+
+export function isCourseDefault(course: Course): boolean {
+  // Check if name matches default pattern
+  const isDefaultName = course.name.match(/^Course \d+$/)
+
+  // Check if all criteria have default values (score = 0)
+  const hasDefaultScores = course.criteria.every((criterion) => {
+    if (criterion.subItems && criterion.subItems.length > 0) {
+      return criterion.subItems.every((item) => item.score === 0)
+    }
+    return criterion.score === 0
+  })
+
+  return !!(isDefaultName && hasDefaultScores)
+}
+
+export function isSemesterDefault(semester: { name: string; courses: Course[] }): boolean {
+  // Check if name matches default pattern
+  const isDefaultName = semester.name.match(/^Semester \d+$/)
+
+  // Check if semester has no courses
+  const hasNoCourses = semester.courses.length === 0
+
+  return !!(isDefaultName && hasNoCourses)
+}

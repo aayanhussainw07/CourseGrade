@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState } from "react"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -14,34 +13,45 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { GradeScaleEditor } from "@/components/grade-scale-editor"
 import { RollingNumber } from "@/components/rolling-number"
 
+// Props passed into this component: a single course object and functions to update or delete it.
 interface CourseCardProps {
   course: Course
   onUpdate: (id: string, course: Course) => void
   onDelete: (id: string) => void
 }
 
+// The CourseCard component — displays one course, lets you edit criteria, grade scale, etc.
 export function CourseCard({ course, onUpdate, onDelete }: CourseCardProps) {
+  // State for whether the grade scale editor dialog is open
   const [isScaleOpen, setIsScaleOpen] = useState(false)
+  // State for which criteria are expanded (for showing sub-items like individual assignments)
   const [expandedCriteria, setExpandedCriteria] = useState<Set<string>>(new Set())
 
+  // Calculate numeric grade (weighted average) and letter grade
   const numericGrade = calculateCourseGrade(course.criteria)
   const letterGrade = getLetterGrade(numericGrade, course.gradeScale)
   const gradeColor = getLetterGradeColor(letterGrade)
+
+  // Total % weight across all criteria (should add to 100)
   const totalWeight = course.criteria.reduce((sum, c) => sum + c.weight, 0)
 
+  // Toggle collapse/expand for the entire course card
   const toggleCollapse = () => {
     onUpdate(course.id, { ...course, collapsed: !course.collapsed })
   }
 
+  // Update the course name (typing in the title input)
   const updateCourseName = (name: string) => {
     onUpdate(course.id, { ...course, name })
   }
 
+  // Update number of credit hours
   const updateCredits = (value: string) => {
     const credits = value === "" ? 0 : Number.parseFloat(value)
     onUpdate(course.id, { ...course, credits })
   }
 
+  // Add a new grading criterion (like “Assignments” or “Midterm”)
   const addCriterion = () => {
     const newCriterion: Criterion = {
       id: crypto.randomUUID(),
@@ -55,6 +65,7 @@ export function CourseCard({ course, onUpdate, onDelete }: CourseCardProps) {
     })
   }
 
+  // Update a specific criterion (name, weight, or score)
   const updateCriterion = (id: string, updates: Partial<Criterion>) => {
     onUpdate(course.id, {
       ...course,
@@ -62,6 +73,7 @@ export function CourseCard({ course, onUpdate, onDelete }: CourseCardProps) {
     })
   }
 
+  // Delete a criterion entirely
   const deleteCriterion = (id: string) => {
     onUpdate(course.id, {
       ...course,
@@ -69,6 +81,7 @@ export function CourseCard({ course, onUpdate, onDelete }: CourseCardProps) {
     })
   }
 
+  // Add a sub-item (like “Homework 1”) under a criterion
   const addSubItem = (criterionId: string) => {
     const criterion = course.criteria.find((c) => c.id === criterionId)
     if (!criterion) return
@@ -84,9 +97,11 @@ export function CourseCard({ course, onUpdate, onDelete }: CourseCardProps) {
       subItems: [...subItems, newSubItem],
     })
 
+    // Expand the criterion after adding a sub-item so it’s visible
     setExpandedCriteria((prev) => new Set(prev).add(criterionId))
   }
 
+  // Update a sub-item (name or score)
   const updateSubItem = (criterionId: string, subItemId: string, updates: Partial<SubItem>) => {
     const criterion = course.criteria.find((c) => c.id === criterionId)
     if (!criterion || !criterion.subItems) return
@@ -96,6 +111,7 @@ export function CourseCard({ course, onUpdate, onDelete }: CourseCardProps) {
     })
   }
 
+  // Delete a sub-item (like removing “Homework 2”)
   const deleteSubItem = (criterionId: string, subItemId: string) => {
     const criterion = course.criteria.find((c) => c.id === criterionId)
     if (!criterion || !criterion.subItems) return
@@ -105,18 +121,17 @@ export function CourseCard({ course, onUpdate, onDelete }: CourseCardProps) {
     })
   }
 
+  // Expand or collapse a criterion’s sub-item list
   const toggleExpanded = (criterionId: string) => {
     setExpandedCriteria((prev) => {
       const next = new Set(prev)
-      if (next.has(criterionId)) {
-        next.delete(criterionId)
-      } else {
-        next.add(criterionId)
-      }
+      if (next.has(criterionId)) next.delete(criterionId)
+      else next.add(criterionId)
       return next
     })
   }
 
+  // Calculate what score to display for a criterion (average of sub-items or its own score)
   const getCriterionDisplayScore = (criterion: Criterion): number => {
     if (criterion.subItems && criterion.subItems.length > 0) {
       const total = criterion.subItems.reduce((sum, item) => sum + item.score, 0)
@@ -125,15 +140,18 @@ export function CourseCard({ course, onUpdate, onDelete }: CourseCardProps) {
     return criterion.score
   }
 
+  // When focusing on an input, auto-select its content for quick editing
   const handleInputFocus = (e: React.FocusEvent<HTMLInputElement>) => {
     e.target.select()
   }
 
   return (
     <Card className="border-2 border-primary shadow-lg">
+      {/* Course header with title, collapse toggle, delete button, and grade scale editor */}
       <CardHeader className="bg-primary/5">
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1 space-y-3">
+            {/* Editable course name input */}
             <div className="flex items-center gap-3">
               <Input
                 value={course.name}
@@ -141,10 +159,13 @@ export function CourseCard({ course, onUpdate, onDelete }: CourseCardProps) {
                 className="max-w-md border-2 border-primary/20 bg-card text-lg font-semibold"
                 placeholder="Course Name"
               />
+              {/* Collapse/expand button */}
               <Button variant="outline" size="sm" onClick={toggleCollapse} className="gap-2 bg-transparent">
                 {course.collapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
                 {course.collapsed ? "Expand" : "Collapse"}
               </Button>
+
+              {/* Grade scale dialog (only visible when expanded) */}
               {!course.collapsed && (
                 <Dialog open={isScaleOpen} onOpenChange={setIsScaleOpen}>
                   <DialogTrigger asChild>
@@ -167,6 +188,8 @@ export function CourseCard({ course, onUpdate, onDelete }: CourseCardProps) {
                 </Dialog>
               )}
             </div>
+
+            {/* Credit hours input */}
             <div className="flex items-center gap-2">
               <Label htmlFor={`credits-${course.id}`} className="text-sm font-medium">
                 Credit Hours:
@@ -185,13 +208,18 @@ export function CourseCard({ course, onUpdate, onDelete }: CourseCardProps) {
               />
             </div>
           </div>
+
+          {/* Delete course button */}
           <Button variant="destructive" size="icon" onClick={() => onDelete(course.id)} className="shrink-0">
             <Trash2 className="h-4 w-4" />
           </Button>
         </div>
       </CardHeader>
+
+      {/* Full expanded course view */}
       {!course.collapsed && (
         <CardContent className="pt-6">
+          {/* Weighted criteria section */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="font-semibold text-primary">Weighted Criteria</h3>
@@ -200,6 +228,7 @@ export function CourseCard({ course, onUpdate, onDelete }: CourseCardProps) {
               </span>
             </div>
 
+            {/* Render all criteria */}
             {course.criteria.map((criterion) => {
               const hasSubItems = criterion.subItems && criterion.subItems.length > 0
               const isExpanded = expandedCriteria.has(criterion.id)
@@ -207,7 +236,9 @@ export function CourseCard({ course, onUpdate, onDelete }: CourseCardProps) {
 
               return (
                 <div key={criterion.id} className="space-y-2">
+                  {/* Criterion row */}
                   <div className="grid grid-cols-1 gap-3 rounded-lg border-2 border-primary/20 bg-muted/30 p-4 sm:grid-cols-[2fr_1fr_1fr_auto]">
+                    {/* Criterion name */}
                     <div>
                       <Label className="text-xs text-muted-foreground">Name</Label>
                       <Input
@@ -217,6 +248,8 @@ export function CourseCard({ course, onUpdate, onDelete }: CourseCardProps) {
                         placeholder="e.g., Assignments"
                       />
                     </div>
+
+                    {/* Criterion weight */}
                     <div>
                       <Label className="text-xs text-muted-foreground">Weight (%)</Label>
                       <Input
@@ -234,6 +267,8 @@ export function CourseCard({ course, onUpdate, onDelete }: CourseCardProps) {
                         className="border-primary/20"
                       />
                     </div>
+
+                    {/* Criterion score or avg of subitems */}
                     <div>
                       <Label className="text-xs text-muted-foreground">
                         {hasSubItems ? "Avg Score (%)" : "Score (%)"}
@@ -243,7 +278,6 @@ export function CourseCard({ course, onUpdate, onDelete }: CourseCardProps) {
                           <RollingNumber value={displayScore} decimals={1} />%
                         </div>
                       ) : (
-                        /* Allow empty input with placeholder */
                         <Input
                           type="number"
                           min="0"
@@ -260,6 +294,8 @@ export function CourseCard({ course, onUpdate, onDelete }: CourseCardProps) {
                         />
                       )}
                     </div>
+
+                    {/* Buttons for subitems & delete */}
                     <div className="flex items-end gap-1">
                       <Button
                         variant="ghost"
@@ -291,6 +327,7 @@ export function CourseCard({ course, onUpdate, onDelete }: CourseCardProps) {
                     </div>
                   </div>
 
+                  {/* Sub-items section (if expanded) */}
                   {hasSubItems && isExpanded && (
                     <div className="ml-4 space-y-2 border-l-2 border-primary/20 pl-4">
                       {criterion.subItems!.map((subItem) => (
@@ -302,7 +339,9 @@ export function CourseCard({ course, onUpdate, onDelete }: CourseCardProps) {
                             <Label className="text-xs text-muted-foreground">Name</Label>
                             <Input
                               value={subItem.name}
-                              onChange={(e) => updateSubItem(criterion.id, subItem.id, { name: e.target.value })}
+                              onChange={(e) =>
+                                updateSubItem(criterion.id, subItem.id, { name: e.target.value })
+                              }
                               className="h-9 border-primary/20"
                               placeholder="e.g., Homework 1"
                             />
@@ -342,6 +381,7 @@ export function CourseCard({ course, onUpdate, onDelete }: CourseCardProps) {
               )
             })}
 
+            {/* Button to add a new criterion */}
             <Button
               onClick={addCriterion}
               variant="outline"
@@ -353,6 +393,7 @@ export function CourseCard({ course, onUpdate, onDelete }: CourseCardProps) {
             </Button>
           </div>
 
+          {/* Course grade summary (bottom of expanded card) */}
           <div className="mt-6 rounded-lg border-2 border-primary bg-primary/5 p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -371,6 +412,8 @@ export function CourseCard({ course, onUpdate, onDelete }: CourseCardProps) {
           </div>
         </CardContent>
       )}
+
+      {/* Compact view when collapsed */}
       {course.collapsed && (
         <CardContent className="pt-4 pb-6">
           <div className="flex items-center justify-between rounded-lg border-2 border-primary bg-primary/5 p-4">

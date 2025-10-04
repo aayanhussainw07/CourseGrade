@@ -11,15 +11,25 @@ import type { Course, Semester } from "@/lib/types"
 import { AnimatePresence, motion } from "framer-motion"
 
 export default function GradeCalculator() {
-  const [semesters, setSemesters] = useState<Semester[]>([])
-  const [activeSemesterId, setActiveSemesterId] = useState<string | null>(null)
-  const courseRefs = useRef<{ [key: string]: HTMLDivElement | null }>({})
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
-  const [theme, setTheme] = useState<"light" | "dark">("light")
+  // -------------------------------
+  // 🔹 STATE VARIABLES
+  // -------------------------------
 
+  const [semesters, setSemesters] = useState<Semester[]>([]) // list of all semesters
+  const [activeSemesterId, setActiveSemesterId] = useState<string | null>(null) // currently selected semester
+  const courseRefs = useRef<{ [key: string]: HTMLDivElement | null }>({}) // refs to scroll to specific courses
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false) // whether the sidebar is collapsed
+  const [theme, setTheme] = useState<"light" | "dark">("light") // light/dark mode toggle
+
+  // find the active semester (based on activeSemesterId)
   const activeSemester = semesters.find((s) => s.id === activeSemesterId)
-  const courses = activeSemester?.courses || []
+  const courses = activeSemester?.courses || [] // get the courses for that semester (empty if none)
 
+  // -------------------------------
+  // 🔹 THEME HANDLING (Light / Dark)
+  // -------------------------------
+
+  // Load saved theme from localStorage when the app starts
   useEffect(() => {
     const savedTheme = localStorage.getItem("theme") as "light" | "dark" | null
     if (savedTheme) {
@@ -28,6 +38,7 @@ export default function GradeCalculator() {
     }
   }, [])
 
+  // Switch between light and dark theme
   const toggleTheme = () => {
     const newTheme = theme === "light" ? "dark" : "light"
     setTheme(newTheme)
@@ -35,7 +46,12 @@ export default function GradeCalculator() {
     document.documentElement.classList.toggle("dark", newTheme === "dark")
   }
 
+  // -------------------------------
+  // 🔹 LOAD SAVED DATA (Semesters + Sidebar)
+  // -------------------------------
+
   useEffect(() => {
+    // load stored data from browser localStorage
     const savedSemesters = localStorage.getItem("grade-calculator-semesters")
     const savedActiveSemester = localStorage.getItem("grade-calculator-active-semester")
     const savedSidebar = localStorage.getItem("sidebar-collapsed")
@@ -43,30 +59,41 @@ export default function GradeCalculator() {
     if (savedSemesters) {
       const parsedSemesters = JSON.parse(savedSemesters)
       setSemesters(parsedSemesters)
+
+      // try to restore the previously active semester if it still exists
       if (savedActiveSemester && parsedSemesters.find((s: Semester) => s.id === savedActiveSemester)) {
         setActiveSemesterId(savedActiveSemester)
       } else if (parsedSemesters.length > 0) {
+        // otherwise just default to the first one
         setActiveSemesterId(parsedSemesters[0].id)
       }
     }
 
+    // restore sidebar collapsed state
     if (savedSidebar) {
       setSidebarCollapsed(JSON.parse(savedSidebar))
     }
   }, [])
 
+  // -------------------------------
+  // 🔹 SAVE CHANGES TO LOCALSTORAGE
+  // -------------------------------
+
+  // whenever semesters change, save them
   useEffect(() => {
     if (semesters.length > 0) {
       localStorage.setItem("grade-calculator-semesters", JSON.stringify(semesters))
     }
   }, [semesters])
 
+  // whenever the active semester changes, save it
   useEffect(() => {
     if (activeSemesterId) {
       localStorage.setItem("grade-calculator-active-semester", activeSemesterId)
     }
   }, [activeSemesterId])
 
+  // sync sidebar collapse state across tabs
   useEffect(() => {
     const handleStorage = () => {
       const savedSidebar = localStorage.getItem("sidebar-collapsed")
@@ -75,6 +102,7 @@ export default function GradeCalculator() {
       }
     }
     window.addEventListener("storage", handleStorage)
+    // the interval rechecks sidebar state every 100ms to stay in sync
     const interval = setInterval(handleStorage, 100)
     return () => {
       window.removeEventListener("storage", handleStorage)
@@ -82,6 +110,11 @@ export default function GradeCalculator() {
     }
   }, [])
 
+  // -------------------------------
+  // 🔹 SCROLL FUNCTIONALITY
+  // -------------------------------
+
+  // scroll smoothly to a course in the list when clicked from sidebar
   const scrollToCourse = (courseId: string) => {
     const element = courseRefs.current[courseId]
     if (element) {
@@ -89,6 +122,11 @@ export default function GradeCalculator() {
     }
   }
 
+  // -------------------------------
+  // 🔹 SEMESTER MANAGEMENT
+  // -------------------------------
+
+  // create a new semester with no courses
   const addSemester = () => {
     const newSemester: Semester = {
       id: crypto.randomUUID(),
@@ -99,18 +137,27 @@ export default function GradeCalculator() {
     setActiveSemesterId(newSemester.id)
   }
 
+  // delete a semester
   const deleteSemester = (semesterId: string) => {
     const newSemesters = semesters.filter((s) => s.id !== semesterId)
     setSemesters(newSemesters)
+
+    // if you deleted the active semester, switch to the first one
     if (activeSemesterId === semesterId) {
       setActiveSemesterId(newSemesters.length > 0 ? newSemesters[0].id : null)
     }
   }
 
+  // rename a semester
   const editSemester = (semesterId: string, newName: string) => {
     setSemesters(semesters.map((s) => (s.id === semesterId ? { ...s, name: newName } : s)))
   }
 
+  // -------------------------------
+  // 🔹 COURSE MANAGEMENT
+  // -------------------------------
+
+  // add a new course to the active semester
   const addCourse = () => {
     if (!activeSemesterId) return
 
@@ -118,11 +165,13 @@ export default function GradeCalculator() {
       id: crypto.randomUUID(),
       name: `Course ${courses.length + 1}`,
       credits: 3,
+      // default grading criteria for the course
       criteria: [
         { id: crypto.randomUUID(), name: "Assignments", weight: 30, score: 0 },
         { id: crypto.randomUUID(), name: "Midterm", weight: 30, score: 0 },
         { id: crypto.randomUUID(), name: "Final Exam", weight: 40, score: 0 },
       ],
+      // default grade scale
       gradeScale: [
         { letter: "A+", min: 96 },
         { letter: "A", min: 93 },
@@ -141,9 +190,11 @@ export default function GradeCalculator() {
       collapsed: false,
     }
 
+    // add the course into the active semester
     setSemesters(semesters.map((s) => (s.id === activeSemesterId ? { ...s, courses: [...s.courses, newCourse] } : s)))
   }
 
+  // update a course when the user edits it (criteria, scores, etc.)
   const updateCourse = (id: string, updatedCourse: Course) => {
     if (!activeSemesterId) return
     setSemesters(
@@ -153,6 +204,7 @@ export default function GradeCalculator() {
     )
   }
 
+  // delete a course
   const deleteCourse = (id: string) => {
     if (!activeSemesterId) return
     setSemesters(
@@ -160,6 +212,7 @@ export default function GradeCalculator() {
     )
   }
 
+  // rename a course
   const editCourse = (courseId: string, newName: string) => {
     if (!activeSemesterId) return
     setSemesters(
@@ -171,8 +224,13 @@ export default function GradeCalculator() {
     )
   }
 
+  // -------------------------------
+  // 🔹 MAIN RENDER
+  // -------------------------------
+
   return (
     <div className="min-h-screen bg-background">
+      {/* Sidebar with semesters + theme toggle */}
       <CourseSidebar
         semesters={semesters}
         activeSemesterId={activeSemesterId}
@@ -187,12 +245,14 @@ export default function GradeCalculator() {
         onToggleTheme={toggleTheme}
       />
 
+      {/* Main content area */}
       <div
         className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 transition-all duration-300"
         style={{
-          marginLeft: semesters.length > 0 ? (sidebarCollapsed ? "4rem" : "16rem") : "0",
+          paddingLeft: semesters.length > 0 ? sidebarCollapsed ? "4rem" : "16rem" : "0",
         }}
       >
+        {/* Header */}
         <div className="mb-8 text-center">
           <div className="mb-4 flex items-center justify-center gap-3">
             <GraduationCap className="h-10 w-10 text-primary" />
@@ -203,6 +263,7 @@ export default function GradeCalculator() {
           </p>
         </div>
 
+        {/* GPA + Grade Distribution charts */}
         {courses.length > 0 && (
           <div className="mb-8 grid gap-6 lg:grid-cols-2">
             <GpaSummary courses={courses} />
@@ -210,13 +271,14 @@ export default function GradeCalculator() {
           </div>
         )}
 
+        {/* Course Cards */}
         {activeSemesterId && (
           <AnimatePresence mode="popLayout">
             <div className="space-y-6">
               {courses.map((course) => (
                 <motion.div
                   key={course.id}
-                  ref={(el) => (courseRefs.current[course.id] = el)}
+                  ref={(el) => (courseRefs.current[course.id] = el)} // store ref for scroll
                   initial={{ opacity: 0, scale: 0.95, y: 20 }}
                   animate={{ opacity: 1, scale: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.85, y: -20, transition: { duration: 0.25, ease: "easeInOut" } }}
@@ -229,6 +291,7 @@ export default function GradeCalculator() {
           </AnimatePresence>
         )}
 
+        {/* Add Course Button */}
         {activeSemesterId && (
           <div className="mt-8 flex justify-center">
             <Button
@@ -242,6 +305,7 @@ export default function GradeCalculator() {
           </div>
         )}
 
+        {/* Empty states (no semesters or no courses) */}
         {semesters.length === 0 && (
           <div className="mt-12 text-center">
             <p className="mb-4 text-muted-foreground">No semesters yet. Click "Add Semester" to get started!</p>
