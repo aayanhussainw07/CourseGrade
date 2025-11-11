@@ -14,7 +14,7 @@ export function GpaSummary({ courses }: GpaSummaryProps) {
   return (
     <Card className="border-2 border-primary/20 shadow-xl">
       <CardHeader>
-        <CardTitle className="text-center text-2xl text-primary">Semester GPA Summary</CardTitle>
+        <CardTitle className="text-center text-2xl text-primary">Summary</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">

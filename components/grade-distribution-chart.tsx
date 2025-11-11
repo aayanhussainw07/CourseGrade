@@ -97,6 +97,18 @@ export function GradeDistributionChart({ courses }: GradeDistributionChartProps)
             <svg viewBox="0 0 200 200" className="w-48 h-48">
               {grades.map(([letter, count]) => {
                 const percentage = (count / total) * 100
+                const color = getLetterGradeColor(letter)
+                if (percentage >= 100) {
+                  return (
+                    <circle
+                      key={letter}
+                      cx="100"
+                      cy="100"
+                      r="90"
+                      fill={color}
+                    />
+                  )
+                }
                 const angle = (percentage / 100) * 360
                 const startAngle = (cumulativePercentage / 100) * 360
                 const endAngle = startAngle + angle
@@ -113,7 +125,6 @@ export function GradeDistributionChart({ courses }: GradeDistributionChartProps)
 
                 const path = `M 100 100 L ${x1} ${y1} A 90 90 0 ${largeArc} 1 ${x2} ${y2} Z`
 
-                const color = getLetterGradeColor(letter)
                 const result = (cumulativePercentage += percentage)
 
                 return (

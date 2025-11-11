@@ -55,7 +55,7 @@ export function CourseCard({ course, onUpdate, onDelete }: CourseCardProps) {
   const addCriterion = () => {
     const newCriterion: Criterion = {
       id: crypto.randomUUID(),
-      name: "New Criterion",
+      name: "",
       weight: 0,
       score: 0,
     }
@@ -88,7 +88,7 @@ export function CourseCard({ course, onUpdate, onDelete }: CourseCardProps) {
 
     const newSubItem: SubItem = {
       id: crypto.randomUUID(),
-      name: "Assignment",
+      name: "",
       score: 0,
     }
 
@@ -148,7 +148,7 @@ export function CourseCard({ course, onUpdate, onDelete }: CourseCardProps) {
   return (
     <Card className="border-2 border-primary/20 shadow-lg">
       {/* Course header with title, collapse toggle, delete button, and grade scale editor */}
-      <CardHeader className="bg-primary/5">
+      <CardHeader className="">
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1 space-y-3">
             {/* Editable course name input */}
@@ -160,7 +160,7 @@ export function CourseCard({ course, onUpdate, onDelete }: CourseCardProps) {
                 placeholder="Course Name"
               />
               {/* Collapse/expand button */}
-              <Button variant="outline" size="sm" onClick={toggleCollapse} className="gap-2 bg-transparent">
+              <Button variant="outline" size="sm" onClick={toggleCollapse} className="gap-2 bg-card">
                 {course.collapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
                 {course.collapsed ? "Expand" : "Collapse"}
               </Button>
@@ -169,7 +169,7 @@ export function CourseCard({ course, onUpdate, onDelete }: CourseCardProps) {
               {!course.collapsed && (
                 <Dialog open={isScaleOpen} onOpenChange={setIsScaleOpen}>
                   <DialogTrigger asChild>
-                    <Button variant="outline" size="sm" className="gap-2 bg-transparent">
+                    <Button variant="outline" size="sm" className="gap-2 bg-card">
                       <Settings className="h-4 w-4" />
                       Grade Scale
                     </Button>
