@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { CourseCard } from "@/components/course-card"
 import { CourseSidebar } from "@/components/course-sidebar"
 import { GpaSummary } from "@/components/gpa-summary"
@@ -8,8 +8,9 @@ import { GradeDistributionChart } from "@/components/grade-distribution-chart"
 import { Button } from "@/components/ui/button"
 import { Plus, GraduationCap } from "lucide-react"
 import type { Course, Semester } from "@/lib/types"
-import { storage } from "@/lib/storage"
+import { storage, ApiUnavailableError } from "@/lib/storage"
 import { AnimatePresence, motion } from "framer-motion"
+import { useSession, signIn, signOut } from "next-auth/react"
 
 export default function GradeCalculator() {
   // -------------------------------
@@ -19,9 +20,9 @@ export default function GradeCalculator() {
   const [semesters, setSemesters] = useState<Semester[]>([])
   const [activeSemesterId, setActiveSemesterId] = useState<string | null>(null)
   const courseRefs = useRef<{ [key: string]: HTMLDivElement | null }>({})
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
-  const [theme, setTheme] = useState<"light" | "dark">("light")
   const [loading, setLoading] = useState(true)
+  const [serverOffline, setServerOffline] = useState(false)
+  const { data: session, status } = useSession()
 
   const activeSemester = semesters.find((s) => s.id === activeSemesterId)
   const courses = activeSemester?.courses || []
@@ -31,35 +32,18 @@ export default function GradeCalculator() {
   // -------------------------------
 
   useEffect(() => {
-    const savedTheme = localStorage.getItem("theme") as "light" | "dark" | null
-    if (savedTheme) {
-      setTheme(savedTheme)
-      document.documentElement.classList.toggle("dark", savedTheme === "dark")
-    }
+    document.documentElement.classList.remove("light")
+    document.documentElement.classList.add("dark")
   }, [])
-
-  const toggleTheme = () => {
-    const newTheme = theme === "light" ? "dark" : "light"
-    setTheme(newTheme)
-    localStorage.setItem("theme", newTheme)
-    document.documentElement.classList.toggle("dark", newTheme === "dark")
-  }
 
   // -------------------------------
   // 🔹 LOAD DATA FROM HYBRID STORAGE LAYER
   // -------------------------------
 
-  useEffect(() => {
-    loadSemesters()
-    const savedSidebar = localStorage.getItem("sidebar-collapsed")
-    if (savedSidebar) {
-      setSidebarCollapsed(JSON.parse(savedSidebar))
-    }
-  }, [])
-
-  const loadSemesters = async () => {
+  const loadSemesters = useCallback(async () => {
     try {
       setLoading(true)
+      setServerOffline(false)
       const loadedSemesters = await storage.getSemesters()
       setSemesters(loadedSemesters)
 
@@ -70,11 +54,32 @@ export default function GradeCalculator() {
         setActiveSemesterId(loadedSemesters[0].id)
       }
     } catch (error) {
-      console.error("[v0] Failed to load semesters:", error)
+      if (error instanceof ApiUnavailableError) {
+        console.error("[v0] Server offline while loading semesters.")
+        setServerOffline(true)
+        setSemesters([])
+        setActiveSemesterId(null)
+      } else {
+        console.error("[v0] Failed to load semesters:", error)
+      }
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    if (status === "authenticated") {
+      const scopeId = session?.user?.id || session?.user?.email || "default"
+      storage.setUserScope(scopeId)
+      loadSemesters()
+    } else if (status === "unauthenticated") {
+      storage.setUserScope("default")
+      setServerOffline(false)
+      setSemesters([])
+      setActiveSemesterId(null)
+      setLoading(false)
+    }
+  }, [status, session, loadSemesters])
 
   // -------------------------------
   // 🔹 SAVE ACTIVE SEMESTER
@@ -104,33 +109,49 @@ export default function GradeCalculator() {
   const addSemester = async () => {
     try {
       const newSemester = await storage.createSemester(`Semester ${semesters.length + 1}`)
-      setSemesters([...semesters, newSemester])
+      setSemesters((prev) => [...prev, newSemester])
       setActiveSemesterId(newSemester.id)
+      setServerOffline(false)
     } catch (error) {
-      console.error("[v0] Failed to create semester:", error)
+      if (error instanceof ApiUnavailableError) {
+        setServerOffline(true)
+      } else {
+        console.error("[v0] Failed to create semester:", error)
+      }
     }
   }
 
   const deleteSemester = async (semesterId: string) => {
     try {
       await storage.deleteSemester(semesterId)
-      const newSemesters = semesters.filter((s) => s.id !== semesterId)
-      setSemesters(newSemesters)
-
-      if (activeSemesterId === semesterId) {
-        setActiveSemesterId(newSemesters.length > 0 ? newSemesters[0].id : null)
-      }
+      setSemesters((prev) => {
+        const updated = prev.filter((s) => s.id !== semesterId)
+        if (activeSemesterId === semesterId) {
+          setActiveSemesterId(updated.length > 0 ? updated[0].id : null)
+        }
+        return updated
+      })
+      setServerOffline(false)
     } catch (error) {
-      console.error("[v0] Failed to delete semester:", error)
+      if (error instanceof ApiUnavailableError) {
+        setServerOffline(true)
+      } else {
+        console.error("[v0] Failed to delete semester:", error)
+      }
     }
   }
 
   const editSemester = async (semesterId: string, newName: string) => {
     try {
       await storage.updateSemester(semesterId, newName)
-      setSemesters(semesters.map((s) => (s.id === semesterId ? { ...s, name: newName } : s)))
+      setSemesters((prev) => prev.map((s) => (s.id === semesterId ? { ...s, name: newName } : s)))
+      setServerOffline(false)
     } catch (error) {
-      console.error("[v0] Failed to update semester:", error)
+      if (error instanceof ApiUnavailableError) {
+        setServerOffline(true)
+      } else {
+        console.error("[v0] Failed to update semester:", error)
+      }
     }
   }
 
@@ -144,13 +165,20 @@ export default function GradeCalculator() {
     try {
       const newCourse = await storage.createCourse(activeSemesterId, `Course ${courses.length + 1}`, 3)
 
-      setSemesters(semesters.map((s) => (s.id === activeSemesterId ? { ...s, courses: [...s.courses, newCourse] } : s)))
+      setSemesters((prev) =>
+        prev.map((s) => (s.id === activeSemesterId ? { ...s, courses: [...s.courses, newCourse] } : s)),
+      )
+      setServerOffline(false)
 
       setTimeout(() => {
         scrollToCourse(newCourse.id)
       }, 100)
     } catch (error) {
-      console.error("[v0] Failed to create course:", error)
+      if (error instanceof ApiUnavailableError) {
+        setServerOffline(true)
+      } else {
+        console.error("[v0] Failed to create course:", error)
+      }
     }
   }
 
@@ -158,14 +186,19 @@ export default function GradeCalculator() {
     if (!activeSemesterId) return
 
     try {
-      await storage.updateCourse(activeSemesterId, updatedCourse)
-      setSemesters(
-        semesters.map((s) =>
-          s.id === activeSemesterId ? { ...s, courses: s.courses.map((c) => (c.id === id ? updatedCourse : c)) } : s,
+      const syncedCourse = await storage.updateCourse(activeSemesterId, updatedCourse)
+      setSemesters((prev) =>
+        prev.map((s) =>
+          s.id === activeSemesterId ? { ...s, courses: s.courses.map((c) => (c.id === id ? syncedCourse : c)) } : s,
         ),
       )
+      setServerOffline(false)
     } catch (error) {
-      console.error("[v0] Failed to update course:", error)
+      if (error instanceof ApiUnavailableError) {
+        setServerOffline(true)
+      } else {
+        console.error("[v0] Failed to update course:", error)
+      }
     }
   }
 
@@ -174,37 +207,80 @@ export default function GradeCalculator() {
 
     try {
       await storage.deleteCourse(activeSemesterId, id)
-      setSemesters(
-        semesters.map((s) => (s.id === activeSemesterId ? { ...s, courses: s.courses.filter((c) => c.id !== id) } : s)),
+      setSemesters((prev) =>
+        prev.map((s) => (s.id === activeSemesterId ? { ...s, courses: s.courses.filter((c) => c.id !== id) } : s)),
       )
+      setServerOffline(false)
     } catch (error) {
-      console.error("[v0] Failed to delete course:", error)
+      if (error instanceof ApiUnavailableError) {
+        setServerOffline(true)
+      } else {
+        console.error("[v0] Failed to delete course:", error)
+      }
     }
   }
 
   const editCourse = async (courseId: string, newName: string) => {
     if (!activeSemesterId) return
-
-    try {
-      const course = courses.find((c) => c.id === courseId)
-      if (course) {
-        await storage.updateCourse(activeSemesterId, { ...course, name: newName })
-        setSemesters(
-          semesters.map((s) =>
-            s.id === activeSemesterId
-              ? { ...s, courses: s.courses.map((c) => (c.id === courseId ? { ...c, name: newName } : c)) }
-              : s,
-          ),
-        )
-      }
-    } catch (error) {
-      console.error("[v0] Failed to update course name:", error)
+    const course = courses.find((c) => c.id === courseId)
+    if (course) {
+      await updateCourse(courseId, { ...course, name: newName })
     }
   }
 
   // -------------------------------
   // 🔹 MAIN RENDER
   // -------------------------------
+
+  if (status === "loading") {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <div className="text-center">
+          <GraduationCap className="mx-auto mb-4 h-12 w-12 animate-pulse text-primary" />
+          <p className="text-muted-foreground">Checking your account...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (status === "unauthenticated") {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-background px-4 text-center">
+        <GraduationCap className="h-16 w-16 text-primary" />
+        <div>
+          <h1 className="text-3xl font-bold text-foreground">Welcome to CourseGrade</h1>
+          <p className="mt-2 text-muted-foreground">
+            Sign in with your Google account to save semesters and courses to your profile.
+          </p>
+        </div>
+        <Button size="lg" onClick={() => signIn("google")}>
+          Continue with Google
+        </Button>
+      </div>
+    )
+  }
+
+  if (serverOffline) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-background px-4 text-center">
+        <GraduationCap className="h-16 w-16 text-primary" />
+        <div>
+          <h1 className="text-3xl font-bold text-foreground">Server Offline</h1>
+          <p className="mt-2 text-muted-foreground">
+            We can’t reach the grading server right now. Please try again shortly.
+          </p>
+        </div>
+        <div className="flex flex-wrap justify-center gap-4">
+          <Button size="lg" onClick={() => loadSemesters()}>
+            Retry
+          </Button>
+          <Button variant="ghost" size="lg" onClick={() => signOut()}>
+            Sign out
+          </Button>
+        </div>
+      </div>
+    )
+  }
 
   if (loading) {
     return (
@@ -218,7 +294,26 @@ export default function GradeCalculator() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div
+      className="min-h-screen bg-background/80"
+      style={{
+        backgroundImage: "var(--page-background-image)",
+        backgroundSize: "120% 120%",
+        backgroundAttachment: "fixed",
+        backgroundPosition: "center",
+      }}
+    >
+      <div className="fixed right-6 top-6 z-50 flex items-center gap-3 rounded-full border bg-card/90 px-4 py-2 shadow-sm backdrop-blur">
+        <div className="text-left">
+          <p className="text-sm font-semibold text-foreground">
+            {session?.user?.name || session?.user?.email || "Google User"}
+          </p>
+          <p className="text-xs text-muted-foreground">{session?.user?.email}</p>
+        </div>
+        <Button variant="ghost" size="sm" onClick={() => signOut()}>
+          Sign out
+        </Button>
+      </div>
       <CourseSidebar
         semesters={semesters}
         activeSemesterId={activeSemesterId}
@@ -229,14 +324,12 @@ export default function GradeCalculator() {
         onEditSemester={editSemester}
         onDeleteCourse={deleteCourse}
         onEditCourse={editCourse}
-        theme={theme}
-        onToggleTheme={toggleTheme}
       />
 
       <div
         className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 transition-all duration-300"
         style={{
-          paddingLeft: semesters.length > 0 ? (sidebarCollapsed ? "4rem" : "16rem") : "0",
+          paddingLeft: semesters.length > 0 ? "16rem" : "0",
         }}
       >
         <div className="mb-8 text-center">
@@ -251,7 +344,7 @@ export default function GradeCalculator() {
 
         {courses.length > 0 && (
           <div className="mb-8 grid gap-6 lg:grid-cols-2">
-            <GpaSummary courses={courses} />
+            <GpaSummary courses={courses} semesterName={activeSemester?.name} />
             <GradeDistributionChart courses={courses} />
           </div>
         )}

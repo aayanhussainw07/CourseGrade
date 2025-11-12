@@ -36,8 +36,8 @@ class SemesterSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Semester
-        fields = ['id', 'name', 'courses', 'created_at', 'updated_at']
-        read_only_fields = ['created_at', 'updated_at']
+        fields = ['id', 'name', 'user_id', 'courses', 'created_at', 'updated_at']
+        read_only_fields = ['user_id', 'created_at', 'updated_at']
 
 
 class GradeScaleSerializer(serializers.ModelSerializer):

@@ -49,6 +49,7 @@ export function getLetterGrade(numericGrade: number, gradeScale: GradeScale[]): 
 }
 
 export function letterGradeToGPA(letter: string): number {
+  const normalized = letter?.trim().toUpperCase()
   const gpaMap: Record<string, number> = {
     "A+": 4.0,
     A: 4.0,
@@ -65,7 +66,8 @@ export function letterGradeToGPA(letter: string): number {
     F: 0.0,
   }
 
-  return gpaMap[letter] || -1.0
+  if (!normalized) return -1.0
+  return gpaMap[normalized] ?? -1.0
 }
 
 export function calculateGPA(courses: Course[]): number {

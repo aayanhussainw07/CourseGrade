@@ -5,6 +5,7 @@ from django.core.validators import MinValueValidator, MaxValueValidator
 class Semester(models.Model):
     """Represents an academic semester containing multiple courses."""
     name = models.CharField(max_length=200, default="New Semester")
+    user_id = models.CharField(max_length=255, default="default", db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

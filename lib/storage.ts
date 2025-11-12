@@ -1,263 +1,139 @@
-// Hybrid storage layer that uses Django API when available, falls back to localStorage
+import { semesterApi, courseApi, assignmentApi, setApiUserScope } from "./api"
+import type { Course, Semester } from "./types"
+import { apiToFrontendCourse, apiToFrontendSemester } from "./types"
 
-import { semesterApi, courseApi, assignmentApi } from "./api"
-import type { Semester, Course } from "./types"
+const defaultAssignmentTemplates = [
+  { name: "Assignments", weight: 30, earned: 0, total: 100 },
+  { name: "Midterm", weight: 30, earned: 0, total: 100 },
+  { name: "Final Exam", weight: 40, earned: 0, total: 100 },
+]
 
-// Check if API is available
-let apiAvailable: boolean | null = null
+const normalizeScore = (value: number | undefined) => {
+  if (typeof value !== "number" || Number.isNaN(value)) return 0
+  return value
+}
 
-async function checkApiAvailability(): Promise<boolean> {
-  if (apiAvailable !== null) return apiAvailable
-
-  try {
-    const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 2000) // 2 second timeout
-
-    await fetch(process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/semesters/", {
-      signal: controller.signal,
-    })
-    clearTimeout(timeoutId)
-    apiAvailable = true
-    console.log("[v0] Django API is available")
-    return true
-  } catch (error) {
-    apiAvailable = false
-    console.log("[v0] Django API unavailable, using localStorage fallback")
-    return false
+const getCriterionScoreValue = (criterion: Course["criteria"][number]) => {
+  if (criterion.subItems && criterion.subItems.length > 0) {
+    const total = criterion.subItems.reduce((sum, item) => sum + (item.score || 0), 0)
+    return total / criterion.subItems.length
   }
+  return criterion.score
 }
 
-// LocalStorage helpers
-const STORAGE_KEY = "grade-calculator-semesters"
+const isServerAssignmentId = (id: string) => /^\d+$/.test(id)
 
-function getLocalSemesters(): Semester[] {
-  if (typeof window === "undefined") return []
-  const data = localStorage.getItem(STORAGE_KEY)
-  return data ? JSON.parse(data) : []
-}
+export { ApiUnavailableError } from "./api"
 
-function saveLocalSemesters(semesters: Semester[]) {
-  if (typeof window === "undefined") return
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(semesters))
-}
-
-// Unified storage API
 export const storage = {
-  // Semester operations
+  setUserScope(scope: string | null | undefined) {
+    setApiUserScope(scope && scope.trim().length > 0 ? scope.trim() : "default")
+  },
+
   async getSemesters(): Promise<Semester[]> {
-    const isApiAvailable = await checkApiAvailability()
-
-    if (isApiAvailable) {
-      try {
-        const apiSemesters = await semesterApi.getAll()
-        // Convert API format to frontend format
-        return apiSemesters.map((s: any) => ({
-          id: s.id.toString(),
-          name: s.name,
-          courses: s.courses.map((c: any) => ({
-            id: c.id.toString(),
-            name: c.name,
-            credits: c.credits,
-            criteria: c.assignments.map((a: any) => ({
-              id: a.id.toString(),
-              name: a.name,
-              weight: a.weight,
-              score: (a.earned / a.total) * 100,
-            })),
-          })),
-        }))
-      } catch (error) {
-        console.error("[v0] API call failed, falling back to localStorage:", error)
-        return getLocalSemesters()
-      }
-    }
-
-    return getLocalSemesters()
+    const apiSemesters = await semesterApi.getAll()
+    const semestersArray = Array.isArray(apiSemesters) ? apiSemesters : apiSemesters?.results ?? []
+    return semestersArray.map(apiToFrontendSemester)
   },
 
   async createSemester(name: string): Promise<Semester> {
-    const isApiAvailable = await checkApiAvailability()
-
-    if (isApiAvailable) {
-      try {
-        const apiSemester = await semesterApi.create({ name })
-        return {
-          id: apiSemester.id.toString(),
-          name: apiSemester.name,
-          courses: [],
-        }
-      } catch (error) {
-        console.error("[v0] API call failed, falling back to localStorage:", error)
-      }
-    }
-
-    // LocalStorage fallback
-    const semesters = getLocalSemesters()
-    const newSemester: Semester = {
-      id: Date.now().toString(),
-      name,
+    const apiSemester = await semesterApi.create({ name })
+    return {
+      id: apiSemester.id.toString(),
+      name: apiSemester.name,
       courses: [],
     }
-    saveLocalSemesters([...semesters, newSemester])
-    return newSemester
   },
 
   async updateSemester(id: string, name: string): Promise<void> {
-    const isApiAvailable = await checkApiAvailability()
-
-    if (isApiAvailable) {
-      try {
-        await semesterApi.update(id, { name })
-        return
-      } catch (error) {
-        console.error("[v0] API call failed, falling back to localStorage:", error)
-      }
-    }
-
-    // LocalStorage fallback
-    const semesters = getLocalSemesters()
-    const updated = semesters.map((s) => (s.id === id ? { ...s, name } : s))
-    saveLocalSemesters(updated)
+    await semesterApi.update(id, { name })
   },
 
   async deleteSemester(id: string): Promise<void> {
-    const isApiAvailable = await checkApiAvailability()
-
-    if (isApiAvailable) {
-      try {
-        await semesterApi.delete(id)
-        return
-      } catch (error) {
-        console.error("[v0] API call failed, falling back to localStorage:", error)
-      }
-    }
-
-    // LocalStorage fallback
-    const semesters = getLocalSemesters()
-    saveLocalSemesters(semesters.filter((s) => s.id !== id))
+    await semesterApi.delete(id)
   },
 
-  // Course operations
   async createCourse(semesterId: string, name: string, credits: number): Promise<Course> {
-    const isApiAvailable = await checkApiAvailability()
+    const apiCourse = await courseApi.create({ semester: semesterId, name, credits })
 
-    if (isApiAvailable) {
-      try {
-        const apiCourse = await courseApi.create({ semester: semesterId, name, credits })
-
-        // Create default assignments
-        const defaultAssignments = [
-          { name: "Assignments", weight: 30, earned: 0, total: 100 },
-          { name: "Midterm", weight: 30, earned: 0, total: 100 },
-          { name: "Final Exam", weight: 40, earned: 0, total: 100 },
-        ]
-
-        const createdAssignments = []
-        for (const assignment of defaultAssignments) {
-          const a = await assignmentApi.create({
-            course: apiCourse.id.toString(),
-            ...assignment,
-          })
-          createdAssignments.push(a)
-        }
-
-        return {
-          id: apiCourse.id.toString(),
-          name: apiCourse.name,
-          credits: apiCourse.credits,
-          criteria: createdAssignments.map((a: any) => ({
-            id: a.id.toString(),
-            name: a.name,
-            weight: a.weight,
-            score: (a.earned / a.total) * 100,
-          })),
-          gradeScale: apiCourse.gradeScale
-        }
-      } catch (error) {
-        console.error("[v0] API call failed, falling back to localStorage:", error)
-      }
+    for (const assignment of defaultAssignmentTemplates) {
+      await assignmentApi.create({
+        course: apiCourse.id.toString(),
+        ...assignment,
+      })
     }
 
-    // LocalStorage fallback
-    const semesters = getLocalSemesters()
-    const newCourse: Course = {
-      id: Date.now().toString(),
-      name,
-      credits,
-      criteria: [
-        { id: `${Date.now()}-1`, name: "Assignments", weight: 30, score: 0 },
-        { id: `${Date.now()}-2`, name: "Midterm", weight: 30, score: 0 },
-        { id: `${Date.now()}-3`, name: "Final Exam", weight: 40, score: 0 },
-      ],
-      gradeScale: [
-      { letter: "A+", min: 96 },
-      { letter: "A", min: 93 },
-      { letter: "A-", min: 90 },
-      { letter: "B+", min: 87 },
-      { letter: "B", min: 83 },
-      { letter: "B-", min: 80 },
-      { letter: "C+", min: 77 },
-      { letter: "C", min: 73 },
-      { letter: "C-", min: 70 },
-      { letter: "D+", min: 67 },
-      { letter: "D", min: 63 },
-      { letter: "D-", min: 60 },
-      { letter: "F", min: 0 },
-    ],
-    }
-
-    const updated = semesters.map((s) => (s.id === semesterId ? { ...s, courses: [...s.courses, newCourse] } : s))
-    saveLocalSemesters(updated)
-    return newCourse
+    const refreshed = await courseApi.getOne(apiCourse.id.toString())
+    const createdCourse = apiToFrontendCourse(refreshed)
+    createdCourse.collapsed = false
+    return createdCourse
   },
 
-  async updateCourse(semesterId: string, course: Course): Promise<void> {
-    const isApiAvailable = await checkApiAvailability()
+  async updateCourse(_semesterId: string, course: Course): Promise<Course> {
+    await courseApi.update(course.id, {
+      name: course.name,
+      credits: course.credits,
+    })
 
-    if (isApiAvailable) {
-      try {
-        await courseApi.update(course.id, { name: course.name, credits: course.credits })
+    const assignmentsResponse = await assignmentApi.getAll(course.id)
+    const existingAssignments = Array.isArray(assignmentsResponse)
+      ? assignmentsResponse
+      : assignmentsResponse?.results ?? []
+    const existingIds = new Set(existingAssignments.map((a: any) => a.id.toString()))
+    const desiredIds = new Set<string>()
+    const subItemsSnapshot = new Map<string, Course["criteria"][number]["subItems"]>()
 
-        for (const criterion of course.criteria) {
-          const earned = (criterion.score / 100) * 100
-          await assignmentApi.update(criterion.id, {
-            name: criterion.name,
-            weight: criterion.weight,
-            earned,
-            total: 100,
-          })
+    for (const criterion of course.criteria) {
+      const snapshot = criterion.subItems ? [...criterion.subItems] : undefined
+      const payload = {
+        name: criterion.name,
+        weight: criterion.weight,
+        earned: normalizeScore(getCriterionScoreValue(criterion)),
+        total: 100,
+      }
+
+      if (criterion.id && isServerAssignmentId(criterion.id) && existingIds.has(criterion.id)) {
+        await assignmentApi.update(criterion.id, payload)
+        desiredIds.add(criterion.id)
+        if (snapshot) {
+          subItemsSnapshot.set(criterion.id, snapshot)
+        } else {
+          subItemsSnapshot.set(criterion.id, [])
         }
-        return
-      } catch (error) {
-        console.error("[v0] API call failed, falling back to localStorage:", error)
+      } else {
+        const created = await assignmentApi.create({
+          course: course.id,
+          ...payload,
+        })
+        const newId = created.id.toString()
+        desiredIds.add(newId)
+        if (snapshot) {
+          subItemsSnapshot.set(newId, snapshot)
+        } else {
+          subItemsSnapshot.set(newId, [])
+        }
       }
     }
 
-    // LocalStorage fallback
-    const semesters = getLocalSemesters()
-    const updated = semesters.map((s) =>
-      s.id === semesterId ? { ...s, courses: s.courses.map((c) => (c.id === course.id ? course : c)) } : s,
-    )
-    saveLocalSemesters(updated)
+    for (const assignment of existingAssignments) {
+      const assignmentId = assignment.id.toString()
+      if (!desiredIds.has(assignmentId)) {
+        await assignmentApi.delete(assignmentId)
+      }
+    }
+
+    const refreshed = await courseApi.getOne(course.id)
+    const frontendCourse = apiToFrontendCourse(refreshed)
+    frontendCourse.gradeScale = course.gradeScale
+    frontendCourse.collapsed = course.collapsed ?? false
+    frontendCourse.criteria = frontendCourse.criteria.map((criterion) => ({
+      ...criterion,
+      subItems: subItemsSnapshot.get(criterion.id) ?? [],
+    }))
+    return frontendCourse
   },
 
-  async deleteCourse(semesterId: string, courseId: string): Promise<void> {
-    const isApiAvailable = await checkApiAvailability()
-
-    if (isApiAvailable) {
-      try {
-        await courseApi.delete(courseId)
-        return
-      } catch (error) {
-        console.error("[v0] API call failed, falling back to localStorage:", error)
-      }
-    }
-
-    // LocalStorage fallback
-    const semesters = getLocalSemesters()
-    const updated = semesters.map((s) =>
-      s.id === semesterId ? { ...s, courses: s.courses.filter((c) => c.id !== courseId) } : s,
-    )
-    saveLocalSemesters(updated)
+  async deleteCourse(_semesterId: string, id: string): Promise<void> {
+    await courseApi.delete(id)
   },
 }

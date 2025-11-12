@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -26,6 +26,11 @@ export function CourseCard({ course, onUpdate, onDelete }: CourseCardProps) {
   const [isScaleOpen, setIsScaleOpen] = useState(false)
   // State for which criteria are expanded (for showing sub-items like individual assignments)
   const [expandedCriteria, setExpandedCriteria] = useState<Set<string>>(new Set())
+  const [nameDraft, setNameDraft] = useState(course.name)
+
+  useEffect(() => {
+    setNameDraft(course.name)
+  }, [course.name])
 
   // Calculate numeric grade (weighted average) and letter grade
   const numericGrade = calculateCourseGrade(course.criteria)
@@ -42,12 +47,15 @@ export function CourseCard({ course, onUpdate, onDelete }: CourseCardProps) {
 
   // Update the course name (typing in the title input)
   const updateCourseName = (name: string) => {
+    if (name === course.name) return
     onUpdate(course.id, { ...course, name })
   }
+  const commitCourseName = () => updateCourseName(nameDraft)
 
   // Update number of credit hours
   const updateCredits = (value: string) => {
-    const credits = value === "" ? 0 : Number.parseFloat(value)
+    const parsed = value.trim() === "" ? 0 : Number.parseFloat(value)
+    const credits = Number.isNaN(parsed) ? 0 : parsed
     onUpdate(course.id, { ...course, credits })
   }
 
@@ -154,8 +162,15 @@ export function CourseCard({ course, onUpdate, onDelete }: CourseCardProps) {
             {/* Editable course name input */}
             <div className="flex items-center gap-3">
               <Input
-                value={course.name}
-                onChange={(e) => updateCourseName(e.target.value)}
+                value={nameDraft}
+                onChange={(e) => setNameDraft(e.target.value)}
+                onBlur={commitCourseName}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    commitCourseName()
+                    e.currentTarget.blur()
+                  }
+                }}
                 className="max-w-md border-2 border-primary/20 bg-card text-lg font-semibold"
                 placeholder="Course Name"
               />
@@ -194,17 +209,19 @@ export function CourseCard({ course, onUpdate, onDelete }: CourseCardProps) {
               <Label htmlFor={`credits-${course.id}`} className="text-sm font-medium">
                 Credit Hours:
               </Label>
-              <Input
+              <input
                 id={`credits-${course.id}`}
-                type="number"
-                min="0"
-                max="12"
-                step="0.5"
+                type="text"
+                inputMode="decimal"
                 value={course.credits || ""}
                 onChange={(e) => updateCredits(e.target.value)}
-                onFocus={handleInputFocus}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.currentTarget.blur()
+                  }
+                }}
                 placeholder="0"
-                className="w-20 border-2 border-primary/20"
+                className="w-20 rounded-md border-2 border-primary/20 bg-transparent px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
               />
             </div>
           </div>
@@ -255,7 +272,6 @@ export function CourseCard({ course, onUpdate, onDelete }: CourseCardProps) {
                       <Input
                         type="number"
                         min="0"
-                        max="100"
                         value={criterion.weight || ""}
                         onChange={(e) =>
                           updateCriterion(criterion.id, {
@@ -281,7 +297,6 @@ export function CourseCard({ course, onUpdate, onDelete }: CourseCardProps) {
                         <Input
                           type="number"
                           min="0"
-                          max="100"
                           value={criterion.score || ""}
                           onChange={(e) =>
                             updateCriterion(criterion.id, {
@@ -351,7 +366,6 @@ export function CourseCard({ course, onUpdate, onDelete }: CourseCardProps) {
                             <Input
                               type="number"
                               min="0"
-                              max="100"
                               value={subItem.score || ""}
                               onChange={(e) =>
                                 updateSubItem(criterion.id, subItem.id, {
@@ -394,7 +408,7 @@ export function CourseCard({ course, onUpdate, onDelete }: CourseCardProps) {
           </div>
 
           {/* Course grade summary (bottom of expanded card) */}
-          <div className="mt-6 rounded-lg border-2 border-primary bg-primary/5 p-6">
+          <div className="mt-6 rounded-lg border border-primary/30 bg-primary/5/60 p-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Numeric Grade</p>
@@ -416,7 +430,7 @@ export function CourseCard({ course, onUpdate, onDelete }: CourseCardProps) {
       {/* Compact view when collapsed */}
       {course.collapsed && (
         <CardContent className="pt-4 pb-6">
-          <div className="flex items-center justify-between rounded-lg  bg-primary/5 p-4">
+          <div className="flex items-center justify-between rounded-lg border border-primary/20 bg-primary/5/60 p-4">
             <div>
               <p className="text-sm font-medium text-muted-foreground">Numeric Grade</p>
               <p className="mt-1 text-2xl font-bold text-primary">

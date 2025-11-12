@@ -1,4 +1,5 @@
 from rest_framework import viewsets, status
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from .models import Semester, Course, Assignment, GradeScale
@@ -11,19 +12,35 @@ from .serializers import (
 )
 
 
-class SemesterViewSet(viewsets.ModelViewSet):
+class UserScopedMixin:
+    """Mixin to extract user identifier from request headers."""
+
+    user_header = "HTTP_X_USER_ID"
+
+    def get_request_user_id(self):
+        user_id = self.request.META.get(self.user_header) or self.request.headers.get("X-User-Id")
+        return user_id or "default"
+
+
+class SemesterViewSet(UserScopedMixin, viewsets.ModelViewSet):
     """
     ViewSet for managing semesters.
     Provides CRUD operations for semesters.
     """
-    queryset = Semester.objects.all()
     serializer_class = SemesterSerializer
+
+    def get_queryset(self):
+        user_id = self.get_request_user_id()
+        return Semester.objects.filter(user_id=user_id)
+
+    def perform_create(self, serializer):
+        serializer.save(user_id=self.get_request_user_id())
 
     @action(detail=True, methods=['post'])
     def duplicate(self, request, pk=None):
         """Duplicate a semester with all its courses and assignments."""
         semester = self.get_object()
-        new_semester = Semester.objects.create(name=f"{semester.name} (Copy)")
+        new_semester = Semester.objects.create(name=f"{semester.name} (Copy)", user_id=semester.user_id)
         
         for course in semester.courses.all():
             new_course = Course.objects.create(
@@ -44,40 +61,51 @@ class SemesterViewSet(viewsets.ModelViewSet):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
-class CourseViewSet(viewsets.ModelViewSet):
+class CourseViewSet(UserScopedMixin, viewsets.ModelViewSet):
     """
     ViewSet for managing courses.
     Provides CRUD operations for courses.
     """
-    queryset = Course.objects.all()
-    
     def get_serializer_class(self):
         if self.action in ['create', 'update', 'partial_update']:
             return CourseCreateSerializer
         return CourseSerializer
 
     def get_queryset(self):
-        queryset = Course.objects.all()
+        user_id = self.get_request_user_id()
+        queryset = Course.objects.filter(semester__user_id=user_id)
         semester_id = self.request.query_params.get('semester', None)
         if semester_id is not None:
             queryset = queryset.filter(semester_id=semester_id)
         return queryset
 
+    def perform_create(self, serializer):
+        semester = serializer.validated_data.get("semester")
+        if semester.user_id != self.get_request_user_id():
+            raise PermissionDenied("Cannot create courses for another user's semester.")
+        serializer.save()
 
-class AssignmentViewSet(viewsets.ModelViewSet):
+
+class AssignmentViewSet(UserScopedMixin, viewsets.ModelViewSet):
     """
     ViewSet for managing assignments.
     Provides CRUD operations for assignments.
     """
-    queryset = Assignment.objects.all()
     serializer_class = AssignmentSerializer
 
     def get_queryset(self):
-        queryset = Assignment.objects.all()
+        user_id = self.get_request_user_id()
+        queryset = Assignment.objects.filter(course__semester__user_id=user_id)
         course_id = self.request.query_params.get('course', None)
         if course_id is not None:
             queryset = queryset.filter(course_id=course_id)
         return queryset
+
+    def perform_create(self, serializer):
+        course = serializer.validated_data.get("course")
+        if course.semester.user_id != self.get_request_user_id():
+            raise PermissionDenied("Cannot create assignments for another user's course.")
+        serializer.save()
 
 
 class GradeScaleViewSet(viewsets.ModelViewSet):

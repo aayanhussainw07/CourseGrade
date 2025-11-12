@@ -4,9 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { calculateCourseGrade, getLetterGrade, getLetterGradeColor } from "@/lib/grade-utils"
 import type { Course } from "@/lib/types"
-import { motion } from "framer-motion"
 import { BarChart3, PieChart } from "lucide-react"
-import { useState } from "react"
+import { useMemo, useState } from "react"
 
 interface GradeDistributionChartProps {
   courses: Course[]
@@ -15,27 +14,26 @@ interface GradeDistributionChartProps {
 export function GradeDistributionChart({ courses }: GradeDistributionChartProps) {
   const [chartType, setChartType] = useState<"bar" | "pie">("bar")
 
-  // Calculate grade distribution
-  const distribution: Record<string, number> = {}
+  const { grades, totals } = useMemo(() => {
+    const distribution: Record<string, number> = {}
 
-  for (const course of courses) {
-    const numericGrade = calculateCourseGrade(course.criteria)
-    const letterGrade = getLetterGrade(numericGrade, course.gradeScale)
-    distribution[letterGrade] = (distribution[letterGrade] || 0) + 1
-  }
+    for (const course of courses) {
+      const numericGrade = calculateCourseGrade(course.criteria)
+      const letterGrade = getLetterGrade(numericGrade, course.gradeScale)
+      distribution[letterGrade] = (distribution[letterGrade] || 0) + 1
+    }
 
-  const grades = Object.entries(distribution).sort((a, b) => {
-    const order = ["A+", "A", "A-", "B+", "B", "B-", "C+", "C", "C-", "D+", "D", "D-", "F"]
-    return order.indexOf(a[0]) - order.indexOf(b[0])
-  })
+    const ordered = Object.entries(distribution).sort((a, b) => {
+      const order = ["A+", "A", "A-", "B+", "B", "B-", "C+", "C", "C-", "D+", "D", "D-", "F"]
+      return order.indexOf(a[0]) - order.indexOf(b[0])
+    })
 
-  const maxCount = Math.max(...Object.values(distribution))
+    const totalCount = ordered.reduce((sum, [, count]) => sum + count, 0)
+    return { grades: ordered, totals: { totalCount } }
+  }, [courses])
 
-  if (courses.length === 0) {
-    return null
-  }
+  if (courses.length === 0) return null
 
-  const total = grades.reduce((sum, [, count]) => sum + count, 0)
   let cumulativePercentage = 0
 
   return (
@@ -51,7 +49,7 @@ export function GradeDistributionChart({ courses }: GradeDistributionChartProps)
               onClick={() => setChartType("bar")}
               title="Bar chart"
             >
-              <BarChart3 className="h-4 w-4" />
+              <BarChart3 className="h-5 w-4" />
             </Button>
             <Button
               variant={chartType === "pie" ? "default" : "ghost"}
@@ -65,7 +63,7 @@ export function GradeDistributionChart({ courses }: GradeDistributionChartProps)
           </div>
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="min-h-[250px]">
         {chartType === "bar" ? (
           <div className="space-y-3">
             {grades.map(([letter, count]) => {
@@ -80,8 +78,8 @@ export function GradeDistributionChart({ courses }: GradeDistributionChartProps)
                   <div className="flex-1">
                     <div className="relative h-8 overflow-hidden rounded-full bg-muted">
                       <div
-                        className="h-full rounded-full"
-                        style={{ backgroundColor: color }}
+                        className="h-full rounded-full transition-all"
+                        style={{ width: `${Math.min(100, percentage)}%`, backgroundColor: color }}
                       />
                     </div>
                   </div>
@@ -94,21 +92,14 @@ export function GradeDistributionChart({ courses }: GradeDistributionChartProps)
           </div>
         ) : (
           <div className="flex flex-col items-center gap-4">
-            <svg viewBox="0 0 200 200" className="w-48 h-48">
+            <svg viewBox="0 0 200 200" className="h-48 w-48">
               {grades.map(([letter, count]) => {
-                const percentage = (count / total) * 100
+                const percentage = (count / totals.totalCount) * 100
                 const color = getLetterGradeColor(letter)
                 if (percentage >= 100) {
-                  return (
-                    <circle
-                      key={letter}
-                      cx="100"
-                      cy="100"
-                      r="90"
-                      fill={color}
-                    />
-                  )
+                  return <circle key={letter} cx="100" cy="100" r="90" fill={color} />
                 }
+
                 const angle = (percentage / 100) * 360
                 const startAngle = (cumulativePercentage / 100) * 360
                 const endAngle = startAngle + angle
@@ -122,28 +113,21 @@ export function GradeDistributionChart({ courses }: GradeDistributionChartProps)
                 const y2 = 100 + 90 * Math.sin(endRad)
 
                 const largeArc = angle > 180 ? 1 : 0
-
                 const path = `M 100 100 L ${x1} ${y1} A 90 90 0 ${largeArc} 1 ${x2} ${y2} Z`
 
-                const result = (cumulativePercentage += percentage)
+                cumulativePercentage += percentage
 
-                return (
-                  <path
-                    key={letter}
-                    d={path}
-                    fill={color}
-                  />
-                )
+                return <path key={letter} d={path} fill={color} />
               })}
             </svg>
-            <div className="grid grid-cols-2 gap-x-4 gap-y-2 w-full">
+            <div className="grid w-full grid-cols-2 gap-x-4 gap-y-2">
               {grades.map(([letter, count]) => {
                 const percentage = (count / courses.length) * 100
                 const color = getLetterGradeColor(letter)
 
                 return (
                   <div key={letter} className="flex items-center gap-2">
-                    <div className="w-4 h-4 rounded" style={{ backgroundColor: color }} />
+                    <div className="h-4 w-4 rounded" style={{ backgroundColor: color }} />
                     <span className="text-sm font-medium" style={{ color }}>
                       {letter}
                     </span>

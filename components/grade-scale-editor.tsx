@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Plus, X } from "lucide-react"
+import { useState, useEffect } from "react"
 import type { GradeScale } from "@/lib/types"
 
 interface GradeScaleEditorProps {
@@ -12,6 +13,48 @@ interface GradeScaleEditorProps {
 }
 
 export function GradeScaleEditor({ gradeScale, onUpdate }: GradeScaleEditorProps) {
+  const [editingValues, setEditingValues] = useState<Record<string, { letter?: string; min?: string }>>({})
+
+  useEffect(() => {
+    // Clear editing values when gradeScale changes externally
+    setEditingValues({})
+  }, [gradeScale])
+
+  const getEditingKey = (index: number) => `${index}`
+
+  const getDisplayValue = (index: number, field: "letter" | "min") => {
+    const key = getEditingKey(index)
+    if (editingValues[key]?.[field] !== undefined) {
+      return editingValues[key][field]
+    }
+    if (field === "min") {
+      return gradeScale[index][field].toString()
+    }
+    return gradeScale[index][field]
+  }
+
+  const commitChanges = (index: number) => {
+    const key = getEditingKey(index)
+    const edits = editingValues[key]
+    if (edits) {
+      const updates: Partial<GradeScale> = {}
+      if (edits.letter !== undefined) {
+        updates.letter = edits.letter.trim().toUpperCase()
+      }
+      if (edits.min !== undefined) {
+        const trimmed = edits.min.trim()
+        const normalized = trimmed === "" ? 0 : Number.parseFloat(trimmed)
+        updates.min = Number.isNaN(normalized) ? 0 : normalized
+      }
+      updateGrade(index, updates)
+      setEditingValues((prev) => {
+        const next = { ...prev }
+        delete next[key]
+        return next
+      })
+    }
+  }
+
   const addGrade = () => {
     const newGrade: GradeScale = {
       letter: "X",
@@ -49,8 +92,21 @@ export function GradeScaleEditor({ gradeScale, onUpdate }: GradeScaleEditorProps
               <div className="flex-1">
                 <Label className="text-xs text-muted-foreground">Letter Grade</Label>
                 <Input
-                  value={grade.letter}
-                  onChange={(e) => updateGrade(originalIndex, { letter: e.target.value })}
+                  value={(getDisplayValue(originalIndex, "letter") as string) ?? ""}
+                  onChange={(e) => {
+                    const key = getEditingKey(originalIndex)
+                    setEditingValues((prev) => ({
+                      ...prev,
+                      [key]: { ...prev[key], letter: e.target.value },
+                    }))
+                  }}
+                  onBlur={() => commitChanges(originalIndex)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      commitChanges(originalIndex)
+                      e.currentTarget.blur()
+                    }
+                  }}
                   className="border-primary/20"
                   placeholder="e.g., A, B+, C-"
                 />
@@ -60,13 +116,21 @@ export function GradeScaleEditor({ gradeScale, onUpdate }: GradeScaleEditorProps
                 <Input
                   type="number"
                   min="0"
-                  max="100"
-                  value={grade.min}
-                  onChange={(e) =>
-                    updateGrade(originalIndex, {
-                      min: Number.parseFloat(e.target.value) || 0,
-                    })
-                  }
+                  value={(getDisplayValue(originalIndex, "min") as string) ?? ""}
+                  onChange={(e) => {
+                    const key = getEditingKey(originalIndex)
+                    setEditingValues((prev) => ({
+                      ...prev,
+                      [key]: { ...prev[key], min: e.target.value },
+                    }))
+                  }}
+                  onBlur={() => commitChanges(originalIndex)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      commitChanges(originalIndex)
+                      e.currentTarget.blur()
+                    }
+                  }}
                   className="border-primary/20"
                 />
               </div>
