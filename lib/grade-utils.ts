@@ -17,22 +17,44 @@ const defGradeScale = [
 ]
 
 // Helper function to calculate criterion score from sub-items if they exist
+const normalizeCriteria = (criteria?: Criterion[] | null): Criterion[] => (Array.isArray(criteria) ? criteria : [])
+
 function getCriterionScore(criterion: Criterion): number {
   if (criterion.subItems && criterion.subItems.length > 0) {
-    const total = criterion.subItems.reduce((sum, item) => sum + item.score, 0)
-    return total / criterion.subItems.length
+    const scores = criterion.subItems.map(item => item.score)
+    const dropLowest = criterion.dropLowest || 0
+
+    // If we have items to drop and enough scores
+    if (dropLowest > 0 && scores.length > dropLowest) {
+      // Sort scores in ascending order
+      const sortedScores = [...scores].sort((a, b) => a - b)
+      // Remove the lowest N scores
+      const keptScores = sortedScores.slice(dropLowest)
+      // Calculate average of remaining scores
+      const total = keptScores.reduce((sum, score) => sum + score, 0)
+      return total / keptScores.length
+    }
+
+    // Default behavior: average all scores
+    const total = scores.reduce((sum, score) => sum + score, 0)
+    return total / scores.length
   }
   return criterion.score
 }
 
-export function calculateCourseGrade(criteria: Criterion[]): number {
+export function calculateCourseGrade(rawCriteria: Criterion[] | null | undefined): number {
+  const criteria = normalizeCriteria(rawCriteria)
   const totalWeight = criteria.reduce((sum, c) => sum + c.weight, 0)
-
   if (totalWeight === 0) return 0
 
-  const weightedSum = criteria.reduce((sum, c) => sum + (getCriterionScore(c) * c.weight) / 100, 0)
+  const result = criteria.reduce((sum, criterion) => {
+    const baseScore = getCriterionScore(criterion)
+    const extra = Math.max(0, criterion.extraCredit ?? 0)
+    const effectiveScore = baseScore + extra
+    return sum + (effectiveScore * criterion.weight) / 100
+  }, 0)
 
-  return weightedSum
+  return Number.parseFloat(result.toFixed(2))
 }
 
 export function getLetterGrade(numericGrade: number, gradeScale: GradeScale[]): string {
@@ -70,13 +92,17 @@ export function letterGradeToGPA(letter: string): number {
   return gpaMap[normalized] ?? -1.0
 }
 
-export function calculateGPA(courses: Course[]): number {
-  if (courses.length === 0) return 0
+export function calculateGPA(courses: Course[] | null | undefined): number {
+  const safeCourses = Array.isArray(courses) ? courses : []
+  if (safeCourses.length === 0) return 0
 
   let totalPoints = 0
   let totalCredits = 0
 
-  for (const course of courses) {
+  for (const course of safeCourses) {
+    // Skip pass/fail courses - they don't count toward GPA
+    if (course.isPassFail) continue
+
     const numericGrade = calculateCourseGrade(course.criteria)
     const letterGrade = getLetterGrade(numericGrade, course.gradeScale)
     const gradePoints = letterGradeToGPA(letterGrade)
@@ -126,7 +152,8 @@ export function isCourseDefault(course: Course): boolean {
   const isDefaultName = course.name.match(/^Course \d+$/)
 
   // Check if all criteria have default values (score = 0)
-  const hasDefaultScores = course.criteria.every((criterion) => {
+  const criteria = normalizeCriteria(course.criteria)
+  const hasDefaultScores = criteria.every((criterion) => {
     if (criterion.subItems && criterion.subItems.length > 0) {
       return criterion.subItems.every((item) => item.score === 0)
     }

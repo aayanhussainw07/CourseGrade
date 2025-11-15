@@ -4,29 +4,29 @@ from .models import Semester, Course, Assignment, GradeScale
 
 class AssignmentSerializer(serializers.ModelSerializer):
     """Serializer for Assignment model."""
-    
+
     class Meta:
         model = Assignment
-        fields = ['id', 'course', 'name', 'weight', 'earned', 'total', 'created_at', 'updated_at']
+        fields = ['id', 'course', 'name', 'weight', 'earned', 'total', 'drop_lowest', 'created_at', 'updated_at']
         read_only_fields = ['created_at', 'updated_at']
 
 
 class CourseSerializer(serializers.ModelSerializer):
     """Serializer for Course model with nested assignments."""
     assignments = AssignmentSerializer(many=True, read_only=True)
-    
+
     class Meta:
         model = Course
-        fields = ['id', 'semester', 'name', 'credits', 'assignments', 'created_at', 'updated_at']
+        fields = ['id', 'semester', 'name', 'credits', 'is_pass_fail', 'assignments', 'created_at', 'updated_at']
         read_only_fields = ['created_at', 'updated_at']
 
 
 class CourseCreateSerializer(serializers.ModelSerializer):
     """Serializer for creating courses without nested data."""
-    
+
     class Meta:
         model = Course
-        fields = ['id', 'semester', 'name', 'credits', 'created_at', 'updated_at']
+        fields = ['id', 'semester', 'name', 'credits', 'is_pass_fail', 'created_at', 'updated_at']
         read_only_fields = ['created_at', 'updated_at']
 
 
@@ -36,7 +36,7 @@ class SemesterSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Semester
-        fields = ['id', 'name', 'user_id', 'courses', 'created_at', 'updated_at']
+        fields = ['id', 'name', 'user_id', 'background', 'timeline_date', 'courses', 'created_at', 'updated_at']
         read_only_fields = ['user_id', 'created_at', 'updated_at']
 
 

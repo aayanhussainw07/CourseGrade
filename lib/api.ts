@@ -3,6 +3,14 @@
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api"
 let apiUserScope = "default"
 
+const normalizeCoursePayload = <T extends Record<string, any> | undefined>(payload: T): T => {
+  if (!payload) return payload
+  if ("criteria" in payload && !Array.isArray(payload.criteria)) {
+    payload.criteria = payload.criteria ? [payload.criteria].flat() : []
+  }
+  return payload
+}
+
 export function setApiUserScope(scope: string | null | undefined) {
   apiUserScope = scope && scope.trim().length > 0 ? scope.trim() : "default"
 }
@@ -12,6 +20,38 @@ export class ApiUnavailableError extends Error {
     super(message)
     this.name = "ApiUnavailableError"
   }
+}
+
+const formatErrorPayload = (payload: unknown): string | null => {
+  if (payload == null) return null
+
+  if (typeof payload === "string") {
+    return payload
+  }
+
+  if (Array.isArray(payload)) {
+    const parts = payload
+      .map((item) => formatErrorPayload(item) ?? (typeof item === "object" ? JSON.stringify(item) : String(item)))
+      .filter((part): part is string => Boolean(part))
+    return parts.length > 0 ? parts.join(" | ") : null
+  }
+
+  if (typeof payload === "object") {
+    const record = payload as Record<string, unknown>
+    if (typeof record.detail === "string") {
+      return record.detail
+    }
+    const parts = Object.entries(record)
+      .map(([key, value]) => {
+        const formatted = formatErrorPayload(value)
+        if (!formatted) return null
+        return `${key}: ${formatted}`
+      })
+      .filter((part): part is string => Boolean(part))
+    return parts.length > 0 ? parts.join(" | ") : null
+  }
+
+  return null
 }
 
 // Generic fetch wrapper with error handling
@@ -32,8 +72,17 @@ async function apiFetch<T>(endpoint: string, options?: RequestInit): Promise<T> 
   }
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ detail: "An error occurred" }))
-    throw new Error(error.detail || `API error: ${response.status}`)
+    const errorText = await response.text().catch(() => "")
+    let message = `API error: ${response.status}`
+    if (errorText) {
+      try {
+        const parsed = JSON.parse(errorText)
+        message = formatErrorPayload(parsed) ?? message
+      } catch {
+        message = errorText
+      }
+    }
+    throw new Error(message)
   }
 
   if (response.status === 204 || response.headers.get("Content-Length") === "0") {
@@ -54,13 +103,13 @@ export const semesterApi = {
 
   getOne: (id: string) => apiFetch<any>(`/semesters/${id}/`),
 
-  create: (data: { name: string }) =>
+  create: (data: { name: string; background?: string; timeline_date?: string | null }) =>
     apiFetch<any>("/semesters/", {
       method: "POST",
       body: JSON.stringify(data),
     }),
 
-  update: (id: string, data: { name: string }) =>
+  update: (id: string, data: Partial<{ name: string; background: string; timeline_date: string | null }>) =>
     apiFetch<any>(`/semesters/${id}/`, {
       method: "PATCH",
       body: JSON.stringify(data),
@@ -81,16 +130,16 @@ export const courseApi = {
 
   getOne: (id: string) => apiFetch<any>(`/courses/${id}/`),
 
-  create: (data: { semester: string; name: string; credits: number }) =>
+  create: (data: { semester: string; name: string; credits: number; is_pass_fail?: boolean; criteria?: unknown }) =>
     apiFetch<any>("/courses/", {
       method: "POST",
-      body: JSON.stringify(data),
+      body: JSON.stringify(normalizeCoursePayload(data)),
     }),
 
-  update: (id: string, data: Partial<{ name: string; credits: number }>) =>
+  update: (id: string, data: Partial<{ name: string; credits: number; is_pass_fail: boolean; criteria?: unknown }>) =>
     apiFetch<any>(`/courses/${id}/`, {
       method: "PATCH",
-      body: JSON.stringify(data),
+      body: JSON.stringify(normalizeCoursePayload(data)),
     }),
 
   delete: (id: string) =>
@@ -108,13 +157,13 @@ export const assignmentApi = {
 
   getOne: (id: string) => apiFetch<any>(`/assignments/${id}/`),
 
-  create: (data: { course: string; name: string; weight: number; earned: number; total: number }) =>
+  create: (data: { course: string; name: string; weight: number; earned: number; total: number; drop_lowest?: number }) =>
     apiFetch<any>("/assignments/", {
       method: "POST",
       body: JSON.stringify(data),
     }),
 
-  update: (id: string, data: Partial<{ name: string; weight: number; earned: number; total: number }>) =>
+  update: (id: string, data: Partial<{ name: string; weight: number; earned: number; total: number; drop_lowest: number }>) =>
     apiFetch<any>(`/assignments/${id}/`, {
       method: "PATCH",
       body: JSON.stringify(data),

@@ -9,8 +9,9 @@ interface GpaSummaryProps {
 }
 
 export function GpaSummary({ courses, semesterName }: GpaSummaryProps) {
-  const gpa = calculateGPA(courses)
-  const totalCredits = courses.reduce((sum, c) => sum + c.credits, 0)
+  const safeCourses = Array.isArray(courses) ? courses : []
+  const gpa = calculateGPA(safeCourses)
+  const totalCredits = safeCourses.reduce((sum, c) => sum + c.credits, 0)
   const semesterLabel = semesterName ? `${semesterName}` : "Semester"
 
   return (
@@ -43,15 +44,25 @@ export function GpaSummary({ courses, semesterName }: GpaSummaryProps) {
         {/* Course Breakdown */}
         <div className="mt-6 space-y-2">
           <h4 className="text-sm font-semibold text-primary">Course Breakdown:</h4>
-          <div className="space-y-1">
-            {courses.map((course) => {
+          <div
+            className={`space-y-1 ${
+              courses.length > 4
+                ? "max-h-[200px] pl-2 overflow-y-auto scrollbar-thin scrollbar-thumb-neutral-600/80 scrollbar-track-transparent hover:scrollbar-thumb-neutral-500/80 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full"
+                : ""
+            }`}
+            dir={safeCourses.length > 4 ? "rtl" : undefined}
+          >
+            {safeCourses.map((course, index) => {
               const grade = calculateCourseGrade(course.criteria)
               const letter = getLetterGrade(grade, course.gradeScale)
               const gradeColor = getLetterGradeColor(letter)
+              const backgroundStyle = course.cardColor ? { backgroundColor: course.cardColor } : undefined
               return (
                 <div
-                  key={course.id}
+                  key={`${course.id}-${index}`}
                   className="flex items-center justify-between rounded border border-primary/20 bg-card px-3 py-2 text-sm"
+                  dir={safeCourses.length > 4 ? "ltr" : undefined}
+                  style={backgroundStyle}
                 >
                   <span className="font-medium">{course.name}</span>
                   <div className="flex items-center gap-4">

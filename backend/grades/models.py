@@ -6,6 +6,8 @@ class Semester(models.Model):
     """Represents an academic semester containing multiple courses."""
     name = models.CharField(max_length=200, default="New Semester")
     user_id = models.CharField(max_length=255, default="default", db_index=True)
+    background = models.CharField(max_length=50, default="sunrise")
+    timeline_date = models.DateField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -19,15 +21,13 @@ class Semester(models.Model):
 class Course(models.Model):
     """Represents a course within a semester."""
     semester = models.ForeignKey(
-        Semester, 
-        on_delete=models.CASCADE, 
+        Semester,
+        on_delete=models.CASCADE,
         related_name='courses'
     )
     name = models.CharField(max_length=200, default="New Course")
-    credits = models.IntegerField(
-        default=3,
-        validators=[MinValueValidator(1), MaxValueValidator(10)]
-    )
+    credits = models.IntegerField(default=3)
+    is_pass_fail = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -41,8 +41,8 @@ class Course(models.Model):
 class Assignment(models.Model):
     """Represents an assignment or grade category within a course."""
     course = models.ForeignKey(
-        Course, 
-        on_delete=models.CASCADE, 
+        Course,
+        on_delete=models.CASCADE,
         related_name='assignments'
     )
     name = models.CharField(max_length=200, default="Assignment")
@@ -56,6 +56,10 @@ class Assignment(models.Model):
     total = models.FloatField(
         default=100,
         validators=[MinValueValidator(0.01)]
+    )
+    drop_lowest = models.IntegerField(
+        default=0,
+        validators=[MinValueValidator(0)]
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
