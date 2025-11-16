@@ -2,6 +2,7 @@
 Django settings for gradeapp project.
 """
 
+import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -14,7 +15,14 @@ SECRET_KEY = 'django-insecure-your-secret-key-here-change-in-production'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'https://coursegrade.vercel.app']
+default_allowed_hosts = [
+    "localhost",
+    "127.0.0.1",
+    "coursegrade.vercel.app",
+    "course-grade.vercel.app",
+    "coursegrade.onrender.com",
+]
+ALLOWED_HOSTS = [host.strip() for host in os.getenv("DJANGO_ALLOWED_HOSTS", ",".join(default_allowed_hosts)).split(",") if host.strip()]
 
 
 # Application definition
@@ -106,11 +114,19 @@ STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # CORS settings
-CORS_ALLOWED_ORIGINS = [
+default_cors_origins = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
-    "https://coursegrade.vercel.app"
+    "https://coursegrade.vercel.app",
+    "https://course-grade.vercel.app",
 ]
+CORS_ALLOWED_ORIGINS = [origin.strip() for origin in os.getenv("DJANGO_CORS_ALLOWED_ORIGINS", ",".join(default_cors_origins)).split(",") if origin.strip()]
+
+default_csrf_trusted_origins = [
+    "https://coursegrade.vercel.app",
+    "https://course-grade.vercel.app",
+]
+CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in os.getenv("DJANGO_CSRF_TRUSTED_ORIGINS", ",".join(default_csrf_trusted_origins)).split(",") if origin.strip()]
 
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_HEADERS = [
