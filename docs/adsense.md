@@ -16,6 +16,16 @@ NEXT_PUBLIC_ADSENSE_SIDEBAR_SLOT=1234567890
 
 Restart `next dev` after editing env files so the client build picks up the new values.
 
+### ads.txt verification
+
+AdSense accepts the ads.txt method for site verification and supply chain transparency. The repo now ships `public/ads.txt` with the Google directive:
+
+```
+google.com, pub-3111454697171705, DIRECT, f08c47fec0942fa0
+```
+
+When deployed, Next.js serves this at `https://<your-domain>/ads.txt`. Update the publisher ID if it changes, and redeploy so Google’s crawler can read it.
+
 ## Rendering ads elsewhere
 
 Use the `AdSenseUnit` component for additional placements:
