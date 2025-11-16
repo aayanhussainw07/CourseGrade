@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DeleteConfirmationDialog } from "@/components/delete-confirmation-dialog";
+import { AdSenseUnit } from "@/components/adsense-unit";
 import {
   calculateCourseGrade,
   getLetterGrade,
@@ -23,6 +24,8 @@ import {
 } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
+
+const SIDEBAR_AD_SLOT = process.env.NEXT_PUBLIC_ADSENSE_SIDEBAR_SLOT;
 
 interface CourseSidebarProps {
   semesters: Semester[];
@@ -741,6 +744,16 @@ export function CourseSidebar({
                   );
                 })}
               </div>
+
+              {SIDEBAR_AD_SLOT ? (
+                <div className="mt-4">
+                  <AdSenseUnit
+                    slot={SIDEBAR_AD_SLOT}
+                    className="w-full rounded-lg border border-dashed border-primary/20"
+                    style={{ minHeight: 120 }}
+                  />
+                </div>
+              ) : null}
             </div>
           )}
         </div>
