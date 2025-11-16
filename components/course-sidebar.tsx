@@ -356,33 +356,6 @@ export function CourseSidebar({
                   )}
                 </div>
               )}
-            <h3 className="mt-4 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Semesters
-            </h3>
-            <div className="flex items-center gap-1">
-              <input
-                ref={courseFileInputRef}
-                type="file"
-                accept="application/json,.json"
-                className="hidden"
-                onChange={(event) => {
-                  const file = event.target.files?.[0];
-                  if (file && onImportCourse) {
-                    onImportCourse(file, activeSemesterId);
-                  }
-                  event.target.value = "";
-                }}
-              />
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7"
-                onClick={() => courseFileInputRef.current?.click()}
-                title="Import course JSON"
-              >
-                <Upload className="h-3.5 w-3.5" />
-              </Button>
-            </div>
             <div className="mt-4 mb-2 flex items-center justify-between">
               <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Semesters
