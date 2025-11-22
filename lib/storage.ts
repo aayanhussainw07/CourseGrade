@@ -1,4 +1,5 @@
 import { semesterApi, courseApi, assignmentApi, setApiUserScope } from "./api"
+import { backgroundOptions } from "./backgrounds"
 import type { Course, Semester } from "./types"
 import { apiToFrontendCourse, apiToFrontendSemester } from "./types"
 
@@ -27,7 +28,12 @@ const getCriterionScoreValue = (criterion: Course["criteria"][number]) => {
 }
 
 const isServerAssignmentId = (id: string) => /^\d+$/.test(id)
-const DEFAULT_BACKGROUND = "sunrise"
+const DEFAULT_BACKGROUND = backgroundOptions[0]?.id ?? "sunrise"
+const getRandomBackgroundId = () => {
+  if (!backgroundOptions.length) return DEFAULT_BACKGROUND
+  const randomIndex = Math.floor(Math.random() * backgroundOptions.length)
+  return backgroundOptions[randomIndex]?.id ?? DEFAULT_BACKGROUND
+}
 
 export { ApiUnavailableError } from "./api"
 
@@ -49,16 +55,17 @@ export const storage = {
   },
 
   async createSemester(name: string, timelineDate?: string | null): Promise<Semester> {
+    const background = getRandomBackgroundId()
     const apiSemester = await semesterApi.create({
       name,
-      background: DEFAULT_BACKGROUND,
+      background,
       timeline_date: timelineDate ?? null,
     })
     return {
       id: apiSemester.id.toString(),
       name: apiSemester.name,
       courses: [],
-      background: apiSemester.background || DEFAULT_BACKGROUND,
+      background: apiSemester.background || background || DEFAULT_BACKGROUND,
       timelineDate: apiSemester.timeline_date ?? timelineDate ?? null,
       createdAt: apiSemester.created_at,
       updatedAt: apiSemester.updated_at,

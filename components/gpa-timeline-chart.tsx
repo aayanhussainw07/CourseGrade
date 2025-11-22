@@ -18,6 +18,25 @@ export function GpaTimelineChart({ data }: GpaTimelineChartProps) {
   const hasData = Array.isArray(data) && data.length > 0
   const gradientSeed = useMemo(() => Math.random().toString(36).slice(2), [])
   const strokeGradientId = `gpa-stroke-${gradientSeed}`
+  const uniqueColors = useMemo(() => Array.from(new Set((data || []).map((point) => point.color))), [data])
+  const baseStrokeColor = uniqueColors[0] || "#38bdf8"
+  const minMax = useMemo(() => {
+    if (!hasData) {
+      return { min: 0, max: 4 }
+    }
+    const gpas = data.map((point) => point.gpa)
+    const rawMin = Math.min(...gpas)
+    const rawMax = Math.max(...gpas)
+    return {
+      min: Math.max(0, Math.floor(rawMin * 2) / 2),
+      max: Math.min(4, Math.ceil(rawMax * 2) / 2),
+    }
+  }, [data, hasData])
+  const paddedDomain = useMemo(() => {
+    const lower = Math.max(0, minMax.min - 0.25)
+    const upper = Math.min(4, minMax.max + 0.25)
+    return [lower, Math.max(upper, lower + 0.5)]
+  }, [minMax.max, minMax.min])
   const colorStops = useMemo(() => {
     if (!hasData || !data) return []
     if (data.length === 1) {
@@ -72,7 +91,7 @@ export function GpaTimelineChart({ data }: GpaTimelineChartProps) {
               tickMargin={12}
               tick={{ fill: "#9ca3af", angle: -90, textAnchor: "end" }}
             />
-            <YAxis domain={[0, 4.0]} tick={{ fill: "#9ca3af" }} />
+            <YAxis domain={paddedDomain} tick={{ fill: "#9ca3af" }} />
             <Tooltip
               contentStyle={{ backgroundColor: "rgba(15,15,15,0.9)", border: "1px solid rgba(255,255,255,0.1)" }}
               labelFormatter={(label, payload) => {
@@ -84,10 +103,15 @@ export function GpaTimelineChart({ data }: GpaTimelineChartProps) {
             <Line
               type="monotone"
               dataKey="gpa"
-              stroke={`url(#${strokeGradientId})`}
-              strokeWidth={2}
+              stroke={colorStops.length > 1 && uniqueColors.length > 1 ? `url(#${strokeGradientId})` : baseStrokeColor}
+              strokeOpacity={0.9}
+              strokeWidth={3}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              connectNulls
               dot={renderDot}
               activeDot={renderActiveDot}
+              isAnimationActive={false}
             />
           </ComposedChart>
         </ResponsiveContainer>
