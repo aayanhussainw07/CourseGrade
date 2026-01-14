@@ -568,7 +568,10 @@ export function CourseSidebar({
               )}
               <div className={cn("max-h-[315px]", scrollbarClasses)}>
                 {courses.map((course, index) => {
-                  const numericGrade = calculateCourseGrade(course.criteria);
+                  const numericGrade = calculateCourseGrade(
+                    course.criteria,
+                    course.percentBoost
+                  );
                   const letterGrade = getLetterGrade(
                     numericGrade,
                     course.gradeScale

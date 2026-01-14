@@ -108,6 +108,12 @@ export function CourseCard({ course, onUpdate, onDelete, onExportCourse }: Cours
 
   const [creditsDraft, setCreditsDraft] = useState(() => formatCreditsDraft(course.credits))
   const [creditsFocused, setCreditsFocused] = useState(false)
+  const formatPercentBoostDraft = (value: number | null | undefined) => {
+    if (value === undefined || value === null || value === 0) return ""
+    return value.toString()
+  }
+  const [percentBoostDraft, setPercentBoostDraft] = useState(() => formatPercentBoostDraft(course.percentBoost))
+  const [percentBoostFocused, setPercentBoostFocused] = useState(false)
   type CriterionNumericField = "weight" | "score" | "dropLowest" | "extraCredit"
   const [criterionDrafts, setCriterionDrafts] = useState<Record<string, Partial<Record<CriterionNumericField, string>>>>({})
   const [criterionNameDrafts, setCriterionNameDrafts] = useState<Record<string, string>>({})
@@ -127,6 +133,14 @@ export function CourseCard({ course, onUpdate, onDelete, onExportCourse }: Cours
     }
     setCreditsDraft(formatCreditsDraft(course.credits))
   }, [course.credits, creditsFocused, creditsDraft])
+
+  useEffect(() => {
+    if (percentBoostFocused) return
+    if ((course.percentBoost ?? 0) === 0 && percentBoostDraft === "") {
+      return
+    }
+    setPercentBoostDraft(formatPercentBoostDraft(course.percentBoost))
+  }, [course.percentBoost, percentBoostDraft, percentBoostFocused])
 
   useEffect(() => {
     if (!colorPickerOpen) return
@@ -149,7 +163,7 @@ export function CourseCard({ course, onUpdate, onDelete, onExportCourse }: Cours
   const courseCriteria = useMemo(() => (Array.isArray(course.criteria) ? course.criteria : []), [course.criteria])
 
   const { numericGrade, letterGrade, gradeColor, totalWeight } = useMemo(() => {
-    const numeric = calculateCourseGrade(courseCriteria)
+    const numeric = calculateCourseGrade(courseCriteria, course.percentBoost)
     const letter = getLetterGrade(numeric, course.gradeScale)
     return {
       numericGrade: numeric,
@@ -157,7 +171,7 @@ export function CourseCard({ course, onUpdate, onDelete, onExportCourse }: Cours
       gradeColor: getLetterGradeColor(letter),
       totalWeight: courseCriteria.reduce((sum, c) => sum + c.weight, 0),
     }
-  }, [courseCriteria, course.gradeScale])
+  }, [courseCriteria, course.gradeScale, course.percentBoost])
 
   // Toggle collapse/expand for the entire course card
   const toggleCollapse = () => {
@@ -192,6 +206,28 @@ export function CourseCard({ course, onUpdate, onDelete, onExportCourse }: Cours
       return
     }
     updateCourse({ credits: normalized })
+  }
+
+  const commitPercentBoost = () => {
+    const trimmed = percentBoostDraft.trim()
+    if (trimmed === "") {
+      if ((course.percentBoost ?? 0) !== 0) {
+        updateCourse({ percentBoost: 0 })
+      }
+      setPercentBoostDraft("")
+      return
+    }
+    const parsed = Number.parseFloat(trimmed)
+    if (Number.isNaN(parsed)) {
+      setPercentBoostDraft(formatPercentBoostDraft(course.percentBoost))
+      return
+    }
+    const normalized = Math.max(0, Math.min(100, Number.parseFloat(parsed.toFixed(2))))
+    setPercentBoostDraft(normalized.toString())
+    if (normalized === (course.percentBoost ?? 0)) {
+      return
+    }
+    updateCourse({ percentBoost: normalized })
   }
 
   const updateCardColor = (colorValue: string) => {
@@ -644,7 +680,7 @@ export function CourseCard({ course, onUpdate, onDelete, onExportCourse }: Cours
             </div>
 
             {/* Credit hours input */}
-            <div className="flex items-center gap-6">
+            <div className="flex flex-wrap items-center gap-4">
               <div className="flex items-center gap-2">
                 <Label htmlFor={`credits-${course.id}`} className="text-sm font-medium">
                   Credit:
@@ -669,6 +705,33 @@ export function CourseCard({ course, onUpdate, onDelete, onExportCourse }: Cours
                   }}
                   placeholder="0"
                   className="w-20 rounded-md border-2 border-primary/20 bg-transparent px-3 py-2 text-sm outline-none placeholder:text-muted-foreground/60 focus-visible:ring-2 focus-visible:ring-primary/50"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <Label htmlFor={`boost-${course.id}`} className="text-sm font-medium">
+                  Boost (%):
+                </Label>
+                <input
+                  id={`boost-${course.id}`}
+                  type="text"
+                  inputMode="decimal"
+                  value={percentBoostDraft}
+                  onFocus={() => setPercentBoostFocused(true)}
+                  onChange={(e) => setPercentBoostDraft(e.target.value)}
+                  onBlur={() => {
+                    setPercentBoostFocused(false)
+                    commitPercentBoost()
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      setPercentBoostFocused(false)
+                      commitPercentBoost()
+                      e.currentTarget.blur()
+                    }
+                  }}
+                  placeholder="0"
+                  className="w-24 rounded-md border-2 border-primary/20 bg-transparent px-3 py-2 text-sm outline-none placeholder:text-muted-foreground/60 focus-visible:ring-2 focus-visible:ring-primary/50"
+                  title="Percent boost applied to the final course grade"
                 />
               </div>
             </div>

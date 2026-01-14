@@ -130,13 +130,23 @@ export const courseApi = {
 
   getOne: (id: string) => apiFetch<any>(`/courses/${id}/`),
 
-  create: (data: { semester: string; name: string; credits: number; is_pass_fail?: boolean; criteria?: unknown }) =>
+  create: (data: {
+    semester: string
+    name: string
+    credits: number
+    is_pass_fail?: boolean
+    percent_boost?: number
+    criteria?: unknown
+  }) =>
     apiFetch<any>("/courses/", {
       method: "POST",
       body: JSON.stringify(normalizeCoursePayload(data)),
     }),
 
-  update: (id: string, data: Partial<{ name: string; credits: number; is_pass_fail: boolean; criteria?: unknown }>) =>
+  update: (
+    id: string,
+    data: Partial<{ name: string; credits: number; is_pass_fail: boolean; percent_boost: number; criteria?: unknown }>,
+  ) =>
     apiFetch<any>(`/courses/${id}/`, {
       method: "PATCH",
       body: JSON.stringify(normalizeCoursePayload(data)),

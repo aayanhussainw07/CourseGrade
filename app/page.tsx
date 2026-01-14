@@ -108,6 +108,7 @@ const safeFilename = (name: string | undefined, fallback: string) => {
 const courseToPortable = (course: Course): CoursePortableData => ({
   name: course.name,
   credits: course.credits,
+  percentBoost: course.percentBoost ?? 0,
   isPassFail: course.isPassFail ?? false,
   passLabel: course.passLabel ?? "P",
   failLabel: course.failLabel ?? "F",
@@ -1255,6 +1256,10 @@ export default function GradeCalculator() {
           baseCourse.passThreshold ?? 60
         ),
         cardColor: courseData.cardColor ?? baseCourse.cardColor ?? null,
+        percentBoost: Math.max(
+          0,
+          Math.min(100, numericOr(courseData.percentBoost, baseCourse.percentBoost ?? 0))
+        ),
         gradeScale:
           courseData.gradeScale && courseData.gradeScale.length > 0
             ? courseData.gradeScale
@@ -1281,6 +1286,10 @@ export default function GradeCalculator() {
     const baseCriteria = Array.isArray(updatedCourse.criteria)
       ? updatedCourse.criteria
       : [];
+    const normalizedPercentBoost = Math.max(
+      0,
+      Math.min(100, Number.isFinite(updatedCourse.percentBoost ?? 0) ? updatedCourse.percentBoost ?? 0 : 0)
+    );
     const stateCriteria = baseCriteria.map((criterion) => ({
       ...criterion,
       name: typeof criterion.name === "string" ? criterion.name : "",
@@ -1289,6 +1298,7 @@ export default function GradeCalculator() {
     const stateCourse: Course = {
       ...updatedCourse,
       name: typeof updatedCourse.name === "string" ? updatedCourse.name : "",
+      percentBoost: normalizedPercentBoost,
       criteria: stateCriteria,
     };
     const sanitizedCriteria = stateCriteria.map((criterion, index) => ({
@@ -1298,6 +1308,7 @@ export default function GradeCalculator() {
     const sanitizedCourse: Course = {
       ...stateCourse,
       name: stateCourse.name.length > 0 ? stateCourse.name : "",
+      percentBoost: normalizedPercentBoost,
       criteria: sanitizedCriteria,
     };
 
@@ -2003,16 +2014,18 @@ export default function GradeCalculator() {
   const backgroundImage = getBackgroundImage(activeBackgroundId);
 
   return (
-    <div
-      className="min-h-screen bg-background/80"
-      style={{
-        backgroundImage,
-        backgroundSize: "120% 120%",
-        backgroundRepeat: "no-repeat",
-        backgroundAttachment: "fixed",
-        backgroundPosition: `center calc(50% + ${-parallaxOffset}px)`,
-      }}
-    >
+    <div className="relative min-h-screen bg-background/80">
+      <div
+        className="pointer-events-none fixed inset-0 -z-10"
+        aria-hidden="true"
+        style={{
+          backgroundImage,
+          backgroundSize: "cover",
+          backgroundRepeat: "no-repeat",
+          backgroundAttachment: "fixed",
+          backgroundPosition: `center calc(50% + ${-parallaxOffset}px)`,
+        }}
+      />
       <div className="fixed left-4 top-6 z-50 lg:hidden">
         <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
           <SheetTrigger asChild>

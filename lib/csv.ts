@@ -8,6 +8,7 @@ interface CoursePortableData {
   failLabel: string
   passThreshold: number
   cardColor?: string | null
+  percentBoost?: number
   gradeScale: GradeScale[]
   criteria: Array<{
     name: string
@@ -65,6 +66,7 @@ export const serializeCourseCsv = (course: Course): string => {
     failLabel: course.failLabel ?? "F",
     passThreshold: course.passThreshold ?? 60,
     cardColor: course.cardColor ?? null,
+    percentBoost: course.percentBoost ?? 0,
     gradeScale: course.gradeScale,
     criteria: sanitizeCriteria(course),
   }
@@ -91,6 +93,7 @@ export const serializeSemesterCsv = (semester: Semester): string => {
       failLabel: course.failLabel ?? "F",
       passThreshold: course.passThreshold ?? 60,
       cardColor: course.cardColor ?? null,
+      percentBoost: course.percentBoost ?? 0,
       gradeScale: course.gradeScale,
       criteria: sanitizeCriteria(course),
     })),

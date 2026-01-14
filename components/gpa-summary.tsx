@@ -53,7 +53,7 @@ export function GpaSummary({ courses, semesterName }: GpaSummaryProps) {
             dir={safeCourses.length > 4 ? "rtl" : undefined}
           >
             {safeCourses.map((course, index) => {
-              const grade = calculateCourseGrade(course.criteria)
+              const grade = calculateCourseGrade(course.criteria, course.percentBoost)
               const letter = getLetterGrade(grade, course.gradeScale)
               const gradeColor = getLetterGradeColor(letter)
               const backgroundStyle = course.cardColor ? { backgroundColor: course.cardColor } : undefined

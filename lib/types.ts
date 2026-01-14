@@ -13,6 +13,7 @@ export interface SubItem {
   id: string
   name: string
   score: number // percentage
+  weight?: number // optional weight for weighted sub-averages
 }
 
 export interface GradeScale {
@@ -40,6 +41,7 @@ export interface Course {
   id: string
   name: string
   credits: number
+  percentBoost?: number
   criteria: Criterion[]
   gradeScale: GradeScale[]
   gradeScaleSnapshot?: GradeScale[]
@@ -77,6 +79,7 @@ export interface ApiCourse {
   name: string
   credits: number
   is_pass_fail?: boolean
+  percent_boost?: number
   assignments: ApiAssignment[]
   created_at: string
   updated_at: string
@@ -124,6 +127,7 @@ export function apiToFrontendCourse(apiCourse: ApiCourse): Course {
     id: apiCourse.id.toString(),
     name: apiCourse.name,
     credits: apiCourse.credits,
+    percentBoost: normalizePercentage(apiCourse.percent_boost ?? 0),
     criteria: apiCourse.assignments.map((assignment) => ({
       id: assignment.id.toString(),
       clientId: assignment.id.toString(),

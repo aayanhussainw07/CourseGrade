@@ -9,7 +9,14 @@ type StoredCriterionExtras = {
 
 export type StoredCourseSettings = Pick<
   Course,
-  "gradeScale" | "gradeScaleSnapshot" | "isPassFail" | "passLabel" | "failLabel" | "passThreshold" | "cardColor"
+  | "gradeScale"
+  | "gradeScaleSnapshot"
+  | "isPassFail"
+  | "passLabel"
+  | "failLabel"
+  | "passThreshold"
+  | "cardColor"
+  | "percentBoost"
 > & {
   criterionExtras?: Record<string, StoredCriterionExtras>
 }
@@ -48,6 +55,7 @@ export const persistCourseSettings = (course: Course) => {
     failLabel: course.failLabel ?? "F",
     passThreshold: course.passThreshold ?? 60,
     cardColor: course.cardColor ?? null,
+    percentBoost: course.percentBoost ?? 0,
   }
   const criterionExtras: Record<string, StoredCriterionExtras> = {}
   for (const criterion of criteria) {
@@ -97,6 +105,7 @@ export const applyStoredSettingsToSemesters = (semesters: Semester[]): Semester[
         failLabel: stored.failLabel ?? course.failLabel,
         passThreshold: stored.passThreshold ?? course.passThreshold,
         cardColor: stored.cardColor ?? course.cardColor ?? null,
+        percentBoost: stored.percentBoost ?? course.percentBoost ?? 0,
         criteria: (course.criteria ?? []).map((criterion) => {
           const key = criterion.clientId ?? criterion.id
           const extra = extras[key]

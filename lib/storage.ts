@@ -92,7 +92,13 @@ export const storage = {
   },
 
   async createCourse(semesterId: string, name: string, credits: number): Promise<Course> {
-    const apiCourse = await courseApi.create({ semester: semesterId, name, credits, is_pass_fail: false })
+    const apiCourse = await courseApi.create({
+      semester: semesterId,
+      name,
+      credits,
+      is_pass_fail: false,
+      percent_boost: 0,
+    })
 
     for (const assignment of defaultAssignmentTemplates) {
       await assignmentApi.create({
@@ -106,6 +112,7 @@ export const storage = {
     const createdCourse = apiToFrontendCourse(refreshed)
     createdCourse.collapsed = false
     createdCourse.isPassFail = false
+    createdCourse.percentBoost = createdCourse.percentBoost ?? 0
     return createdCourse
   },
 
@@ -115,6 +122,7 @@ export const storage = {
       name: course.name,
       credits: course.credits,
       is_pass_fail: course.isPassFail ?? false,
+      percent_boost: course.percentBoost ?? 0,
     })
 
     const assignmentsResponse = await assignmentApi.getAll(course.id)
@@ -184,6 +192,7 @@ export const storage = {
     frontendCourse.failLabel = course.failLabel ?? "F"
     frontendCourse.passThreshold = course.passThreshold ?? 60
     frontendCourse.cardColor = course.cardColor ?? null
+    frontendCourse.percentBoost = course.percentBoost ?? frontendCourse.percentBoost ?? 0
     frontendCourse.criteria = frontendCourse.criteria.map((criterion, index) => {
       const mappedClientId = clientIdMap.get(criterion.id) ?? criterion.id
       const originalCriterion =

@@ -1,19 +1,19 @@
 import type { Course, Criterion, GradeScale } from "./types"
 
 const defGradeScale = [
-      { letter: "A+", min: 96 },
-      { letter: "A", min: 93 },
-      { letter: "A-", min: 90 },
-      { letter: "B+", min: 87 },
-      { letter: "B", min: 83 },
-      { letter: "B-", min: 80 },
-      { letter: "C+", min: 77 },
-      { letter: "C", min: 73 },
-      { letter: "C-", min: 70 },
-      { letter: "D+", min: 67 },
-      { letter: "D", min: 63 },
-      { letter: "D-", min: 60 },
-      { letter: "F", min: 0 },
+  { letter: "A+", min: 96 },
+  { letter: "A", min: 93 },
+  { letter: "A-", min: 90 },
+  { letter: "B+", min: 87 },
+  { letter: "B", min: 83 },
+  { letter: "B-", min: 80 },
+  { letter: "C+", min: 77 },
+  { letter: "C", min: 73 },
+  { letter: "C-", min: 70 },
+  { letter: "D+", min: 67 },
+  { letter: "D", min: 63 },
+  { letter: "D-", min: 60 },
+  { letter: "F", min: 0 },
 ]
 
 // Helper function to calculate criterion score from sub-items if they exist
@@ -42,10 +42,14 @@ function getCriterionScore(criterion: Criterion): number {
   return criterion.score
 }
 
-export function calculateCourseGrade(rawCriteria: Criterion[] | null | undefined): number {
+export function calculateCourseGrade(
+  rawCriteria: Criterion[] | null | undefined,
+  percentBoost?: number | null,
+): number {
   const criteria = normalizeCriteria(rawCriteria)
   const totalWeight = criteria.reduce((sum, c) => sum + c.weight, 0)
-  if (totalWeight === 0) return 0
+  const boost = Math.max(0, percentBoost ?? 0)
+  if (totalWeight === 0) return Number.parseFloat(boost.toFixed(2))
 
   const result = criteria.reduce((sum, criterion) => {
     const baseScore = getCriterionScore(criterion)
@@ -54,7 +58,9 @@ export function calculateCourseGrade(rawCriteria: Criterion[] | null | undefined
     return sum + (effectiveScore * criterion.weight) / 100
   }, 0)
 
-  return Number.parseFloat(result.toFixed(2))
+  const finalScore = result + boost
+
+  return Number.parseFloat(finalScore.toFixed(2))
 }
 
 export function getLetterGrade(numericGrade: number, gradeScale: GradeScale[]): string {
@@ -73,7 +79,7 @@ export function getLetterGrade(numericGrade: number, gradeScale: GradeScale[]): 
 export function letterGradeToGPA(letter: string): number {
   const normalized = letter?.trim().toUpperCase()
   const gpaMap: Record<string, number> = {
-    "A+": 4.0,
+    "A+": 4.3,
     A: 4.0,
     "A-": 3.7,
     "B+": 3.3,
@@ -103,13 +109,13 @@ export function calculateGPA(courses: Course[] | null | undefined): number {
     // Skip pass/fail courses - they don't count toward GPA
     if (course.isPassFail) continue
 
-    const numericGrade = calculateCourseGrade(course.criteria)
+    const numericGrade = calculateCourseGrade(course.criteria, course.percentBoost)
     const letterGrade = getLetterGrade(numericGrade, course.gradeScale)
     const gradePoints = letterGradeToGPA(letterGrade)
 
     if (gradePoints != -1.0) {
-          totalPoints += gradePoints * course.credits
-    totalCredits += course.credits
+      totalPoints += gradePoints * course.credits
+      totalCredits += course.credits
     }
   }
 
@@ -139,7 +145,7 @@ export function calculateGradeDistribution(courses: Course[]): Record<string, nu
   const distribution: Record<string, number> = {}
 
   for (const course of courses) {
-    const numericGrade = calculateCourseGrade(course.criteria)
+    const numericGrade = calculateCourseGrade(course.criteria, course.percentBoost)
     const letterGrade = getLetterGrade(numericGrade, course.gradeScale)
     distribution[letterGrade] = (distribution[letterGrade] || 0) + 1
   }

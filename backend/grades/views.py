@@ -46,7 +46,9 @@ class SemesterViewSet(UserScopedMixin, viewsets.ModelViewSet):
             new_course = Course.objects.create(
                 semester=new_semester,
                 name=course.name,
-                credits=course.credits
+                credits=course.credits,
+                is_pass_fail=course.is_pass_fail,
+                percent_boost=course.percent_boost
             )
             for assignment in course.assignments.all():
                 Assignment.objects.create(
@@ -122,7 +124,7 @@ class GradeScaleViewSet(viewsets.ModelViewSet):
         GradeScale.objects.all().delete()
         
         default_scales = [
-            {'letter': 'A+', 'min_percentage': 96, 'gpa_value': 4.3},
+            {'letter': 'A+', 'min_percentage': 96, 'gpa_value': 4.33},
             {'letter': 'A', 'min_percentage': 93, 'gpa_value': 4.0},
             {'letter': 'A-', 'min_percentage': 90, 'gpa_value': 3.7},
             {'letter': 'B+', 'min_percentage': 87, 'gpa_value': 3.3},

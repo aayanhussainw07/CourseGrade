@@ -28,6 +28,10 @@ class Course(models.Model):
     name = models.CharField(max_length=200, default="New Course")
     credits = models.IntegerField(default=3)
     is_pass_fail = models.BooleanField(default=False)
+    percent_boost = models.FloatField(
+        default=0,
+        validators=[MinValueValidator(0), MaxValueValidator(100)]
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -78,7 +82,7 @@ class GradeScale(models.Model):
         validators=[MinValueValidator(0), MaxValueValidator(100)]
     )
     gpa_value = models.FloatField(
-        validators=[MinValueValidator(0), MaxValueValidator(4.3)]
+        validators=[MinValueValidator(0), MaxValueValidator(4.33)]
     )
     created_at = models.DateTimeField(auto_now_add=True)
 

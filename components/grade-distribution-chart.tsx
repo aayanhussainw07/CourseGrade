@@ -53,7 +53,7 @@ export function GradeDistributionChart({ courses, title = "Grade Distribution" }
     const distribution: Record<string, number> = {}
 
     for (const course of courses) {
-      const numericGrade = calculateCourseGrade(course.criteria)
+      const numericGrade = calculateCourseGrade(course.criteria, course.percentBoost)
       const letterGrade = getLetterGrade(numericGrade, course.gradeScale)
       distribution[letterGrade] = (distribution[letterGrade] || 0) + 1
     }

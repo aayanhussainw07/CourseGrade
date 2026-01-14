@@ -17,7 +17,7 @@ class CourseSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Course
-        fields = ['id', 'semester', 'name', 'credits', 'is_pass_fail', 'assignments', 'created_at', 'updated_at']
+        fields = ['id', 'semester', 'name', 'credits', 'is_pass_fail', 'percent_boost', 'assignments', 'created_at', 'updated_at']
         read_only_fields = ['created_at', 'updated_at']
 
 
@@ -26,7 +26,7 @@ class CourseCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Course
-        fields = ['id', 'semester', 'name', 'credits', 'is_pass_fail', 'created_at', 'updated_at']
+        fields = ['id', 'semester', 'name', 'credits', 'is_pass_fail', 'percent_boost', 'created_at', 'updated_at']
         read_only_fields = ['created_at', 'updated_at']
 
 
