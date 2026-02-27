@@ -28,14 +28,6 @@ import {
 } from "@/lib/csv";
 import { AnimatePresence, motion } from "framer-motion";
 import { useSession, signIn, signOut } from "next-auth/react";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { backgroundOptions, getBackgroundImage } from "@/lib/backgrounds";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import {
   applyStoredSettingsToSemesters,
@@ -51,14 +43,11 @@ const generateClientId = () =>
 const SEMESTER_ORDER_STORAGE_KEY = "grade-calculator-semester-order";
 const ACTIVE_SEMESTER_STORAGE_KEY = "grade-calculator-active-semester";
 const DASHBOARD_SENTINEL = "__dashboard__";
-const DASHBOARD_BACKGROUND_STORAGE_KEY =
-  "grade-calculator-dashboard-background";
 
 type Snapshot = {
   semesters: Semester[];
   semesterOrder: string[];
   activeSemesterId: string | null;
-  dashboardBackground: string;
 };
 
 const deepCopy = <T,>(value: T): T => {
@@ -220,7 +209,7 @@ const marketingFeatures: {
   {
     title: "Organize every semester",
     description:
-      "Group classes by term, personalize backgrounds, and drag semesters in the order you remember them.",
+      "Group classes by term and drag semesters in the order you remember them.",
     icon: Layers,
   },
   {
@@ -705,18 +694,10 @@ export default function GradeCalculator() {
   const [semesters, setSemesters] = useState<Semester[]>([]);
   const [semesterOrder, setSemesterOrder] = useState<string[]>([]);
   const [activeSemesterId, setActiveSemesterId] = useState<string | null>(null);
-  const [dashboardBackground, setDashboardBackground] =
-    useState<string>("sunrise");
-  const [parallaxOffset, setParallaxOffset] = useState(0);
   const courseRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
   const [loading, setLoading] = useState(true);
   const [serverOffline, setServerOffline] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [themePickerOpen, setThemePickerOpen] = useState(false);
-  const themePickerRef = useRef<HTMLDivElement | null>(null);
-  const themeButtonRef = useRef<HTMLButtonElement | null>(null);
-  const themeSelectContentRef = useRef<HTMLDivElement | null>(null);
-  const recentThemeSelectInteraction = useRef(0);
   const historyRef = useRef<{
     past: Snapshot[];
     future: Snapshot[];
@@ -753,8 +734,6 @@ export default function GradeCalculator() {
     [semesters, activeSemesterId]
   );
   const courses = activeSemester?.courses || [];
-  const activeBackgroundId =
-    activeSemester?.background || dashboardBackground || "sunrise";
   const isDashboardView = activeSemesterId === null;
 
   const captureSnapshot = useCallback((): Snapshot => {
@@ -762,9 +741,8 @@ export default function GradeCalculator() {
       semesters: deepCopy(sanitizeSemesters(semesters, semesters)),
       semesterOrder: [...semesterOrder],
       activeSemesterId,
-      dashboardBackground,
     };
-  }, [semesters, semesterOrder, activeSemesterId, dashboardBackground]);
+  }, [semesters, semesterOrder, activeSemesterId]);
 
   const applySnapshot = useCallback((snapshot: Snapshot) => {
     skipHistoryRef.current = true;
@@ -773,7 +751,6 @@ export default function GradeCalculator() {
       return deepCopy(sanitized);
     });
     setSemesterOrder([...snapshot.semesterOrder]);
-    setDashboardBackground(snapshot.dashboardBackground || "sunrise");
     setActiveSemesterId((currentActive) => {
       if (currentActive && snapshot.semesterOrder.includes(currentActive)) {
         return currentActive;
@@ -868,31 +845,6 @@ export default function GradeCalculator() {
     [allCourses]
   );
   const totalSemesters = orderedSemesters.length;
-  const parallaxMultiplier = useMemo(() => {
-    const slowdown = 1 + Math.min(allCourses.length / 8, 3);
-    const value = 0.15 / slowdown;
-    return Math.max(0.05, value);
-  }, [allCourses.length]);
-
-  useEffect(() => {
-    const handleParallax = () => {
-      if (typeof window === "undefined") return;
-      const offset = Math.min(window.scrollY * parallaxMultiplier, 300);
-      setParallaxOffset(offset);
-    };
-    handleParallax();
-    let ticking = false;
-    const onScroll = () => {
-      if (ticking) return;
-      ticking = true;
-      requestAnimationFrame(() => {
-        handleParallax();
-        ticking = false;
-      });
-    };
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, [parallaxMultiplier]);
 
   const semesterSummaries = useMemo(
     () =>
@@ -948,16 +900,6 @@ export default function GradeCalculator() {
   }, []);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    const storedBackground = localStorage.getItem(
-      DASHBOARD_BACKGROUND_STORAGE_KEY
-    );
-    if (storedBackground) {
-      setDashboardBackground(storedBackground);
-    }
-  }, []);
-
-  useEffect(() => {
     if (loading) return;
     if (snapshotDebounceRef.current) {
       clearTimeout(snapshotDebounceRef.current);
@@ -990,29 +932,6 @@ export default function GradeCalculator() {
     window.addEventListener("keydown", handleKeydown);
     return () => window.removeEventListener("keydown", handleKeydown);
   }, [handleRedo, handleUndo]);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (!themePickerOpen) return;
-      const picker = themePickerRef.current;
-      const button = themeButtonRef.current;
-      const selectContent = themeSelectContentRef.current;
-      const target = event.target as Node;
-      if (
-        (picker && picker.contains(target)) ||
-        (button && button.contains(target)) ||
-        (selectContent && selectContent.contains(target))
-      ) {
-        return;
-      }
-      if (recentThemeSelectInteraction.current > Date.now()) {
-        return;
-      }
-      setThemePickerOpen(false);
-    };
-    window.addEventListener("mousedown", handleClickOutside);
-    return () => window.removeEventListener("mousedown", handleClickOutside);
-  }, [themePickerOpen]);
 
   useEffect(() => {
     const handleResponsiveSidebar = () => {
@@ -1645,33 +1564,6 @@ export default function GradeCalculator() {
     }
   };
 
-  const handleBackgroundChange = async (value: string) => {
-    if (!activeSemesterId) {
-      setDashboardBackground(value);
-      if (typeof window !== "undefined") {
-        localStorage.setItem(DASHBOARD_BACKGROUND_STORAGE_KEY, value);
-      }
-      return;
-    }
-    try {
-      await storage.updateSemester(activeSemesterId, { background: value });
-      setSemesters((prev) =>
-        prev.map((semester) =>
-          semester.id === activeSemesterId
-            ? { ...semester, background: value }
-            : semester
-        )
-      );
-      setServerOffline(false);
-    } catch (error) {
-      if (error instanceof ApiUnavailableError) {
-        setServerOffline(true);
-      } else {
-        console.error("[v0] Failed to update background:", error);
-      }
-    }
-  };
-
   const scrollToFeatures = useCallback(() => {
     if (typeof document === "undefined") return;
     document
@@ -1696,47 +1588,28 @@ export default function GradeCalculator() {
 
   if (status === "unauthenticated") {
     return (
-      <div className="relative min-h-screen overflow-hidden bg-gradient-to-b from-black via-neutral-950 to-neutral-900 text-white">
-        <div className="pointer-events-none absolute inset-0">
-          <motion.div
-            className="absolute -top-10 left-1/2 h-64 w-64 -translate-x-1/2 rounded-full bg-white/10 blur-[140px]"
-            animate={{ opacity: [0.4, 0.8, 0.4], scale: [0.9, 1.1, 1] }}
-            transition={{ duration: 12, repeat: Infinity }}
-          />
-          <motion.div
-            className="absolute bottom-0 right-0 h-72 w-72 rounded-full bg-white/5 blur-[160px]"
-            animate={{ opacity: [0.2, 0.45, 0.25], scale: [1, 1.2, 0.95] }}
-            transition={{ duration: 14, repeat: Infinity, delay: 1 }}
-          />
-          <motion.div
-            className="absolute left-0 top-1/2 h-72 w-72 -translate-y-1/2 rounded-full bg-white/5 blur-[140px]"
-            animate={{ opacity: [0.25, 0.5, 0.25], scale: [0.85, 1.05, 0.9] }}
-            transition={{ duration: 16, repeat: Infinity, delay: 2 }}
-          />
-        </div>
+      <div className="relative min-h-screen overflow-hidden bg-black text-white">
         <div className="relative flex w-full flex-1 flex-col gap-16 px-6 py-16 lg:px-12">
           <motion.header
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, ease: "easeOut" }}
-            className="space-y-6 rounded-[40px] p-10 text-center shadow-lg shadow-black/40 backdrop-blur-2xl"
+            className="space-y-6 rounded-[40px] p-10 text-center surface-contrast-strong"
           >
             <motion.div
-              className="mx-auto flex h-20 w-20 items-center justify-center text-white shadow-lg shadow-black/50"
+              className="mx-auto flex h-20 w-20 items-center justify-center rounded-3xl border border-white/35 bg-black/55 text-white shadow-under-white"
               animate={{ rotate: [-4, 4, -3] }}
               transition={{ repeat: Infinity, duration: 6, ease: "easeInOut" }}
             >
               <GraduationCap className="h-12 w-12" />
             </motion.div>
-            <div className="mx-auto inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-white/80 backdrop-blur">
+            <div className="mx-auto inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-white/80">
               <Sparkles className="h-3.5 w-3.5" />
               Grade smarter, not harder
             </div>
             <div className="space-y-4">
-              <h1 className="text-4xl font-bold leading-tight text-transparent sm:text-5xl">
-                <span className="bg-gradient-to-b from-white to-white/70 bg-clip-text">
-                  Meet CourseGrade.
-                </span>
+              <h1 className="font-heading text-5xl leading-tight text-white sm:text-6xl">
+                Meet CourseGrade.
               </h1>
               <p className="mx-auto max-w-3xl text-lg text-white/70">
                 Track your courses and calculate your GPA with ease, with
@@ -1746,7 +1619,7 @@ export default function GradeCalculator() {
             <div className="flex flex-wrap justify-center gap-3">
               <Button
                 size="lg"
-                className="px-8 bg-white text-black shadow-lg shadow-black/40 transition hover:scale-[1.01] hover:bg-neutral-200"
+                className="px-8 bg-white text-black shadow-under-white transition hover:scale-[1.01] hover:bg-neutral-200"
                 onClick={() => signIn("google")}
               >
                 Sign in with Google
@@ -1754,7 +1627,7 @@ export default function GradeCalculator() {
               <Button
                 variant="outline"
                 size="lg"
-                className="border-white/40 bg-transparent text-white shadow-lg shadow-black/25 transition hover:border-white hover:bg-white/10"
+                className="border-white/55 bg-black/60 text-white shadow-under-white transition hover:border-white hover:bg-white hover:text-black"
                 onClick={scrollToFeatures}
               >
                 Tour the features
@@ -1775,7 +1648,7 @@ export default function GradeCalculator() {
               return (
                 <div
                   key={feature.title}
-                  className="group flex h-full flex-col rounded-[28px] border border-white/15 bg-black/30 p-6 shadow-lg shadow-black/40 backdrop-blur-xl transition-transform hover:-translate-y-1 hover:border-white/40"
+                  className="group flex h-full flex-col rounded-[28px] p-6 surface-contrast transition-transform hover:-translate-y-1 hover:border-white/50"
                 >
                   <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/20 bg-white/5 text-white shadow-inner">
                     <Icon className="h-5 w-5" />
@@ -1791,14 +1664,14 @@ export default function GradeCalculator() {
             })}
           </motion.section>
 
-          <section className="rounded-[40px] border border-white/10 bg-black/30 p-6 shadow-[0_35px_120px_rgba(0,0,0,0.55)] backdrop-blur-xl">
+          <section className="rounded-[40px] p-6 surface-contrast-strong">
             <div className="grid gap-4 md:grid-cols-3">
               {marketingDashboardStats.map((stat) => {
                 const Icon = stat.icon;
                 return (
                   <div
                     key={stat.label}
-                    className="flex items-center justify-between rounded-[28px] border border-white/10 bg-black/40 px-6 py-4 shadow-inner shadow-black/50"
+                    className="flex items-center justify-between rounded-[28px] border border-white/25 bg-black/55 px-6 py-4 shadow-under-white-soft"
                   >
                     <div>
                       <p className="text-sm text-white/60">{stat.label}</p>
@@ -1825,7 +1698,7 @@ export default function GradeCalculator() {
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.1 }}
             viewport={{ once: true, amount: 0.2 }}
-            className="grid gap-8 rounded-[32px] border border-white/10 bg-white/5 p-8 shadow-xl shadow-black/35 backdrop-blur-2xl lg:grid-cols-2"
+            className="grid gap-8 rounded-[32px] p-8 surface-contrast lg:grid-cols-2"
           >
             <div className="space-y-6">
               <div>
@@ -1869,7 +1742,7 @@ export default function GradeCalculator() {
                 {marketingHighlights.map((highlight) => (
                   <div
                     key={highlight.value}
-                    className="rounded-2xl border border-white/10 bg-white/5 px-4 py-4 text-left text-white shadow-lg shadow-black/25 transition-all hover:-translate-y-1 hover:border-white/30 hover:bg-white/10 hover:shadow-black/40"
+                    className="rounded-2xl border border-white/25 bg-black/45 px-4 py-4 text-left text-white shadow-under-white-soft transition-all hover:-translate-y-1 hover:border-white/45 hover:bg-black/60"
                   >
                     <p className="text-lg font-semibold">{highlight.value}</p>
                     <p className="text-xs uppercase tracking-[0.3em] text-white/60">
@@ -1883,7 +1756,7 @@ export default function GradeCalculator() {
               {marketingCapabilityCards.map((card) => (
                 <div
                   key={card.title}
-                  className="rounded-[28px] border border-white/15 bg-black/40 p-6 text-white shadow-lg shadow-black/45 transition hover:-translate-y-1 hover:border-white/30"
+                  className="rounded-[28px] p-6 text-white surface-contrast transition hover:-translate-y-1 hover:border-white/45"
                 >
                   <p className="text-lg font-semibold">{card.title}</p>
                   <p className="mt-2 text-sm text-white/70">
@@ -1899,7 +1772,7 @@ export default function GradeCalculator() {
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.1 }}
             viewport={{ once: true, amount: 0.2 }}
-            className="rounded-[32px] border border-white/10 bg-white/5 p-8 shadow-xl shadow-black/35 backdrop-blur-2xl"
+            className="rounded-[32px] p-8 surface-contrast"
           >
             <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
               <div>
@@ -1927,7 +1800,7 @@ export default function GradeCalculator() {
               {marketingWorkflow.map((step, index) => (
                 <li
                   key={step.title}
-                  className="flex flex-col rounded-[28px] border border-white/15 bg-black/40 p-6 text-white shadow-lg shadow-black/40 transition-all hover:-translate-y-1 hover:border-white/30 hover:bg-black/60 hover:shadow-black/60"
+                  className="flex flex-col rounded-[28px] p-6 text-white surface-contrast transition-all hover:-translate-y-1 hover:border-white/45 hover:bg-black/80"
                 >
                   <span className="flex h-10 w-10 items-center justify-center rounded-full border border-white/20 bg-black/60 text-lg font-semibold text-white">
                     {index + 1}
@@ -1946,7 +1819,7 @@ export default function GradeCalculator() {
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
             viewport={{ once: true, amount: 0.2 }}
-            className="rounded-[32px] border border-white/15 bg-gradient-to-b from-black/60 via-black/40 to-transparent p-10 text-center shadow-2xl shadow-black/50 backdrop-blur-2xl"
+            className="rounded-[32px] border border-white/35 bg-black/80 p-10 text-center shadow-under-white-strong"
           >
             <h2 className="text-3xl font-bold text-white">
               Ready to plan your semester?
@@ -1958,7 +1831,7 @@ export default function GradeCalculator() {
             <div className="mt-6 flex flex-wrap justify-center gap-3">
               <Button
                 size="lg"
-                className="px-8 bg-white text-black shadow-lg shadow-black/40 transition hover:scale-[1.01] hover:bg-neutral-200"
+                className="px-8 bg-white text-black shadow-under-white transition hover:scale-[1.01] hover:bg-neutral-200"
                 onClick={() => signIn("google")}
               >
                 Sign in with Google
@@ -2011,25 +1884,12 @@ export default function GradeCalculator() {
     );
   }
 
-  const backgroundImage = getBackgroundImage(activeBackgroundId);
-
   return (
-    <div className="relative min-h-screen bg-background/80">
-      <div
-        className="pointer-events-none fixed inset-0 -z-10"
-        aria-hidden="true"
-        style={{
-          backgroundImage,
-          backgroundSize: "cover",
-          backgroundRepeat: "no-repeat",
-          backgroundAttachment: "fixed",
-          backgroundPosition: `center calc(50% + ${-parallaxOffset}px)`,
-        }}
-      />
+    <div className="min-h-screen bg-background">
       <div className="fixed left-4 top-6 z-50 lg:hidden">
         <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
           <SheetTrigger asChild>
-            <Button className="flex items-center gap-2 border border-border/60 bg-card/80 px-3 py-2 text-sm text-foreground shadow-lg backdrop-blur hover:bg-card">
+            <Button className="flex items-center gap-2 border border-border/70 bg-card/90 px-3 py-2 text-sm text-foreground shadow-under-white hover:bg-card">
               <Menu className="h-4 w-4" />
               Overview
             </Button>
@@ -2073,7 +1933,7 @@ export default function GradeCalculator() {
           </SheetContent>
         </Sheet>
       </div>
-      <div className="fixed right-6 top-6 z-50 flex items-center gap-3 rounded-full border bg-card/90 px-4 py-2 shadow-sm backdrop-blur">
+      <div className="fixed right-6 top-6 z-50 flex items-center gap-3 rounded-full border border-border/80 bg-card/95 px-4 py-2 shadow-under-white">
         <div className="text-left">
           <p className="text-sm font-semibold text-foreground">
             {session?.user?.name || session?.user?.email || "Google User"}
@@ -2085,47 +1945,6 @@ export default function GradeCalculator() {
         <Button variant="ghost" size="sm" onClick={() => signOut()}>
           Sign out
         </Button>
-      </div>
-      <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-3">
-        {themePickerOpen && (
-          <div
-            ref={themePickerRef}
-            className="rounded-2xl border border-border/60 bg-card/95 px-4 py-3 shadow-2xl backdrop-blur"
-          >
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-              Theme
-            </p>
-            <Select
-              value={activeBackgroundId}
-              onValueChange={handleBackgroundChange}
-            >
-              <SelectTrigger className="mt-2 border border-border/60 bg-transparent text-foreground">
-                <SelectValue placeholder="Choose background" />
-              </SelectTrigger>
-              <SelectContent
-                ref={themeSelectContentRef}
-                className="bg-card/95 text-foreground"
-                onMouseDownCapture={() => {
-                  recentThemeSelectInteraction.current = Date.now() + 400;
-                }}
-              >
-                {backgroundOptions.map((option) => (
-                  <SelectItem key={option.id} value={option.id}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        )}
-        <button
-          ref={themeButtonRef}
-          onClick={() => setThemePickerOpen((prev) => !prev)}
-          className="rounded-full border border-border/70 bg-card/90 p-3 text-muted-foreground shadow-lg backdrop-blur transition hover:text-foreground"
-          title="Change scene"
-        >
-          <Sparkles className="h-5 w-5" />
-        </button>
       </div>
       <CourseSidebar
         semesters={orderedSemesters}
@@ -2170,14 +1989,14 @@ export default function GradeCalculator() {
             ) : (
               <>
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  <div className="rounded-lg border border-primary/20 bg-card/70 p-4 text-left shadow-sm">
+                  <div className="rounded-lg border border-primary/35 bg-card/85 p-4 text-left shadow-under-white-soft">
                     <p className="text-sm text-muted-foreground">Overall GPA</p>
                     <p className="mt-2 flex items-baseline gap-2 text-3xl font-bold text-primary">
                       <TrendingUp className="h-5 w-5 text-muted-foreground" />
                       {overallGpa.toFixed(2)}
                     </p>
                   </div>
-                  <div className="rounded-lg border border-primary/20 bg-card/70 p-4 text-left shadow-sm">
+                  <div className="rounded-lg border border-primary/35 bg-card/85 p-4 text-left shadow-under-white-soft">
                     <p className="text-sm text-muted-foreground">
                       Total Credits
                     </p>
@@ -2186,7 +2005,7 @@ export default function GradeCalculator() {
                       {totalCredits}
                     </p>
                   </div>
-                  <div className="rounded-lg border border-primary/20 bg-card/70 p-4 text-left shadow-sm">
+                  <div className="rounded-lg border border-primary/35 bg-card/85 p-4 text-left shadow-under-white-soft">
                     <p className="text-sm text-muted-foreground">
                       Semesters Tracked
                     </p>
@@ -2214,7 +2033,7 @@ export default function GradeCalculator() {
                   {semesterSummaries.map((summary) => (
                     <div
                       key={summary.id}
-                      className="rounded-lg border border-primary/20 bg-card/80 p-4 shadow-sm"
+                      className="rounded-lg border border-primary/35 bg-card/85 p-4 shadow-under-white-soft"
                     >
                       <div className="flex items-center justify-between">
                         <div>

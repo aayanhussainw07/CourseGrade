@@ -15,38 +15,27 @@ interface GradeDistributionChartProps {
 const GRADE_ORDER = ["A+", "A", "A-", "B+", "B", "B-", "C+", "C", "C-", "D+", "D", "D-", "F"]
 const MAX_BAR_HEIGHT = 130
 
-const clampChannel = (value: number) => Math.max(0, Math.min(255, value))
-
-const adjustColor = (hex: string, amount: number) => {
-  const sanitized = hex.replace("#", "")
-  if (sanitized.length !== 6) return hex
-  const r = parseInt(sanitized.slice(0, 2), 16)
-  const g = parseInt(sanitized.slice(2, 4), 16)
-  const b = parseInt(sanitized.slice(4, 6), 16)
-  const adjust = (channel: number) => Math.round(clampChannel(channel + 255 * amount))
-  const toHex = (channel: number) => channel.toString(16).padStart(2, "0")
-  return `#${toHex(adjust(r))}${toHex(adjust(g))}${toHex(adjust(b))}`
+interface ChartBase {
+  letter: string
+  count: number
+  fillColor: string
 }
 
-const getGradientPalette = (color: string) => ({
-  light: adjustColor(color, 0.1),
-  dark: adjustColor(color, -0.25),
-})
+interface ChartBar extends ChartBase {
+  hasData: boolean
+  barHeight: number
+}
 
-const darkenColor = (hex: string, factor: number) => {
-  const sanitized = hex.replace("#", "")
-  if (sanitized.length !== 6) return hex
-  const r = parseInt(sanitized.slice(0, 2), 16)
-  const g = parseInt(sanitized.slice(2, 4), 16)
-  const b = parseInt(sanitized.slice(4, 6), 16)
-  const toHex = (channel: number) => channel.toString(16).padStart(2, "0")
-  return `#${toHex(Math.round(r * factor))}${toHex(Math.round(g * factor))}${toHex(Math.round(b * factor))}`
+interface ChartSlice extends ChartBase {
+  startFraction: number
+  fraction: number
 }
 
 export function GradeDistributionChart({ courses, title = "Grade Distribution" }: GradeDistributionChartProps) {
   const [chartType, setChartType] = useState<"bar" | "pie">("bar")
+
   const chartData = useMemo(() => {
-    if (courses.length === 0) {
+    if (!courses.length) {
       return { totalCount: 0, bars: [] as ChartBar[], slices: [] as ChartSlice[] }
     }
 
@@ -58,39 +47,33 @@ export function GradeDistributionChart({ courses, title = "Grade Distribution" }
       distribution[letterGrade] = (distribution[letterGrade] || 0) + 1
     }
 
-    const ordered = GRADE_ORDER.map((letter, index) => ({
+    const ordered = GRADE_ORDER.map((letter) => ({
       letter,
       count: distribution[letter] || 0,
-      gradientId: `grade-slice-${index}`,
     })).filter(({ count }) => count > 0)
 
-    if (ordered.length === 0) {
+    if (!ordered.length) {
       return { totalCount: 0, bars: [] as ChartBar[], slices: [] as ChartSlice[] }
     }
 
     const totalCount = ordered.reduce((sum, grade) => sum + grade.count, 0)
+    const maxCount = Math.max(...ordered.map((grade) => grade.count), 1)
 
-    const detailed = ordered.map((grade) => {
-      const baseColor = darkenColor(getLetterGradeColor(grade.letter), 0.7)
-      return {
-        ...grade,
-        baseColor,
-        gradient: getGradientPalette(baseColor),
-      }
-    })
-
-    const maxCount = Math.max(...detailed.map((grade) => grade.count), 1)
-    const bars: ChartBar[] = detailed.map((detail) => ({
-      ...detail,
-      hasData: detail.count > 0,
-      barHeight: detail.count ? Math.max(6, (detail.count / maxCount) * MAX_BAR_HEIGHT) : 0,
+    const bars: ChartBar[] = ordered.map(({ letter, count }) => ({
+      letter,
+      count,
+      fillColor: getLetterGradeColor(letter),
+      hasData: count > 0,
+      barHeight: count ? Math.max(6, (count / maxCount) * MAX_BAR_HEIGHT) : 0,
     }))
 
     let cumulativeFraction = 0
-    const slices: ChartSlice[] = detailed.map((detail) => {
-      const fraction = detail.count / totalCount
+    const slices: ChartSlice[] = ordered.map(({ letter, count }) => {
+      const fraction = count / totalCount
       const slice = {
-        ...detail,
+        letter,
+        count,
+        fillColor: getLetterGradeColor(letter),
         fraction,
         startFraction: cumulativeFraction,
       }
@@ -101,10 +84,10 @@ export function GradeDistributionChart({ courses, title = "Grade Distribution" }
     return { totalCount, bars, slices }
   }, [courses])
 
-  if (courses.length === 0 || chartData.totalCount === 0) return null
+  if (!courses.length || chartData.totalCount === 0) return null
 
   return (
-    <Card className="border-2 border-primary/20 shadow-xl">
+    <Card className="border-2 border-primary/35 shadow-under-white-strong">
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle className="text-xl text-primary">{title}</CardTitle>
@@ -133,7 +116,7 @@ export function GradeDistributionChart({ courses, title = "Grade Distribution" }
       <CardContent className="min-h-[250px]">
         {chartType === "bar" ? (
           <div className="mt-4 flex h-56 items-end justify-between gap-2 border-t border-border/40 pt-4">
-            {chartData.bars.map(({ letter, count, gradient, baseColor, hasData, barHeight }) => (
+            {chartData.bars.map(({ letter, count, fillColor, hasData, barHeight }) => (
               <div key={letter} className="flex min-w-[32px] flex-1 flex-col items-center">
                 <div className="relative flex w-full flex-col items-center">
                   {hasData ? (
@@ -141,11 +124,10 @@ export function GradeDistributionChart({ courses, title = "Grade Distribution" }
                       className="flex w-full items-end justify-center rounded-t-md transition-all"
                       style={{
                         height: `${barHeight}px`,
-                        backgroundImage: `linear-gradient(180deg, ${gradient.light}, ${gradient.dark})`,
-                        backgroundColor: baseColor,
+                        backgroundColor: fillColor,
                       }}
                     >
-                      <span className="mb-2 text-sm font-semibold text-white drop-shadow">{count}</span>
+                      <span className="mb-2 text-sm font-semibold text-black">{count}</span>
                     </div>
                   ) : (
                     <div className="flex h-12 w-full items-end justify-center">
@@ -163,25 +145,17 @@ export function GradeDistributionChart({ courses, title = "Grade Distribution" }
         ) : (
           <div className="flex flex-col items-center gap-4">
             <svg viewBox="0 0 260 260" className="h-60 w-60">
-              <defs>
-                {chartData.slices.map(({ gradientId, gradient }) => (
-                  <linearGradient key={gradientId} id={gradientId} gradientTransform="rotate(35)">
-                    <stop offset="0%" stopColor={gradient.light} />
-                    <stop offset="100%" stopColor={gradient.dark} />
-                  </linearGradient>
-                ))}
-              </defs>
-              {chartData.slices.map(({ letter, count, gradientId, baseColor, startFraction, fraction }) => {
+              {chartData.slices.map(({ letter, count, fillColor, startFraction, fraction }) => {
                 const radius = 110
                 const center = 130
                 if (fraction >= 1) {
                   return (
                     <g key={letter}>
-                      <circle cx={center} cy={center} r={radius} fill={`url(#${gradientId})`} />
-                      <text x={center} y={center - 6} fill="#ffffff" fontSize="16" fontWeight="700" textAnchor="middle">
+                      <circle cx={center} cy={center} r={radius} fill={fillColor} />
+                      <text x={center} y={center - 6} fill="#050505" fontSize="16" fontWeight="700" textAnchor="middle">
                         {letter}
                       </text>
-                      <text x={center} y={center + 12} fill="#ffffff" fontSize="12" textAnchor="middle">
+                      <text x={center} y={center + 12} fill="#050505" fontSize="12" textAnchor="middle">
                         {count}
                       </text>
                     </g>
@@ -210,18 +184,11 @@ export function GradeDistributionChart({ courses, title = "Grade Distribution" }
 
                 return (
                   <g key={letter}>
-                    <path d={path} fill={`url(#${gradientId})`} stroke={baseColor} strokeWidth="0.5" />
-                    <text
-                      x={labelX}
-                      y={labelY - 6}
-                      fill="#ffffff"
-                      fontSize="12"
-                      fontWeight="700"
-                      textAnchor="middle"
-                    >
+                    <path d={path} fill={fillColor} stroke="#080808" strokeWidth="1" />
+                    <text x={labelX} y={labelY - 6} fill="#050505" fontSize="12" fontWeight="700" textAnchor="middle">
                       {letter}
                     </text>
-                    <text x={labelX} y={labelY + 10} fill="#ffffff" fontSize="11" textAnchor="middle">
+                    <text x={labelX} y={labelY + 10} fill="#050505" fontSize="11" textAnchor="middle">
                       {count}
                     </text>
                   </g>
@@ -233,22 +200,4 @@ export function GradeDistributionChart({ courses, title = "Grade Distribution" }
       </CardContent>
     </Card>
   )
-}
-
-interface ChartBase {
-  letter: string
-  count: number
-  gradientId: string
-  baseColor: string
-  gradient: ReturnType<typeof getGradientPalette>
-}
-
-interface ChartBar extends ChartBase {
-  hasData: boolean
-  barHeight: number
-}
-
-interface ChartSlice extends ChartBase {
-  startFraction: number
-  fraction: number
 }

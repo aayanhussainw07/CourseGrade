@@ -215,7 +215,7 @@ export function CourseSidebar({
   };
 
   const containerClass = cn(
-    "overflow-hidden border-r border-primary/20 bg-card/95 backdrop-blur flex flex-col shadow-lg",
+    "overflow-hidden border-r border-primary/30 bg-card/95 flex flex-col shadow-under-white",
     variant === "desktop"
       ? "fixed left-0 top-0 hidden h-screen w-64 lg:flex"
       : "h-full w-full rounded-none border-0 shadow-none"
@@ -293,9 +293,9 @@ export function CourseSidebar({
                       type="button"
                       onClick={onDashboardClick}
                       className={cn(
-                        "w-full rounded-lg border border-primary/20 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent p-3 text-left transition-colors hover:border-primary/40 hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60",
+                        "w-full rounded-lg border border-primary/20 bg-black/65 p-3 text-left transition-colors hover:border-primary/40 hover:bg-black/75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60",
                         isDashboardActive &&
-                          "border-primary/50 bg-primary/20 text-foreground shadow-md"
+                          "border-primary/50 bg-primary/20 text-foreground shadow-under-white-soft"
                       )}
                     >
                       <div className="flex items-center justify-between">
@@ -330,7 +330,7 @@ export function CourseSidebar({
                       </div>
                     </button>
                   ) : (
-                    <div className="rounded-lg border border-primary/20 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent p-3">
+                    <div className="rounded-lg border border-primary/20 bg-black/65 p-3">
                       <div className="flex items-center justify-between">
                         <span className="text-sm font-bold text-foreground">
                           {dashboardSummary.overallGpa.toFixed(2)} GPA

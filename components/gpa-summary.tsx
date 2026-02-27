@@ -1,5 +1,11 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { calculateCourseGrade, calculateGPA, getLetterGrade, getLetterGradeColor } from "@/lib/grade-utils"
+import {
+  calculateCourseGrade,
+  calculateGPA,
+  getLetterGrade,
+  getLetterGradeColor,
+  getMonochromeCardColor,
+} from "@/lib/grade-utils"
 import type { Course } from "@/lib/types"
 import { RollingNumber } from "@/components/rolling-number"
 
@@ -15,7 +21,7 @@ export function GpaSummary({ courses, semesterName }: GpaSummaryProps) {
   const semesterLabel = semesterName ? `${semesterName}` : "Semester"
 
   return (
-    <Card className="border-2 border-primary/20 shadow-xl">
+    <Card className="border-2 border-primary/35 shadow-under-white-strong">
       <CardHeader>
         <CardTitle className="text-center text-2xl text-primary">{semesterLabel}</CardTitle>
       </CardHeader>
@@ -56,7 +62,8 @@ export function GpaSummary({ courses, semesterName }: GpaSummaryProps) {
               const grade = calculateCourseGrade(course.criteria, course.percentBoost)
               const letter = getLetterGrade(grade, course.gradeScale)
               const gradeColor = getLetterGradeColor(letter)
-              const backgroundStyle = course.cardColor ? { backgroundColor: course.cardColor } : undefined
+              const monochromeColor = getMonochromeCardColor(course.cardColor)
+              const backgroundStyle = monochromeColor ? { backgroundColor: monochromeColor } : undefined
               return (
                 <div
                   key={`${course.id}-${index}`}

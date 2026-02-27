@@ -124,21 +124,60 @@ export function calculateGPA(courses: Course[] | null | undefined): number {
 
 export function getLetterGradeColor(letter: string): string {
   const colorMap: Record<string, string> = {
-    "A+": "#10b981", // emerald-500
-    A: "#22c55e", // green-500
-    "A-": "#84cc16", // lime-500
-    "B+": "#a3e635", // lime-400
-    B: "#eab308", // yellow-500
-    "B-": "#f59e0b", // amber-500
-    "C+": "#f97316", // orange-500
-    C: "#fb923c", // orange-400
-    "C-": "#fdba74", // orange-300
-    "D+": "#f87171", // red-400
-    D: "#ef4444", // red-500
-    "D-": "#dc2626", // red-600
-    F: "#b91c1c", // red-700
+    "A+": "#ffffff",
+    A: "#f1f1f1",
+    "A-": "#e3e3e3",
+    "B+": "#d5d5d5",
+    B: "#c6c6c6",
+    "B-": "#b7b7b7",
+    "C+": "#a6a6a6",
+    C: "#959595",
+    "C-": "#848484",
+    "D+": "#727272",
+    D: "#626262",
+    "D-": "#515151",
+    F: "#404040",
   }
-  return colorMap[letter] || "#6b7280" // gray-500 as fallback
+  return colorMap[letter] || "#7a7a7a"
+}
+
+const parseColorChannels = (value: string): [number, number, number] | null => {
+  const trimmed = value.trim()
+
+  const hexMatch = trimmed.match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i)
+  if (hexMatch) {
+    const hex = hexMatch[1]
+    if (hex.length === 3) {
+      const r = Number.parseInt(hex[0] + hex[0], 16)
+      const g = Number.parseInt(hex[1] + hex[1], 16)
+      const b = Number.parseInt(hex[2] + hex[2], 16)
+      return [r, g, b]
+    }
+    const r = Number.parseInt(hex.slice(0, 2), 16)
+    const g = Number.parseInt(hex.slice(2, 4), 16)
+    const b = Number.parseInt(hex.slice(4, 6), 16)
+    return [r, g, b]
+  }
+
+  const rgbMatch = trimmed.match(
+    /^rgba?\(\s*([+-]?\d*\.?\d+)\s*,\s*([+-]?\d*\.?\d+)\s*,\s*([+-]?\d*\.?\d+)(?:\s*,\s*[+-]?\d*\.?\d+\s*)?\)$/i,
+  )
+  if (!rgbMatch) return null
+
+  const r = Number.parseFloat(rgbMatch[1])
+  const g = Number.parseFloat(rgbMatch[2])
+  const b = Number.parseFloat(rgbMatch[3])
+  if ([r, g, b].some((channel) => Number.isNaN(channel))) return null
+
+  return [r, g, b]
+}
+
+export function getMonochromeCardColor(value?: string | null): string | null {
+  if (!value) return null
+  const channels = parseColorChannels(value)
+  if (!channels) return null
+  const [r, g, b] = channels.map((channel) => Math.round(channel))
+  return r === g && g === b ? value : null
 }
 
 export function calculateGradeDistribution(courses: Course[]): Record<string, number> {

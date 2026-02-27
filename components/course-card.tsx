@@ -8,7 +8,12 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Trash2, Plus, X, Settings, ChevronDown, ChevronRight, ChevronUp, Palette, Download } from "lucide-react"
-import { calculateCourseGrade, getLetterGrade, getLetterGradeColor } from "@/lib/grade-utils"
+import {
+  calculateCourseGrade,
+  getLetterGrade,
+  getLetterGradeColor,
+  getMonochromeCardColor,
+} from "@/lib/grade-utils"
 import type { Course, Criterion, SubItem, GradeScale } from "@/lib/types"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { GradeScaleEditor } from "@/components/grade-scale-editor"
@@ -30,16 +35,16 @@ const buildPassFailScale = (settings: { passLabel?: string; failLabel?: string; 
 
 const courseColorOptions = [
   { id: "default", label: "Default", color: "" },
-  { id: "red", label: "Red", color: "rgba(106, 16, 16, 0.5)" },
-  { id: "orange", label: "Orange", color: "rgba(87, 36, 8, 0.5)" },
-  { id: "yellow", label: "Yellow", color: "rgba(88, 68, 8, 0.5)" },
-  { id: "green", label: "Green", color: "rgba(11, 84, 38, 0.5)" },
-  { id: "light-blue", label: "Light Blue", color: "rgba(17, 61, 81, 0.5)" },
-  { id: "dark-blue", label: "Dark Blue", color: "rgba(10, 32, 79, 0.5)" },
-  { id: "purple", label: "Purple", color: "rgba(48, 22, 94, 0.5)" },
-  { id: "pink", label: "Pink", color: "rgba(94, 30, 62, 0.5)" },
-  { id: "brown", label: "Brown", color: "rgba(64, 28, 5, 0.5)" },
-  { id: "grey", label: "Grey", color: "rgba(40, 43, 48, 0.5)" },
+  { id: "frost", label: "Frost", color: "rgba(255, 255, 255, 0.1)" },
+  { id: "smoke", label: "Smoke", color: "rgba(255, 255, 255, 0.08)" },
+  { id: "pewter", label: "Pewter", color: "rgba(235, 235, 235, 0.06)" },
+  { id: "graphite", label: "Graphite", color: "rgba(170, 170, 170, 0.12)" },
+  { id: "charcoal", label: "Charcoal", color: "rgba(120, 120, 120, 0.14)" },
+  { id: "ash", label: "Ash", color: "rgba(90, 90, 90, 0.15)" },
+  { id: "slate", label: "Slate", color: "rgba(70, 70, 70, 0.16)" },
+  { id: "steel", label: "Steel", color: "rgba(50, 50, 50, 0.18)" },
+  { id: "ink", label: "Ink", color: "rgba(30, 30, 30, 0.2)" },
+  { id: "obsidian", label: "Obsidian", color: "rgba(12, 12, 12, 0.24)" },
 ]
 
 const parseDraftNumber = (value: string) => {
@@ -545,7 +550,10 @@ export function CourseCard({ course, onUpdate, onDelete, onExportCourse }: Cours
   )
 
   const cardBackgroundStyle = useMemo(
-    () => (course.cardColor ? { backgroundColor: course.cardColor } : undefined),
+    () => {
+      const color = getMonochromeCardColor(course.cardColor)
+      return color ? { backgroundColor: color } : undefined
+    },
     [course.cardColor],
   )
 
@@ -616,7 +624,7 @@ export function CourseCard({ course, onUpdate, onDelete, onExportCourse }: Cours
   }
 
   return (
-    <Card className="border-2 border-primary/20 shadow-lg" style={cardBackgroundStyle}>
+    <Card className="border-2 border-primary/35 shadow-under-white" style={cardBackgroundStyle}>
       {/* Course header with title, collapse toggle, delete button, and grade scale editor */}
       <CardHeader className="">
         <div className="flex items-start justify-between gap-4">
@@ -753,7 +761,7 @@ export function CourseCard({ course, onUpdate, onDelete, onExportCourse }: Cours
               {colorPickerOpen && (
                 <div
                   ref={colorPickerRef}
-                  className="absolute right-0 top-10 z-20 min-w-[160px] rounded-xl border border-border/40 bg-card/95 p-3 shadow-lg"
+                  className="absolute right-0 top-10 z-20 min-w-[160px] rounded-xl border border-border/60 bg-card/95 p-3 shadow-under-white"
                 >
                   <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
                     Card Color
@@ -775,7 +783,7 @@ export function CourseCard({ course, onUpdate, onDelete, onExportCourse }: Cours
                           title={option.label}
                         >
                           {option.color === "" && (
-                            <span className="block h-full w-full rounded-full bg-gradient-to-br from-muted to-background" />
+                            <span className="block h-full w-full rounded-full bg-muted" />
                           )}
                         </button>
                       )
@@ -807,7 +815,11 @@ export function CourseCard({ course, onUpdate, onDelete, onExportCourse }: Cours
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="font-semibold text-primary">Distribution</h3>
-              <span className={`text-sm font-medium ${totalWeight === 100 ? "text-green-600" : "text-destructive"}`}>
+              <span
+                className={`text-sm font-medium ${
+                  totalWeight === 100 ? "text-primary" : "text-muted-foreground"
+                }`}
+              >
                 Total Weight: {totalWeight}%{totalWeight !== 100 && " (should be 100%)"}
               </span>
             </div>

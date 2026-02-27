@@ -1,37 +1,38 @@
-@import url("https://fonts.googleapis.com/css2?family=Lato:wght@400;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Grotesk:wght@400;500;600;700&display=swap");
 @import "tailwindcss";
 @import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --font-sans: "Lato", "Helvetica Neue", Arial, sans-serif;
+  --font-sans: "Space Grotesk", "Avenir Next", "Segoe UI", sans-serif;
+  --font-display: "Bebas Neue", "Impact", "Arial Black", sans-serif;
   --background: #040404;
   --foreground: #f5f5f5;
-  --card: rgba(15, 15, 15, 0.85);
+  --card: rgba(10, 10, 10, 0.9);
   --card-foreground: #f5f5f5;
-  --popover: rgba(18, 18, 18, 0.95);
+  --popover: rgba(8, 8, 8, 0.96);
   --popover-foreground: #f5f5f5;
   --primary: #ffffff;
   --primary-foreground: #050505;
-  --secondary: rgba(255, 255, 255, 0.1);
+  --secondary: rgba(255, 255, 255, 0.16);
   --secondary-foreground: #f5f5f5;
-  --muted: rgba(255, 255, 255, 0.08);
+  --muted: rgba(255, 255, 255, 0.12);
   --muted-foreground: #d1d1d1;
-  --accent: rgba(255, 255, 255, 0.12);
+  --accent: rgba(255, 255, 255, 0.2);
   --accent-foreground: #f5f5f5;
-  --destructive: #ff4d4d;
-  --destructive-foreground: #050505;
-  --border: rgba(255, 255, 255, 0.2);
-  --input: rgba(255, 255, 255, 0.2);
-  --ring: rgba(255, 255, 255, 0.35);
+  --destructive: #1e1e1e;
+  --destructive-foreground: #f5f5f5;
+  --border: rgba(255, 255, 255, 0.3);
+  --input: rgba(255, 255, 255, 0.3);
+  --ring: rgba(255, 255, 255, 0.55);
   --chart-1: #ffffff;
   --chart-2: #cfcfcf;
   --chart-3: #9f9f9f;
   --chart-4: #707070;
   --chart-5: #4b4b4b;
   --radius: 0.625rem;
-  --sidebar: rgba(10, 10, 10, 0.85);
+  --sidebar: rgba(6, 6, 6, 0.92);
   --sidebar-foreground: #f5f5f5;
   --sidebar-primary: #ffffff;
   --sidebar-primary-foreground: #050505;
@@ -39,7 +40,17 @@
   --sidebar-accent-foreground: #f5f5f5;
   --sidebar-border: rgba(255, 255, 255, 0.2);
   --sidebar-ring: rgba(255, 255, 255, 0.35);
-  --app-bg-image: url("/mountain-bg.jpg");
+  --shadow-under-white-soft:
+    0 4px 0 rgba(0, 0, 0, 0.74),
+    0 10px 0 rgba(255, 255, 255, 0.2);
+  --shadow-under-white:
+    0 6px 0 rgba(0, 0, 0, 0.82),
+    0 14px 0 rgba(255, 255, 255, 0.24),
+    0 20px 0 rgba(0, 0, 0, 0.62);
+  --shadow-under-white-strong:
+    0 9px 0 rgba(0, 0, 0, 0.88),
+    0 18px 0 rgba(255, 255, 255, 0.3),
+    0 26px 0 rgba(0, 0, 0, 0.66);
 }
 
 /* Dark theme defaults already set on :root */
@@ -90,16 +101,15 @@
   }
   h1,
   h2,
-  h3,
-  h4,
   .font-heading {
-    font-family: var(--font-geist-sans), "Geist Sans", "Inter", "Helvetica Neue", Arial, sans-serif;
-    letter-spacing: 0.01em;
+    font-family: var(--font-display);
+    letter-spacing: 0.045em;
+    text-transform: uppercase;
   }
   body {
     @apply bg-background text-foreground;
-    font-family: var(--font-sans), "Helvetica Neue", Arial, sans-serif;
-    --page-background-image: linear-gradient(180deg, rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.65)), var(--app-bg-image);
+    font-family: var(--font-sans);
+    letter-spacing: 0.01em;
   }
   input[type="number"]::placeholder {
     @apply text-muted-foreground/40;
@@ -111,5 +121,33 @@
   }
   input[type="number"] {
     -moz-appearance: textfield;
+  }
+}
+
+@layer utilities {
+  .shadow-under-white-soft {
+    box-shadow: var(--shadow-under-white-soft);
+  }
+
+  .shadow-under-white {
+    box-shadow: var(--shadow-under-white);
+  }
+
+  .shadow-under-white-strong {
+    box-shadow: var(--shadow-under-white-strong);
+  }
+
+  .surface-contrast {
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    background-color: rgba(0, 0, 0, 0.8);
+    box-shadow: var(--shadow-under-white);
+    color: var(--foreground);
+  }
+
+  .surface-contrast-strong {
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    background-color: rgba(0, 0, 0, 0.9);
+    box-shadow: var(--shadow-under-white-strong);
+    color: var(--foreground);
   }
 }
