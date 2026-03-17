@@ -1,12 +1,61 @@
-// API service layer for communicating with Django backend
+// API service layer for communicating with backend service
+import type { ApiAssignment, ApiCourse, ApiGradeScale, ApiSemester } from "./types"
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api"
 let apiUserScope = "default"
 
-const normalizeCoursePayload = <T extends Record<string, any> | undefined>(payload: T): T => {
+export type ApiListResponse<T> = T[] | { results?: T[] | null }
+
+type SemesterPayload = {
+  name: string
+  background?: string
+  timeline_date?: string | null
+}
+
+type CourseAssignmentPayload = {
+  name: string
+  weight: number
+  earned: number
+  total: number
+  drop_lowest?: number
+}
+
+type CoursePayload = {
+  semester: string
+  name: string
+  credits: number
+  is_pass_fail?: boolean
+  percent_boost?: number
+  assignments?: CourseAssignmentPayload[]
+  criteria?: unknown
+}
+
+type AssignmentPayload = {
+  course: string
+  name: string
+  weight: number
+  earned: number
+  total: number
+  drop_lowest?: number
+}
+
+type GradeScalePayload = {
+  letter: string
+  min_percentage: number
+  gpa_value: number
+}
+
+export const extractApiList = <T>(payload: ApiListResponse<T>): T[] => {
+  if (Array.isArray(payload)) return payload
+  const results = payload?.results
+  return Array.isArray(results) ? results : []
+}
+
+const normalizeCoursePayload = <T extends Record<string, unknown> | undefined>(payload: T): T => {
   if (!payload) return payload
   if ("criteria" in payload && !Array.isArray(payload.criteria)) {
-    payload.criteria = payload.criteria ? [payload.criteria].flat() : []
+    const criteria = (payload as { criteria?: unknown }).criteria
+    ;(payload as { criteria?: unknown[] }).criteria = criteria ? [criteria].flat() : []
   }
   return payload
 }
@@ -99,18 +148,18 @@ async function apiFetch<T>(endpoint: string, options?: RequestInit): Promise<T> 
 
 // Semester API calls
 export const semesterApi = {
-  getAll: () => apiFetch<any[]>("/semesters/"),
+  getAll: () => apiFetch<ApiListResponse<ApiSemester>>("/semesters/"),
 
-  getOne: (id: string) => apiFetch<any>(`/semesters/${id}/`),
+  getOne: (id: string) => apiFetch<ApiSemester>(`/semesters/${id}/`),
 
-  create: (data: { name: string; background?: string; timeline_date?: string | null }) =>
-    apiFetch<any>("/semesters/", {
+  create: (data: SemesterPayload) =>
+    apiFetch<ApiSemester>("/semesters/", {
       method: "POST",
       body: JSON.stringify(data),
     }),
 
-  update: (id: string, data: Partial<{ name: string; background: string; timeline_date: string | null }>) =>
-    apiFetch<any>(`/semesters/${id}/`, {
+  update: (id: string, data: Partial<SemesterPayload>) =>
+    apiFetch<ApiSemester>(`/semesters/${id}/`, {
       method: "PATCH",
       body: JSON.stringify(data),
     }),
@@ -125,29 +174,19 @@ export const semesterApi = {
 export const courseApi = {
   getAll: (semesterId?: string) => {
     const url = semesterId ? `/courses/?semester=${semesterId}` : "/courses/"
-    return apiFetch<any[]>(url)
+    return apiFetch<ApiListResponse<ApiCourse>>(url)
   },
 
-  getOne: (id: string) => apiFetch<any>(`/courses/${id}/`),
+  getOne: (id: string) => apiFetch<ApiCourse>(`/courses/${id}/`),
 
-  create: (data: {
-    semester: string
-    name: string
-    credits: number
-    is_pass_fail?: boolean
-    percent_boost?: number
-    criteria?: unknown
-  }) =>
-    apiFetch<any>("/courses/", {
+  create: (data: CoursePayload) =>
+    apiFetch<ApiCourse>("/courses/", {
       method: "POST",
       body: JSON.stringify(normalizeCoursePayload(data)),
     }),
 
-  update: (
-    id: string,
-    data: Partial<{ name: string; credits: number; is_pass_fail: boolean; percent_boost: number; criteria?: unknown }>,
-  ) =>
-    apiFetch<any>(`/courses/${id}/`, {
+  update: (id: string, data: Partial<CoursePayload>) =>
+    apiFetch<ApiCourse>(`/courses/${id}/`, {
       method: "PATCH",
       body: JSON.stringify(normalizeCoursePayload(data)),
     }),
@@ -162,19 +201,19 @@ export const courseApi = {
 export const assignmentApi = {
   getAll: (courseId?: string) => {
     const url = courseId ? `/assignments/?course=${courseId}` : "/assignments/"
-    return apiFetch<any[]>(url)
+    return apiFetch<ApiListResponse<ApiAssignment>>(url)
   },
 
-  getOne: (id: string) => apiFetch<any>(`/assignments/${id}/`),
+  getOne: (id: string) => apiFetch<ApiAssignment>(`/assignments/${id}/`),
 
-  create: (data: { course: string; name: string; weight: number; earned: number; total: number; drop_lowest?: number }) =>
-    apiFetch<any>("/assignments/", {
+  create: (data: AssignmentPayload) =>
+    apiFetch<ApiAssignment>("/assignments/", {
       method: "POST",
       body: JSON.stringify(data),
     }),
 
-  update: (id: string, data: Partial<{ name: string; weight: number; earned: number; total: number; drop_lowest: number }>) =>
-    apiFetch<any>(`/assignments/${id}/`, {
+  update: (id: string, data: Partial<AssignmentPayload>) =>
+    apiFetch<ApiAssignment>(`/assignments/${id}/`, {
       method: "PATCH",
       body: JSON.stringify(data),
     }),
@@ -187,16 +226,16 @@ export const assignmentApi = {
 
 // Grade Scale API calls
 export const gradeScaleApi = {
-  getAll: () => apiFetch<any[]>("/grade-scales/"),
+  getAll: () => apiFetch<ApiListResponse<ApiGradeScale>>("/grade-scales/"),
 
-  create: (data: { letter: string; min_percentage: number; gpa_value: number }) =>
-    apiFetch<any>("/grade-scales/", {
+  create: (data: GradeScalePayload) =>
+    apiFetch<ApiGradeScale>("/grade-scales/", {
       method: "POST",
       body: JSON.stringify(data),
     }),
 
-  update: (id: string, data: Partial<{ letter: string; min_percentage: number; gpa_value: number }>) =>
-    apiFetch<any>(`/grade-scales/${id}/`, {
+  update: (id: string, data: Partial<GradeScalePayload>) =>
+    apiFetch<ApiGradeScale>(`/grade-scales/${id}/`, {
       method: "PATCH",
       body: JSON.stringify(data),
     }),
@@ -207,7 +246,7 @@ export const gradeScaleApi = {
     }),
 
   resetDefault: () =>
-    apiFetch<any[]>("/grade-scales/reset_default/", {
+    apiFetch<ApiListResponse<ApiGradeScale>>("/grade-scales/reset_default/", {
       method: "POST",
     }),
 }

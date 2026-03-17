@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Grotesk:wght@400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap");
 @import "tailwindcss";
 @import "tw-animate-css";
 
@@ -6,51 +6,51 @@
 
 :root {
   --font-sans: "Space Grotesk", "Avenir Next", "Segoe UI", sans-serif;
-  --font-display: "Bebas Neue", "Impact", "Arial Black", sans-serif;
-  --background: #040404;
-  --foreground: #f5f5f5;
-  --card: rgba(10, 10, 10, 0.9);
-  --card-foreground: #f5f5f5;
-  --popover: rgba(8, 8, 8, 0.96);
-  --popover-foreground: #f5f5f5;
-  --primary: #ffffff;
-  --primary-foreground: #050505;
-  --secondary: rgba(255, 255, 255, 0.16);
-  --secondary-foreground: #f5f5f5;
-  --muted: rgba(255, 255, 255, 0.12);
-  --muted-foreground: #d1d1d1;
-  --accent: rgba(255, 255, 255, 0.2);
-  --accent-foreground: #f5f5f5;
-  --destructive: #1e1e1e;
-  --destructive-foreground: #f5f5f5;
-  --border: rgba(255, 255, 255, 0.3);
-  --input: rgba(255, 255, 255, 0.3);
-  --ring: rgba(255, 255, 255, 0.55);
-  --chart-1: #ffffff;
-  --chart-2: #cfcfcf;
-  --chart-3: #9f9f9f;
-  --chart-4: #707070;
-  --chart-5: #4b4b4b;
+  --font-display: "Fredoka", "Trebuchet MS", sans-serif;
+  --background: #f9f5f3;
+  --foreground: #4d1f1a;
+  --card: rgba(255, 250, 248, 0.96);
+  --card-foreground: #4d1f1a;
+  --popover: rgba(255, 246, 243, 0.98);
+  --popover-foreground: #4d1f1a;
+  --primary: #c65a4e;
+  --primary-foreground: #fff8f6;
+  --secondary: rgba(198, 90, 78, 0.14);
+  --secondary-foreground: #4d1f1a;
+  --muted: rgba(198, 90, 78, 0.1);
+  --muted-foreground: #82504a;
+  --accent: rgba(198, 90, 78, 0.18);
+  --accent-foreground: #4d1f1a;
+  --destructive: #a64338;
+  --destructive-foreground: #fff8f6;
+  --border: rgba(198, 90, 78, 0.3);
+  --input: rgba(198, 90, 78, 0.24);
+  --ring: rgba(198, 90, 78, 0.46);
+  --chart-1: #c65a4e;
+  --chart-2: #d06c5c;
+  --chart-3: #da7f69;
+  --chart-4: #e29b82;
+  --chart-5: #eec0a7;
   --radius: 0.625rem;
-  --sidebar: rgba(6, 6, 6, 0.92);
-  --sidebar-foreground: #f5f5f5;
-  --sidebar-primary: #ffffff;
-  --sidebar-primary-foreground: #050505;
-  --sidebar-accent: rgba(255, 255, 255, 0.12);
-  --sidebar-accent-foreground: #f5f5f5;
-  --sidebar-border: rgba(255, 255, 255, 0.2);
-  --sidebar-ring: rgba(255, 255, 255, 0.35);
+  --sidebar: rgba(255, 247, 244, 0.96);
+  --sidebar-foreground: #4d1f1a;
+  --sidebar-primary: #c65a4e;
+  --sidebar-primary-foreground: #fff8f6;
+  --sidebar-accent: rgba(198, 90, 78, 0.12);
+  --sidebar-accent-foreground: #4d1f1a;
+  --sidebar-border: rgba(198, 90, 78, 0.22);
+  --sidebar-ring: rgba(198, 90, 78, 0.38);
   --shadow-under-white-soft:
-    0 4px 0 rgba(0, 0, 0, 0.74),
-    0 10px 0 rgba(255, 255, 255, 0.2);
+    0 4px 0 rgba(206, 113, 102, 0.3),
+    0 10px 0 rgba(133, 54, 45, 0.18);
   --shadow-under-white:
-    0 6px 0 rgba(0, 0, 0, 0.82),
-    0 14px 0 rgba(255, 255, 255, 0.24),
-    0 20px 0 rgba(0, 0, 0, 0.62);
+    0 6px 0 rgba(207, 117, 105, 0.34),
+    0 14px 0 rgba(136, 57, 48, 0.22),
+    0 20px 0 rgba(224, 168, 154, 0.34);
   --shadow-under-white-strong:
-    0 9px 0 rgba(0, 0, 0, 0.88),
-    0 18px 0 rgba(255, 255, 255, 0.3),
-    0 26px 0 rgba(0, 0, 0, 0.66);
+    0 9px 0 rgba(203, 105, 93, 0.42),
+    0 18px 0 rgba(125, 45, 37, 0.26),
+    0 26px 0 rgba(220, 156, 142, 0.38);
 }
 
 /* Dark theme defaults already set on :root */
@@ -138,15 +138,15 @@
   }
 
   .surface-contrast {
-    border: 1px solid rgba(255, 255, 255, 0.28);
-    background-color: rgba(0, 0, 0, 0.8);
+    border: 1px solid rgba(198, 90, 78, 0.3);
+    background-color: rgba(255, 248, 245, 0.95);
     box-shadow: var(--shadow-under-white);
     color: var(--foreground);
   }
 
   .surface-contrast-strong {
-    border: 1px solid rgba(255, 255, 255, 0.4);
-    background-color: rgba(0, 0, 0, 0.9);
+    border: 1px solid rgba(198, 90, 78, 0.46);
+    background-color: rgba(255, 242, 238, 0.98);
     box-shadow: var(--shadow-under-white-strong);
     color: var(--foreground);
   }

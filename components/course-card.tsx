@@ -420,7 +420,7 @@ export function CourseCard({ course, onUpdate, onDelete, onExportCourse }: Cours
     })
   }
 
-  const commitCriterionValue = (criterion: Criterion, field: CriterionNumericField, value: number) => {
+  const commitCriterionValue = (criterion: Criterion, field: CriterionNumericField, value: number | string) => {
     const numericValue =
       typeof value === "number" && Number.isFinite(value) ? value : Number.parseFloat(String(value ?? 0))
     const safeValue = Number.isFinite(numericValue) ? numericValue : 0

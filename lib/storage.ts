@@ -1,4 +1,4 @@
-import { semesterApi, courseApi, assignmentApi, setApiUserScope } from "./api"
+import { assignmentApi, courseApi, extractApiList, semesterApi, setApiUserScope } from "./api"
 import type { Course, Semester } from "./types"
 import { apiToFrontendCourse, apiToFrontendSemester } from "./types"
 
@@ -28,6 +28,7 @@ const getCriterionScoreValue = (criterion: Course["criteria"][number]) => {
 
 const isServerAssignmentId = (id: string) => /^\d+$/.test(id)
 const DEFAULT_BACKGROUND = "sunrise"
+const normalizeSubItems = (subItems: Course["criteria"][number]["subItems"]) => (subItems ? [...subItems] : [])
 
 export { ApiUnavailableError } from "./api"
 
@@ -38,7 +39,7 @@ export const storage = {
 
   async getSemesters(): Promise<Semester[]> {
     const apiSemesters = await semesterApi.getAll()
-    const semestersArray = Array.isArray(apiSemesters) ? apiSemesters : apiSemesters?.results ?? []
+    const semestersArray = extractApiList(apiSemesters)
     return semestersArray.map((semester) => {
       const normalized = apiToFrontendSemester(semester)
       return {
@@ -86,24 +87,34 @@ export const storage = {
   },
 
   async createCourse(semesterId: string, name: string, credits: number): Promise<Course> {
+    const templateAssignments = defaultAssignmentTemplates.map((assignment) => ({
+      ...assignment,
+      drop_lowest: 0,
+    }))
+
     const apiCourse = await courseApi.create({
       semester: semesterId,
       name,
       credits,
       is_pass_fail: false,
       percent_boost: 0,
+      assignments: templateAssignments,
     })
 
-    for (const assignment of defaultAssignmentTemplates) {
-      await assignmentApi.create({
-        course: apiCourse.id.toString(),
-        ...assignment,
-        drop_lowest: 0,
-      })
+    let hydratedCourse = apiCourse
+    if (!Array.isArray(apiCourse.assignments) || apiCourse.assignments.length === 0) {
+      await Promise.all(
+        templateAssignments.map((assignment) =>
+          assignmentApi.create({
+            course: apiCourse.id.toString(),
+            ...assignment,
+          }),
+        ),
+      )
+      hydratedCourse = await courseApi.getOne(apiCourse.id.toString())
     }
 
-    const refreshed = await courseApi.getOne(apiCourse.id.toString())
-    const createdCourse = apiToFrontendCourse(refreshed)
+    const createdCourse = apiToFrontendCourse(hydratedCourse)
     createdCourse.collapsed = false
     createdCourse.isPassFail = false
     createdCourse.percentBoost = createdCourse.percentBoost ?? 0
@@ -120,10 +131,8 @@ export const storage = {
     })
 
     const assignmentsResponse = await assignmentApi.getAll(course.id)
-    const existingAssignments = Array.isArray(assignmentsResponse)
-      ? assignmentsResponse
-      : assignmentsResponse?.results ?? []
-    const existingIds = new Set(existingAssignments.map((a: any) => a.id.toString()))
+    const existingAssignments = extractApiList(assignmentsResponse)
+    const existingIds = new Set(existingAssignments.map((assignment) => assignment.id.toString()))
     const desiredIds = new Set<string>()
     const subItemsSnapshot = new Map<string, Course["criteria"][number]["subItems"]>()
     const clientIdMap = new Map<string, string>()
@@ -133,24 +142,30 @@ export const storage = {
       const criterionName = typeof criterion.name === "string" ? criterion.name : ""
       const clientId = criterion.clientId ?? criterion.id
       originalCriteriaByClientId.set(clientId, criterion)
-      const snapshot = criterion.subItems ? [...criterion.subItems] : undefined
+      const snapshot = normalizeSubItems(criterion.subItems)
       const payload = {
         name: criterionName,
-        weight: criterion.weight,
+        weight: Math.min(criterion.weight, 100),
         earned: normalizeScore(getCriterionScoreValue(criterion)),
         total: 100,
         drop_lowest: criterion.dropLowest ?? 0,
       }
 
       if (criterion.id && isServerAssignmentId(criterion.id) && existingIds.has(criterion.id)) {
-        await assignmentApi.update(criterion.id, payload)
-        desiredIds.add(criterion.id)
-        clientIdMap.set(criterion.id, clientId)
-        if (snapshot) {
-          subItemsSnapshot.set(criterion.id, snapshot)
-        } else {
-          subItemsSnapshot.set(criterion.id, [])
+        let serverId = criterion.id
+        try {
+          await assignmentApi.update(criterion.id, payload)
+        } catch (e) {
+          if (e instanceof Error && e.message === "Not found.") {
+            const created = await assignmentApi.create({ course: course.id, ...payload })
+            serverId = created.id.toString()
+          } else {
+            throw e
+          }
         }
+        desiredIds.add(serverId)
+        clientIdMap.set(serverId, clientId)
+        subItemsSnapshot.set(serverId, snapshot)
       } else {
         const created = await assignmentApi.create({
           course: course.id,
@@ -159,18 +174,20 @@ export const storage = {
         const newId = created.id.toString()
         desiredIds.add(newId)
         clientIdMap.set(newId, clientId)
-        if (snapshot) {
-          subItemsSnapshot.set(newId, snapshot)
-        } else {
-          subItemsSnapshot.set(newId, [])
-        }
+        subItemsSnapshot.set(newId, snapshot)
       }
     }
 
     for (const assignment of existingAssignments) {
       const assignmentId = assignment.id.toString()
       if (!desiredIds.has(assignmentId)) {
-        await assignmentApi.delete(assignmentId)
+        try {
+          await assignmentApi.delete(assignmentId)
+        } catch (e) {
+          if (!(e instanceof Error && e.message === "Not found.")) {
+            throw e
+          }
+        }
       }
     }
 

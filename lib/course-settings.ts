@@ -21,7 +21,8 @@ export type StoredCourseSettings = Pick<
   criterionExtras?: Record<string, StoredCriterionExtras>
 }
 
-const cloneGradeScale = (scale?: GradeScale[]) => scale?.map((grade) => ({ ...grade })) ?? undefined
+const cloneGradeScale = (scale: GradeScale[]) => scale.map((grade) => ({ ...grade }))
+const cloneOptionalGradeScale = (scale?: GradeScale[]) => scale?.map((grade) => ({ ...grade }))
 const cloneSubItems = (items?: SubItem[]) => items?.map((item) => ({ ...item }))
 
 export const readStoredCourseSettings = (): Record<string, StoredCourseSettings> => {
@@ -49,7 +50,7 @@ export const persistCourseSettings = (course: Course) => {
   const criteria = Array.isArray(course.criteria) ? course.criteria : []
   const storedCourse: StoredCourseSettings = {
     gradeScale: cloneGradeScale(course.gradeScale),
-    gradeScaleSnapshot: cloneGradeScale(course.gradeScaleSnapshot),
+    gradeScaleSnapshot: cloneOptionalGradeScale(course.gradeScaleSnapshot),
     isPassFail: course.isPassFail ?? false,
     passLabel: course.passLabel ?? "P",
     failLabel: course.failLabel ?? "F",
@@ -98,8 +99,8 @@ export const applyStoredSettingsToSemesters = (semesters: Semester[]): Semester[
       const extras = stored.criterionExtras ?? {}
       return {
         ...course,
-        gradeScale: cloneGradeScale(stored.gradeScale) ?? course.gradeScale,
-        gradeScaleSnapshot: cloneGradeScale(stored.gradeScaleSnapshot),
+        gradeScale: cloneGradeScale(stored.gradeScale),
+        gradeScaleSnapshot: cloneOptionalGradeScale(stored.gradeScaleSnapshot),
         isPassFail: stored.isPassFail ?? course.isPassFail,
         passLabel: stored.passLabel ?? course.passLabel,
         failLabel: stored.failLabel ?? course.failLabel,

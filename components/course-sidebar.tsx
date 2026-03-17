@@ -108,7 +108,7 @@ export function CourseSidebar({
   );
   const courses = activeSemester?.courses || [];
   const scrollbarClasses =
-    "pr-1 space-y-1 overflow-y-scroll scrollbar-thin scrollbar-thumb-neutral-500/70 scrollbar-track-transparent [scrollbar-color:rgba(115,115,115,0.8)_transparent] [scrollbar-width:thin] [scrollbar-gutter:stable_both-edges] [direction:rtl] [&>*]:[direction:ltr] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-neutral-600 [&::-webkit-scrollbar-thumb]:rounded-full";
+    "pr-1 space-y-1 overflow-y-scroll scrollbar-thin scrollbar-thumb-primary/40 scrollbar-track-transparent [scrollbar-color:rgba(198,90,78,0.55)_transparent] [scrollbar-width:thin] [scrollbar-gutter:stable_both-edges] [direction:rtl] [&>*]:[direction:ltr] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-primary/45 [&::-webkit-scrollbar-thumb]:rounded-full";
   const semesterDragEnabled = Boolean(onReorderSemesters);
   const courseDragEnabled = Boolean(activeSemesterId && onReorderCourses);
 
@@ -293,7 +293,7 @@ export function CourseSidebar({
                       type="button"
                       onClick={onDashboardClick}
                       className={cn(
-                        "w-full rounded-lg border border-primary/20 bg-black/65 p-3 text-left transition-colors hover:border-primary/40 hover:bg-black/75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60",
+                        "w-full rounded-lg border border-primary/25 bg-card/80 p-3 text-left transition-colors hover:border-primary/40 hover:bg-accent/55 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60",
                         isDashboardActive &&
                           "border-primary/50 bg-primary/20 text-foreground shadow-under-white-soft"
                       )}
@@ -330,7 +330,7 @@ export function CourseSidebar({
                       </div>
                     </button>
                   ) : (
-                    <div className="rounded-lg border border-primary/20 bg-black/65 p-3">
+                    <div className="rounded-lg border border-primary/25 bg-card/80 p-3">
                       <div className="flex items-center justify-between">
                         <span className="text-sm font-bold text-foreground">
                           {dashboardSummary.overallGpa.toFixed(2)} GPA

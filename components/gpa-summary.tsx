@@ -53,7 +53,7 @@ export function GpaSummary({ courses, semesterName }: GpaSummaryProps) {
           <div
             className={`space-y-1 ${
               courses.length > 4
-                ? "max-h-[200px] pl-2 overflow-y-auto scrollbar-thin scrollbar-thumb-neutral-600/80 scrollbar-track-transparent hover:scrollbar-thumb-neutral-500/80 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full"
+                ? "max-h-[200px] pl-2 overflow-y-auto scrollbar-thin scrollbar-thumb-primary/45 scrollbar-track-transparent hover:scrollbar-thumb-primary/55 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full"
                 : ""
             }`}
             dir={safeCourses.length > 4 ? "rtl" : undefined}

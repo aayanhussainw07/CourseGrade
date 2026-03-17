@@ -8,7 +8,6 @@ import { GradeDistributionChart } from "@/components/grade-distribution-chart";
 import { GpaTimelineChart } from "@/components/gpa-timeline-chart";
 import { Button } from "@/components/ui/button";
 import {
-  type LucideIcon,
   Plus,
   GraduationCap,
   Sparkles,
@@ -17,7 +16,7 @@ import {
   TrendingUp,
   Layers,
 } from "lucide-react";
-import { DEFAULT_GRADE_SCALE, type Course, type Semester } from "@/lib/types";
+import { type Course, type Semester } from "@/lib/types";
 import { storage, ApiUnavailableError } from "@/lib/storage";
 import {
   serializeCourseCsv,
@@ -34,657 +33,36 @@ import {
   persistCourseSettings,
   removeCourseSettings,
 } from "@/lib/course-settings";
-import { calculateGPA, getLetterGradeColor } from "@/lib/grade-utils";
-const generateClientId = () =>
-  typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
-    ? crypto.randomUUID()
-    : Math.random().toString(36).slice(2);
-
-const SEMESTER_ORDER_STORAGE_KEY = "grade-calculator-semester-order";
-const ACTIVE_SEMESTER_STORAGE_KEY = "grade-calculator-active-semester";
-const DASHBOARD_SENTINEL = "__dashboard__";
-
-type Snapshot = {
-  semesters: Semester[];
-  semesterOrder: string[];
-  activeSemesterId: string | null;
-};
-
-const deepCopy = <T,>(value: T): T => {
-  try {
-    return structuredClone(value);
-  } catch {
-    return JSON.parse(JSON.stringify(value));
-  }
-};
-
-const sanitizeSemesters = (semesters: Semester[], current?: Semester[]) => {
-  const collapseMap = new Map(
-    (current || []).flatMap((semester) =>
-      (semester.courses || []).map((course) => [course.id, course.collapsed])
-    )
-  );
-  return semesters.map((semester) => ({
-    ...semester,
-    courses: (semester.courses || []).map((course) => {
-      const { collapsed, ...rest } = course;
-      return { ...rest, collapsed: collapseMap.get(course.id) ?? false };
-    }),
-  }));
-};
-
-const triggerFileDownload = (filename: string, content: string) => {
-  if (typeof window === "undefined") return;
-  const blob = new Blob([content], { type: "text/csv;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
-};
-
-const safeFilename = (name: string | undefined, fallback: string) => {
-  if (name && name.length > 0) {
-    const sanitized = name.replace(/[^a-z0-9]+/gi, "_");
-    return sanitized.length > 0 ? sanitized : fallback;
-  }
-  return fallback;
-};
-
-const courseToPortable = (course: Course): CoursePortableData => ({
-  name: course.name,
-  credits: course.credits,
-  percentBoost: course.percentBoost ?? 0,
-  isPassFail: course.isPassFail ?? false,
-  passLabel: course.passLabel ?? "P",
-  failLabel: course.failLabel ?? "F",
-  passThreshold: course.passThreshold ?? 60,
-  cardColor: course.cardColor ?? null,
-  gradeScale:
-    Array.isArray(course.gradeScale) && course.gradeScale.length > 0
-      ? course.gradeScale
-      : [],
-  criteria: (Array.isArray(course.criteria) ? course.criteria : []).map(
-    (criterion) => ({
-      name: criterion.name,
-      weight: criterion.weight,
-      score: criterion.score,
-      extraCredit: criterion.extraCredit ?? 0,
-      dropLowest: criterion.dropLowest ?? 0,
-      subItems: (Array.isArray(criterion.subItems)
-        ? criterion.subItems
-        : []
-      ).map((subItem) => ({
-        id: subItem.id,
-        name: subItem.name,
-        score: subItem.score,
-      })),
-    })
-  ),
-});
-
-interface DashboardBackupPayload {
-  version: number;
-  generatedAt: string;
-  semesterOrder: string[];
-  semesters: Array<{
-    id?: string;
-    name: string;
-    background?: string;
-    timelineDate?: string | null;
-    courses: CoursePortableData[];
-  }>;
-}
-
-const readStoredSemesterOrder = (): string[] => {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = localStorage.getItem(SEMESTER_ORDER_STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter((value): value is string => typeof value === "string");
-  } catch {
-    return [];
-  }
-};
-
-const writeStoredSemesterOrder = (order: string[]) => {
-  if (typeof window === "undefined") return;
-  try {
-    localStorage.setItem(SEMESTER_ORDER_STORAGE_KEY, JSON.stringify(order));
-  } catch {
-    // Ignore storage errors
-  }
-};
-
-const formatDateLabel = (value?: string | null) => {
-  if (!value) return "Not set";
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return value;
-  return parsed.toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "short",
-  });
-};
-
-const gpaToLetterGrade = (gpa: number) => {
-  if (gpa >= 3.95) return "A+";
-  if (gpa >= 3.85) return "A";
-  if (gpa >= 3.7) return "A-";
-  if (gpa >= 3.3) return "B+";
-  if (gpa >= 3.0) return "B";
-  if (gpa >= 2.7) return "B-";
-  if (gpa >= 2.3) return "C+";
-  if (gpa >= 2.0) return "C";
-  if (gpa >= 1.7) return "C-";
-  if (gpa >= 1.3) return "D+";
-  if (gpa >= 1.0) return "D";
-  if (gpa >= 0.7) return "D-";
-  return "F";
-};
-
-const getGpaColor = (gpa: number) => getLetterGradeColor(gpaToLetterGrade(gpa));
-
-const parseSemesterSortValue = (semester: Semester) => {
-  const source = semester.createdAt ?? semester.updatedAt;
-  const parsed = source ? Date.parse(source) : Number.NaN;
-  if (Number.isNaN(parsed)) {
-    return Number.MAX_SAFE_INTEGER;
-  }
-  return parsed;
-};
-
-const isServerResourceId = (value: string | null | undefined) =>
-  typeof value === "string" && /^\d+$/.test(value);
-
-const marketingFeatures: {
-  title: string;
-  description: string;
-  icon: LucideIcon;
-}[] = [
-  {
-    title: "Organize every semester",
-    description:
-      "Group classes by term and drag semesters in the order you remember them.",
-    icon: Layers,
-  },
-  {
-    title: "Visualize progress instantly",
-    description:
-      "GPA timelines and grade distributions surface trends so you can intervene before finals week.",
-    icon: TrendingUp,
-  },
-  {
-    title: "Model any grading rule",
-    description:
-      "Weighted criteria, extra credit, drop-lowest policies, pass/fail scales—CourseGrade handles real syllabi.",
-    icon: Sparkles,
-  },
-];
-
-const marketingTimelineData = [
-  { label: "Fall ’21", gpa: 3.91 },
-  { label: "Spring ’22", gpa: 3.88 },
-  { label: "Fall ’22", gpa: 3.85 },
-  { label: "Spring ’23", gpa: 3.83 },
-  { label: "Fall ’23", gpa: 3.8 },
-  { label: "Spring ’24", gpa: 3.78 },
-].map((entry) => ({ ...entry, color: getGpaColor(entry.gpa) }));
-
-const cloneDefaultScale = () =>
-  DEFAULT_GRADE_SCALE.map((grade) => ({ ...grade }));
-
-const marketingCourses: Course[] = [
-  {
-    id: "marketing-course-1",
-    name: "Algorithms",
-    credits: 4,
-    criteria: [
-      {
-        id: "marketing-course-1-criterion",
-        clientId: "marketing-course-1-criterion",
-        name: "Overall",
-        weight: 100,
-        score: 98,
-        dropLowest: 0,
-        extraCredit: 0,
-      },
-    ],
-    gradeScale: cloneDefaultScale(),
-    collapsed: false,
-    isPassFail: false,
-  },
-  {
-    id: "marketing-course-2",
-    name: "Sustainability Lab",
-    credits: 3,
-    criteria: [
-      {
-        id: "marketing-course-2-criterion",
-        clientId: "marketing-course-2-criterion",
-        name: "Overall",
-        weight: 100,
-        score: 94,
-        dropLowest: 0,
-        extraCredit: 0,
-      },
-    ],
-    gradeScale: cloneDefaultScale(),
-    collapsed: false,
-    isPassFail: false,
-  },
-  {
-    id: "marketing-course-3",
-    name: "Studio Seminar",
-    credits: 2,
-    criteria: [
-      {
-        id: "marketing-course-3-criterion",
-        clientId: "marketing-course-3-criterion",
-        name: "Overall",
-        weight: 100,
-        score: 90,
-        dropLowest: 0,
-        extraCredit: 0,
-      },
-    ],
-    gradeScale: cloneDefaultScale(),
-    collapsed: false,
-    isPassFail: false,
-  },
-  {
-    id: "marketing-course-4",
-    name: "Signal Processing",
-    credits: 3,
-    criteria: [
-      {
-        id: "marketing-course-4-criterion",
-        clientId: "marketing-course-4-criterion",
-        name: "Overall",
-        weight: 100,
-        score: 92,
-        dropLowest: 0,
-        extraCredit: 0,
-      },
-    ],
-    gradeScale: cloneDefaultScale(),
-    collapsed: false,
-    isPassFail: false,
-  },
-  {
-    id: "marketing-course-5",
-    name: "Human Factors",
-    credits: 3,
-    criteria: [
-      {
-        id: "marketing-course-5-criterion",
-        clientId: "marketing-course-5-criterion",
-        name: "Overall",
-        weight: 100,
-        score: 89,
-        dropLowest: 0,
-        extraCredit: 0,
-      },
-    ],
-    gradeScale: cloneDefaultScale(),
-    collapsed: false,
-    isPassFail: false,
-  },
-  {
-    id: "marketing-course-6",
-    name: "Database Systems",
-    credits: 4,
-    criteria: [
-      {
-        id: "marketing-course-6-criterion",
-        clientId: "marketing-course-6-criterion",
-        name: "Overall",
-        weight: 100,
-        score: 95,
-        dropLowest: 0,
-        extraCredit: 0,
-      },
-    ],
-    gradeScale: cloneDefaultScale(),
-    collapsed: false,
-    isPassFail: false,
-  },
-  {
-    id: "marketing-course-7",
-    name: "Design Studio",
-    credits: 2,
-    criteria: [
-      {
-        id: "marketing-course-7-criterion",
-        clientId: "marketing-course-7-criterion",
-        name: "Overall",
-        weight: 100,
-        score: 93,
-        dropLowest: 0,
-        extraCredit: 0,
-      },
-    ],
-    gradeScale: cloneDefaultScale(),
-    collapsed: false,
-    isPassFail: false,
-  },
-  {
-    id: "marketing-course-8",
-    name: "Microeconomics",
-    credits: 3,
-    criteria: [
-      {
-        id: "marketing-course-8-criterion",
-        clientId: "marketing-course-8-criterion",
-        name: "Overall",
-        weight: 100,
-        score: 88,
-        dropLowest: 0,
-        extraCredit: 0,
-      },
-    ],
-    gradeScale: cloneDefaultScale(),
-    collapsed: false,
-    isPassFail: false,
-  },
-  {
-    id: "marketing-course-9",
-    name: "Systems Architecture",
-    credits: 3,
-    criteria: [
-      {
-        id: "marketing-course-9-criterion",
-        clientId: "marketing-course-9-criterion",
-        name: "Overall",
-        weight: 100,
-        score: 96,
-        dropLowest: 0,
-        extraCredit: 0,
-      },
-    ],
-    gradeScale: cloneDefaultScale(),
-    collapsed: false,
-    isPassFail: false,
-  },
-  {
-    id: "marketing-course-10",
-    name: "Machine Learning",
-    credits: 4,
-    criteria: [
-      {
-        id: "marketing-course-10-criterion",
-        clientId: "marketing-course-10-criterion",
-        name: "Overall",
-        weight: 100,
-        score: 97,
-        dropLowest: 0,
-        extraCredit: 0,
-      },
-    ],
-    gradeScale: cloneDefaultScale(),
-    collapsed: false,
-    isPassFail: false,
-  },
-  {
-    id: "marketing-course-11",
-    name: "Professional Writing",
-    credits: 2,
-    criteria: [
-      {
-        id: "marketing-course-11-criterion",
-        clientId: "marketing-course-11-criterion",
-        name: "Overall",
-        weight: 100,
-        score: 91,
-        dropLowest: 0,
-        extraCredit: 0,
-      },
-    ],
-    gradeScale: cloneDefaultScale(),
-    collapsed: false,
-    isPassFail: false,
-  },
-  {
-    id: "marketing-course-12",
-    name: "Embedded Systems",
-    credits: 3,
-    criteria: [
-      {
-        id: "marketing-course-12-criterion",
-        clientId: "marketing-course-12-criterion",
-        name: "Overall",
-        weight: 100,
-        score: 87,
-        dropLowest: 0,
-        extraCredit: 0,
-      },
-    ],
-    gradeScale: cloneDefaultScale(),
-    collapsed: false,
-    isPassFail: false,
-  },
-  {
-    id: "marketing-course-13",
-    name: "Entrepreneurship Lab",
-    credits: 1,
-    criteria: [
-      {
-        id: "marketing-course-13-criterion",
-        clientId: "marketing-course-13-criterion",
-        name: "Overall",
-        weight: 100,
-        score: 93,
-        dropLowest: 0,
-        extraCredit: 0,
-      },
-    ],
-    gradeScale: cloneDefaultScale(),
-    collapsed: false,
-    isPassFail: false,
-  },
-  {
-    id: "marketing-course-14",
-    name: "Game Theory",
-    credits: 3,
-    criteria: [
-      {
-        id: "marketing-course-14-criterion",
-        clientId: "marketing-course-14-criterion",
-        name: "Overall",
-        weight: 100,
-        score: 90,
-        dropLowest: 0,
-        extraCredit: 0,
-      },
-    ],
-    gradeScale: cloneDefaultScale(),
-    collapsed: false,
-    isPassFail: false,
-  },
-  {
-    id: "marketing-course-15",
-    name: "Cognitive Science",
-    credits: 3,
-    criteria: [
-      {
-        id: "marketing-course-15-criterion",
-        clientId: "marketing-course-15-criterion",
-        name: "Overall",
-        weight: 100,
-        score: 85,
-        dropLowest: 0,
-        extraCredit: 0,
-      },
-    ],
-    gradeScale: cloneDefaultScale(),
-    collapsed: false,
-    isPassFail: false,
-  },
-  {
-    id: "marketing-course-16",
-    name: "Creative Coding",
-    credits: 2,
-    criteria: [
-      {
-        id: "marketing-course-16-criterion",
-        clientId: "marketing-course-16-criterion",
-        name: "Overall",
-        weight: 100,
-        score: 99,
-        dropLowest: 0,
-        extraCredit: 0,
-      },
-    ],
-    gradeScale: cloneDefaultScale(),
-    collapsed: false,
-    isPassFail: false,
-  },
-  {
-    id: "marketing-course-17",
-    name: "Innovation Lab",
-    credits: 1,
-    criteria: [
-      {
-        id: "marketing-course-17-criterion",
-        clientId: "marketing-course-17-criterion",
-        name: "Overall",
-        weight: 100,
-        score: 92,
-        dropLowest: 0,
-        extraCredit: 0,
-      },
-    ],
-    gradeScale: cloneDefaultScale(),
-    collapsed: false,
-    isPassFail: false,
-  },
-  {
-    id: "marketing-course-18",
-    name: "Product Management",
-    credits: 3,
-    criteria: [
-      {
-        id: "marketing-course-18-criterion",
-        clientId: "marketing-course-18-criterion",
-        name: "Overall",
-        weight: 100,
-        score: 88,
-        dropLowest: 0,
-        extraCredit: 0,
-      },
-    ],
-    gradeScale: cloneDefaultScale(),
-    collapsed: false,
-    isPassFail: false,
-  },
-  {
-    id: "marketing-course-19",
-    name: "Bioinformatics",
-    credits: 3,
-    criteria: [
-      {
-        id: "marketing-course-19-criterion",
-        clientId: "marketing-course-19-criterion",
-        name: "Overall",
-        weight: 100,
-        score: 86,
-        dropLowest: 0,
-        extraCredit: 0,
-      },
-    ],
-    gradeScale: cloneDefaultScale(),
-    collapsed: false,
-    isPassFail: false,
-  },
-  {
-    id: "marketing-course-20",
-    name: "Ethics in AI",
-    credits: 2,
-    criteria: [
-      {
-        id: "marketing-course-20-criterion",
-        clientId: "marketing-course-20-criterion",
-        name: "Overall",
-        weight: 100,
-        score: 94,
-        dropLowest: 0,
-        extraCredit: 0,
-      },
-    ],
-    gradeScale: cloneDefaultScale(),
-    collapsed: false,
-    isPassFail: false,
-  },
-];
-
-const marketingTotalCredits = marketingCourses.reduce(
-  (sum, course) => sum + (course.credits ?? 0),
-  0
-);
-
-const marketingDashboardStats = [
-  { label: "Overall GPA", value: "3.91", icon: TrendingUp },
-  {
-    label: "Total Credits",
-    value: marketingTotalCredits.toString(),
-    icon: Layers,
-  },
-  { label: "Semesters Tracked", value: "6", icon: GraduationCap },
-];
-
-const marketingCapabilityCards = [
-  {
-    title: "Live GPA math",
-    description:
-      "Weighted criteria, pass/fail logic, and letter scales are modeled exactly the way your instructors grade.",
-  },
-  {
-    title: "Drag-and-drop organization",
-    description:
-      "Reorder semesters, recolor courses, and collapse sections to match the way you plan your workload.",
-  },
-  {
-    title: "One-click backups",
-    description:
-      "Export CSV or JSON snapshots before advising meetings or when switching devices.",
-  },
-  {
-    title: "Role-aware sharing",
-    description:
-      "Sign in with Google and sync across browsers so mentors and teammates can pick up where you left off.",
-  },
-];
-
-const marketingWorkflow = [
-  {
-    title: "Import or start from scratch",
-    description:
-      "Bring in past semesters via CSV/JSON or create new ones with a single click.",
-  },
-  {
-    title: "Track assignments in real time",
-    description:
-      "Update scores and watch GPA summaries, charts, and alerts respond instantly.",
-  },
-  {
-    title: "Share and export anywhere",
-    description:
-      "Download clean CSVs for advisors, backups, or accountability partners whenever you need them.",
-  },
-];
-
-const marketingHighlights = [
-  {
-    value: "Unlimited courses",
-    detail: "Per semester with drag-and-drop ordering",
-  },
-  { value: "CSV + JSON export", detail: "Portable backups & quick sharing" },
-  { value: "Secure Google sign-in", detail: "Syncs your data across browsers" },
-];
+import { calculateGPA } from "@/lib/grade-utils";
+import {
+  ACTIVE_SEMESTER_STORAGE_KEY,
+  DASHBOARD_SENTINEL,
+  type DashboardBackupPayload,
+  type Snapshot,
+  courseToPortable,
+  deepCopy,
+  formatDateLabel,
+  generateClientId,
+  getGpaColor,
+  isServerResourceId,
+  parseSemesterSortValue,
+  readStoredDashboardMessage,
+  readStoredSemesterOrder,
+  safeFilename,
+  sanitizeSemesters,
+  triggerFileDownload,
+  writeStoredDashboardMessage,
+  writeStoredSemesterOrder,
+} from "@/app/page-utils";
+import {
+  marketingCapabilityCards,
+  marketingCourses,
+  marketingDashboardStats,
+  marketingFeatures,
+  marketingHighlights,
+  marketingTimelineData,
+  marketingWorkflow,
+} from "@/app/page-marketing-data";
 
 export default function GradeCalculator() {
   // -------------------------------
@@ -705,9 +83,15 @@ export default function GradeCalculator() {
   }>({ past: [], future: [], lastSerialized: "" });
   const skipHistoryRef = useRef(false);
   const snapshotDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(
-    null
+    null,
   );
   const { data: session, status } = useSession();
+  const [dashboardMessage, setDashboardMessage] = useState("");
+  const [dashboardMessageDraft, setDashboardMessageDraft] = useState("");
+  const dashboardMessageScopeId = useMemo(
+    () => session?.user?.id || session?.user?.email || "default",
+    [session?.user?.id, session?.user?.email],
+  );
 
   useEffect(() => {
     setSemesterOrder((previous) => {
@@ -731,7 +115,7 @@ export default function GradeCalculator() {
 
   const activeSemester = useMemo(
     () => semesters.find((semester) => semester.id === activeSemesterId),
-    [semesters, activeSemesterId]
+    [semesters, activeSemesterId],
   );
   const courses = activeSemester?.courses || [];
   const isDashboardView = activeSemesterId === null;
@@ -811,11 +195,11 @@ export default function GradeCalculator() {
   const orderedSemesters = useMemo(() => {
     if (semesterOrder.length === 0) {
       return [...semesters].sort(
-        (a, b) => parseSemesterSortValue(a) - parseSemesterSortValue(b)
+        (a, b) => parseSemesterSortValue(a) - parseSemesterSortValue(b),
       );
     }
     const semesterMap = new Map(
-      semesters.map((semester) => [semester.id, semester])
+      semesters.map((semester) => [semester.id, semester]),
     );
     const ordered = semesterOrder
       .map((id) => semesterMap.get(id))
@@ -824,7 +208,7 @@ export default function GradeCalculator() {
       return ordered;
     }
     const missing = semesters.filter(
-      (semester) => !semesterOrder.includes(semester.id)
+      (semester) => !semesterOrder.includes(semester.id),
     );
     return [...ordered, ...missing];
   }, [semesterOrder, semesters]);
@@ -832,17 +216,17 @@ export default function GradeCalculator() {
   const allCourses = useMemo(
     () =>
       orderedSemesters.flatMap((semester) =>
-        Array.isArray(semester.courses) ? semester.courses : []
+        Array.isArray(semester.courses) ? semester.courses : [],
       ),
-    [orderedSemesters]
+    [orderedSemesters],
   );
   const overallGpa = useMemo(
     () => (allCourses.length > 0 ? calculateGPA(allCourses) : 0),
-    [allCourses]
+    [allCourses],
   );
   const totalCredits = useMemo(
     () => allCourses.reduce((sum, course) => sum + course.credits, 0),
-    [allCourses]
+    [allCourses],
   );
   const totalSemesters = orderedSemesters.length;
 
@@ -854,7 +238,7 @@ export default function GradeCalculator() {
           : [];
         const credits = coursesList.reduce(
           (sum, course) => sum + course.credits,
-          0
+          0,
         );
         const gpa = coursesList.length > 0 ? calculateGPA(coursesList) : 0;
         return {
@@ -865,7 +249,7 @@ export default function GradeCalculator() {
           createdAt: semester.createdAt ?? semester.updatedAt ?? "",
         };
       }),
-    [orderedSemesters]
+    [orderedSemesters],
   );
 
   const timelineData = useMemo(
@@ -878,7 +262,7 @@ export default function GradeCalculator() {
           color: getGpaColor(gpaValue),
         };
       }),
-    [semesterSummaries]
+    [semesterSummaries],
   );
 
   const dashboardSummary = useMemo(
@@ -887,17 +271,14 @@ export default function GradeCalculator() {
       totalCredits,
       totalSemesters,
     }),
-    [overallGpa, totalCredits, totalSemesters]
+    [overallGpa, totalCredits, totalSemesters],
   );
 
-  // -------------------------------
-  // 🔹 THEME HANDLING
-  // -------------------------------
-
   useEffect(() => {
-    document.documentElement.classList.remove("light");
-    document.documentElement.classList.add("dark");
-  }, []);
+    const storedMessage = readStoredDashboardMessage(dashboardMessageScopeId);
+    setDashboardMessage(storedMessage);
+    setDashboardMessageDraft(storedMessage);
+  }, [dashboardMessageScopeId]);
 
   useEffect(() => {
     if (loading) return;
@@ -959,7 +340,7 @@ export default function GradeCalculator() {
       const savedOrder = readStoredSemesterOrder();
       if (savedOrder.length > 0) {
         const validOrder = savedOrder.filter((id) =>
-          mergedSemesters.some((semester) => semester.id === id)
+          mergedSemesters.some((semester) => semester.id === id),
         );
         if (validOrder.length > 0) {
           setSemesterOrder(validOrder);
@@ -967,7 +348,7 @@ export default function GradeCalculator() {
       }
 
       const savedActiveSemester = localStorage.getItem(
-        ACTIVE_SEMESTER_STORAGE_KEY
+        ACTIVE_SEMESTER_STORAGE_KEY,
       );
       if (savedActiveSemester === DASHBOARD_SENTINEL) {
         setActiveSemesterId(null);
@@ -1030,6 +411,19 @@ export default function GradeCalculator() {
     }
   };
 
+  const saveDashboardMessage = useCallback(() => {
+    const value = dashboardMessageDraft.trim();
+    writeStoredDashboardMessage(dashboardMessageScopeId, value);
+    setDashboardMessage(value);
+    setDashboardMessageDraft(value);
+  }, [dashboardMessageDraft, dashboardMessageScopeId]);
+
+  const clearDashboardMessage = useCallback(() => {
+    writeStoredDashboardMessage(dashboardMessageScopeId, "");
+    setDashboardMessage("");
+    setDashboardMessageDraft("");
+  }, [dashboardMessageScopeId]);
+
   // -------------------------------
   // 🔹 SEMESTER MANAGEMENT
   // -------------------------------
@@ -1037,7 +431,7 @@ export default function GradeCalculator() {
   const addSemester = async () => {
     try {
       const newSemester = await storage.createSemester(
-        `Semester ${semesters.length + 1}`
+        `Semester ${semesters.length + 1}`,
       );
       setSemesters((prev) => [...prev, newSemester]);
       setActiveSemesterId(newSemester.id);
@@ -1075,7 +469,7 @@ export default function GradeCalculator() {
     try {
       await storage.updateSemester(semesterId, { name: newName });
       setSemesters((prev) =>
-        prev.map((s) => (s.id === semesterId ? { ...s, name: newName } : s))
+        prev.map((s) => (s.id === semesterId ? { ...s, name: newName } : s)),
       );
       setServerOffline(false);
     } catch (error) {
@@ -1098,15 +492,15 @@ export default function GradeCalculator() {
       const newCourse = await storage.createCourse(
         activeSemesterId,
         `Course ${courses.length + 1}`,
-        3
+        3,
       );
 
       setSemesters((prev) =>
         prev.map((s) =>
           s.id === activeSemesterId
             ? { ...s, courses: [...s.courses, newCourse] }
-            : s
-        )
+            : s,
+        ),
       );
       setServerOffline(false);
 
@@ -1125,7 +519,7 @@ export default function GradeCalculator() {
   const importPortableCourse = useCallback(
     async (
       courseData: CoursePortableData,
-      semesterId: string
+      semesterId: string,
     ): Promise<Course> => {
       const numericOr = (value: number | undefined, fallback: number) =>
         typeof value === "number" && Number.isFinite(value) ? value : fallback;
@@ -1136,7 +530,7 @@ export default function GradeCalculator() {
       const baseCourse = await storage.createCourse(
         semesterId,
         fallbackName,
-        numericOr(courseData.credits, 0)
+        numericOr(courseData.credits, 0),
       );
       const normalizedCriteria =
         courseData.criteria?.map((criterion, index) => ({
@@ -1151,7 +545,7 @@ export default function GradeCalculator() {
           extraCredit: numericOr(criterion.extraCredit, 0),
           dropLowest: Math.max(
             0,
-            Math.floor(numericOr(criterion.dropLowest, 0))
+            Math.floor(numericOr(criterion.dropLowest, 0)),
           ),
           subItems: (criterion.subItems ?? []).map((subItem, subIndex) => ({
             id: generateClientId(),
@@ -1172,12 +566,15 @@ export default function GradeCalculator() {
         failLabel: courseData.failLabel ?? baseCourse.failLabel ?? "F",
         passThreshold: numericOr(
           courseData.passThreshold,
-          baseCourse.passThreshold ?? 60
+          baseCourse.passThreshold ?? 60,
         ),
         cardColor: courseData.cardColor ?? baseCourse.cardColor ?? null,
         percentBoost: Math.max(
           0,
-          Math.min(100, numericOr(courseData.percentBoost, baseCourse.percentBoost ?? 0))
+          Math.min(
+            100,
+            numericOr(courseData.percentBoost, baseCourse.percentBoost ?? 0),
+          ),
         ),
         gradeScale:
           courseData.gradeScale && courseData.gradeScale.length > 0
@@ -1191,12 +588,12 @@ export default function GradeCalculator() {
 
       const syncedCourse = await storage.updateCourse(
         semesterId,
-        updatedCourse
+        updatedCourse,
       );
       persistCourseSettings(syncedCourse);
       return syncedCourse;
     },
-    []
+    [],
   );
 
   const updateCourse = async (id: string, updatedCourse: Course) => {
@@ -1207,7 +604,12 @@ export default function GradeCalculator() {
       : [];
     const normalizedPercentBoost = Math.max(
       0,
-      Math.min(100, Number.isFinite(updatedCourse.percentBoost ?? 0) ? updatedCourse.percentBoost ?? 0 : 0)
+      Math.min(
+        100,
+        Number.isFinite(updatedCourse.percentBoost ?? 0)
+          ? (updatedCourse.percentBoost ?? 0)
+          : 0,
+      ),
     );
     const stateCriteria = baseCriteria.map((criterion) => ({
       ...criterion,
@@ -1239,8 +641,8 @@ export default function GradeCalculator() {
                 ...s,
                 courses: s.courses.map((c) => (c.id === id ? nextCourse : c)),
               }
-            : s
-        )
+            : s,
+        ),
       );
     };
 
@@ -1252,7 +654,7 @@ export default function GradeCalculator() {
 
     if (!isServerCourse || !isServerSemester) {
       console.warn(
-        "[v0] Skipping course sync until course and semester have server IDs."
+        "[v0] Skipping course sync until course and semester have server IDs.",
       );
       return;
     }
@@ -1260,7 +662,7 @@ export default function GradeCalculator() {
     try {
       const syncedCourse = await storage.updateCourse(
         activeSemesterId,
-        sanitizedCourse
+        sanitizedCourse,
       );
       applyCourseUpdate(syncedCourse);
       persistCourseSettings(syncedCourse);
@@ -1282,7 +684,7 @@ export default function GradeCalculator() {
       const filename = `${safeFilename(semester.name, "semester")}.json`;
       triggerFileDownload(filename, csv);
     },
-    [semesters]
+    [semesters],
   );
 
   const exportCourseToJson = useCallback(
@@ -1297,7 +699,7 @@ export default function GradeCalculator() {
         }
       }
     },
-    [semesters]
+    [semesters],
   );
 
   const exportDashboardBackup = useCallback(() => {
@@ -1339,7 +741,7 @@ export default function GradeCalculator() {
         for (const courseData of data.courses ?? []) {
           const importedCourse = await importPortableCourse(
             courseData,
-            created.id
+            created.id,
           );
           importedCourses.push(importedCourse);
         }
@@ -1360,7 +762,7 @@ export default function GradeCalculator() {
         }
       }
     },
-    [importPortableCourse, semesters.length]
+    [importPortableCourse, semesters.length],
   );
 
   const importCourseFromJson = useCallback(
@@ -1374,8 +776,8 @@ export default function GradeCalculator() {
           prev.map((semester) =>
             semester.id === semesterId
               ? { ...semester, courses: [...semester.courses, importedCourse] }
-              : semester
-          )
+              : semester,
+          ),
         );
         setServerOffline(false);
       } catch (error) {
@@ -1386,7 +788,7 @@ export default function GradeCalculator() {
         }
       }
     },
-    [importPortableCourse]
+    [importPortableCourse],
   );
 
   const importDashboardBackup = useCallback(
@@ -1419,7 +821,7 @@ export default function GradeCalculator() {
                 }`;
           const created = await storage.createSemester(
             safeName,
-            semesterData?.timelineDate ?? null
+            semesterData?.timelineDate ?? null,
           );
           const background = semesterData?.background ?? created.background;
           if (
@@ -1438,7 +840,7 @@ export default function GradeCalculator() {
           for (const courseData of semesterData?.courses ?? []) {
             const importedCourse = await importPortableCourse(
               courseData,
-              created.id
+              created.id,
             );
             importedCourses.push(importedCourse);
           }
@@ -1477,7 +879,7 @@ export default function GradeCalculator() {
         }
       }
     },
-    [importPortableCourse, semesters.length]
+    [importPortableCourse, semesters.length],
   );
 
   const deleteCourse = async (id: string) => {
@@ -1492,8 +894,8 @@ export default function GradeCalculator() {
         prev.map((s) =>
           s.id === activeSemesterId
             ? { ...s, courses: s.courses.filter((c) => c.id !== id) }
-            : s
-        )
+            : s,
+        ),
       );
       setServerOffline(false);
     } catch (error) {
@@ -1510,7 +912,7 @@ export default function GradeCalculator() {
     setSemesterOrder(orderedIds);
     setSemesters((previous) => {
       const semesterMap = new Map(
-        previous.map((semester) => [semester.id, semester])
+        previous.map((semester) => [semester.id, semester]),
       );
       const reordered = orderedIds
         .map((id) => semesterMap.get(id))
@@ -1519,7 +921,7 @@ export default function GradeCalculator() {
         return reordered;
       }
       const extras = previous.filter(
-        (semester) => !orderedIds.includes(semester.id)
+        (semester) => !orderedIds.includes(semester.id),
       );
       return [...reordered, ...extras];
     });
@@ -1532,7 +934,7 @@ export default function GradeCalculator() {
         previous.map((semester) => {
           if (semester.id !== semesterId) return semester;
           const courseMap = new Map(
-            semester.courses.map((course) => [course.id, course])
+            semester.courses.map((course) => [course.id, course]),
           );
           const reordered = orderedCourseIds
             .map((courseId) => courseMap.get(courseId))
@@ -1544,16 +946,16 @@ export default function GradeCalculator() {
             };
           }
           const extras = semester.courses.filter(
-            (course) => !orderedCourseIds.includes(course.id)
+            (course) => !orderedCourseIds.includes(course.id),
           );
           return {
             ...semester,
             courses: [...reordered, ...extras],
           };
-        })
+        }),
       );
     },
-    []
+    [],
   );
 
   const editCourse = async (courseId: string, newName: string) => {
@@ -1933,18 +1335,20 @@ export default function GradeCalculator() {
           </SheetContent>
         </Sheet>
       </div>
-      <div className="fixed right-6 top-6 z-50 flex items-center gap-3 rounded-full border border-border/80 bg-card/95 px-4 py-2 shadow-under-white">
-        <div className="text-left">
-          <p className="text-sm font-semibold text-foreground">
-            {session?.user?.name || session?.user?.email || "Google User"}
-          </p>
-          <p className="text-xs text-muted-foreground">
-            {session?.user?.email}
-          </p>
+      <div className="sticky top-0 z-50 flex justify-end px-3 pt-3">
+        <div className="flex items-center gap-1 rounded-full border border-border/80 bg-card/95 px-4 py-2 shadow-under-white">
+          <div className="text-left">
+            <p className="text-sm font-semibold text-foreground">
+              {session?.user?.name || session?.user?.email || "Google User"}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {session?.user?.email}
+            </p>
+          </div>
+          <Button variant="ghost" size="sm" onClick={() => signOut()}>
+            Sign out
+          </Button>
         </div>
-        <Button variant="ghost" size="sm" onClick={() => signOut()}>
-          Sign out
-        </Button>
       </div>
       <CourseSidebar
         semesters={orderedSemesters}
@@ -1980,6 +1384,42 @@ export default function GradeCalculator() {
                   CourseGrade
                 </h1>
               </div>
+            </div>
+            <div className="w-full rounded-lg border border-primary/35 bg-card/85 p-3 text-left shadow-under-white-soft">
+              <p className="text-xs text-muted-foreground">
+                Save a quote you want to see every time you open your dashboard.
+              </p>
+              <textarea
+                value={dashboardMessageDraft}
+                onChange={(event) =>
+                  setDashboardMessageDraft(event.target.value)
+                }
+                placeholder="Your motivational quote..."
+                rows={2}
+                maxLength={280}
+                className="mt-2 w-full resize-y rounded-md border border-primary/25 bg-background/90 px-3 py-1.5 text-sm text-foreground outline-none transition focus:border-primary/45"
+              />
+              <div className="mt-2 flex items-center gap-2">
+                <Button size="sm" onClick={saveDashboardMessage}>
+                  Save message
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={clearDashboardMessage}
+                  disabled={
+                    dashboardMessage.length === 0 &&
+                    dashboardMessageDraft.trim().length === 0
+                  }
+                >
+                  Clear
+                </Button>
+              </div>
+              {dashboardMessage && (
+                <p className="mt-2 rounded-md border border-primary/20 bg-background/90 px-3 py-1.5 text-sm italic text-foreground/90">
+                  "{dashboardMessage}"
+                </p>
+              )}
             </div>
 
             {semesters.length === 0 ? (
@@ -2023,17 +1463,17 @@ export default function GradeCalculator() {
                       courses={allCourses}
                     />
                   ) : (
-                    <div className="rounded-lg border border-primary/20 bg-card/70 p-4 text-sm text-muted-foreground">
-                      Add courses to see the overall grade distribution.
+                    <div className="rounded-lg border bg-card/85 p-4 text-left border-2 border-primary/35 shadow-under-white-strong text-lg text-muted-foreground">
+                      Add your courses to see grade distributions!
                     </div>
                   )}
                 </div>
 
-                <div className="grid gap-4 lg:grid-cols-2">
+                <div className="grid p-4 gap-4 lg:grid">
                   {semesterSummaries.map((summary) => (
                     <div
                       key={summary.id}
-                      className="rounded-lg border border-primary/35 bg-card/85 p-4 shadow-under-white-soft"
+                      className="rounded-lg border border-primary/35 bg-card/85 p-4 text-left shadow-under-white-soft"
                     >
                       <div className="flex items-center justify-between">
                         <div>

@@ -124,21 +124,21 @@ export function calculateGPA(courses: Course[] | null | undefined): number {
 
 export function getLetterGradeColor(letter: string): string {
   const colorMap: Record<string, string> = {
-    "A+": "#ffffff",
-    A: "#f1f1f1",
-    "A-": "#e3e3e3",
-    "B+": "#d5d5d5",
-    B: "#c6c6c6",
-    "B-": "#b7b7b7",
-    "C+": "#a6a6a6",
-    C: "#959595",
-    "C-": "#848484",
-    "D+": "#727272",
-    D: "#626262",
-    "D-": "#515151",
-    F: "#404040",
+    "A+": "#c95b51",
+    A: "#bf5349",
+    "A-": "#b54b42",
+    "B+": "#ab433b",
+    B: "#a13c35",
+    "B-": "#97352f",
+    "C+": "#8d2e29",
+    C: "#832723",
+    "C-": "#79201d",
+    "D+": "#6f1917",
+    D: "#651411",
+    "D-": "#5b0f0c",
+    F: "#4a0a08",
   }
-  return colorMap[letter] || "#7a7a7a"
+  return colorMap[letter] || "#7c3e4d"
 }
 
 const parseColorChannels = (value: string): [number, number, number] | null => {
