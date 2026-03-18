@@ -1,4 +1,5 @@
 import type { Course, GradeScale, Semester, SubItem } from "./types"
+import { cloneGradeScale } from "./grade-utils"
 
 const COURSE_SETTINGS_KEY = "grade-calculator-course-settings"
 
@@ -21,8 +22,7 @@ export type StoredCourseSettings = Pick<
   criterionExtras?: Record<string, StoredCriterionExtras>
 }
 
-const cloneGradeScale = (scale: GradeScale[]) => scale.map((grade) => ({ ...grade }))
-const cloneOptionalGradeScale = (scale?: GradeScale[]) => scale?.map((grade) => ({ ...grade }))
+const cloneOptionalGradeScale = (scale?: GradeScale[]) => scale ? cloneGradeScale(scale) : undefined
 const cloneSubItems = (items?: SubItem[]) => items?.map((item) => ({ ...item }))
 
 export const readStoredCourseSettings = (): Record<string, StoredCourseSettings> => {

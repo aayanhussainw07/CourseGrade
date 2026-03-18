@@ -1,5 +1,7 @@
 import type { Course, Criterion, GradeScale } from "./types"
 
+export const cloneGradeScale = (scale: GradeScale[]): GradeScale[] => scale.map((grade) => ({ ...grade }))
+
 const defGradeScale = [
   { letter: "A+", min: 96 },
   { letter: "A", min: 93 },
@@ -124,21 +126,21 @@ export function calculateGPA(courses: Course[] | null | undefined): number {
 
 export function getLetterGradeColor(letter: string): string {
   const colorMap: Record<string, string> = {
-    "A+": "#c95b51",
-    A: "#bf5349",
-    "A-": "#b54b42",
-    "B+": "#ab433b",
-    B: "#a13c35",
-    "B-": "#97352f",
-    "C+": "#8d2e29",
-    C: "#832723",
-    "C-": "#79201d",
-    "D+": "#6f1917",
-    D: "#651411",
-    "D-": "#5b0f0c",
-    F: "#4a0a08",
+    "A+": "#e8756a",
+    A:   "#d9645a",
+    "A-": "#c5534a",
+    "B+": "#e8a068",
+    B:   "#d98e58",
+    "B-": "#c57e4a",
+    "C+": "#d9c058",
+    C:   "#c8ae48",
+    "C-": "#b59a3a",
+    "D+": "#9898d0",
+    D:   "#8484be",
+    "D-": "#7070ac",
+    F:   "#8a8a8a",
   }
-  return colorMap[letter] || "#7c3e4d"
+  return colorMap[letter] || "#888"
 }
 
 const parseColorChannels = (value: string): [number, number, number] | null => {
@@ -180,18 +182,6 @@ export function getMonochromeCardColor(value?: string | null): string | null {
   return r === g && g === b ? value : null
 }
 
-export function calculateGradeDistribution(courses: Course[]): Record<string, number> {
-  const distribution: Record<string, number> = {}
-
-  for (const course of courses) {
-    const numericGrade = calculateCourseGrade(course.criteria, course.percentBoost)
-    const letterGrade = getLetterGrade(numericGrade, course.gradeScale)
-    distribution[letterGrade] = (distribution[letterGrade] || 0) + 1
-  }
-
-  return distribution
-}
-
 export function isCourseDefault(course: Course): boolean {
   // Check if name matches default pattern
   const isDefaultName = course.name.match(/^Course \d+$/)
@@ -208,12 +198,3 @@ export function isCourseDefault(course: Course): boolean {
   return !!(isDefaultName && hasDefaultScores)
 }
 
-export function isSemesterDefault(semester: { name: string; courses: Course[] }): boolean {
-  // Check if name matches default pattern
-  const isDefaultName = semester.name.match(/^Semester \d+$/)
-
-  // Check if semester has no courses
-  const hasNoCourses = semester.courses.length === 0
-
-  return !!(isDefaultName && hasNoCourses)
-}

@@ -11,19 +11,16 @@ import { RollingNumber } from "@/components/rolling-number"
 
 interface GpaSummaryProps {
   courses: Course[]
-  semesterName?: string
 }
 
-export function GpaSummary({ courses, semesterName }: GpaSummaryProps) {
+export function GpaSummary({ courses }: GpaSummaryProps) {
   const safeCourses = Array.isArray(courses) ? courses : []
   const gpa = calculateGPA(safeCourses)
   const totalCredits = safeCourses.reduce((sum, c) => sum + c.credits, 0)
-  const semesterLabel = semesterName ? `${semesterName}` : "Semester"
-
   return (
     <Card className="border-2 border-primary/35 shadow-under-white-strong">
       <CardHeader>
-        <CardTitle className="text-center text-2xl text-primary">{semesterLabel}</CardTitle>
+        <CardTitle className="text-center text-xl text-primary">GPA Summary</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">

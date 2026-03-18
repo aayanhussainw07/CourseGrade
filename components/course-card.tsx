@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge"
 import { Trash2, Plus, X, Settings, ChevronDown, ChevronRight, ChevronUp, Palette, Download } from "lucide-react"
 import {
   calculateCourseGrade,
+  cloneGradeScale,
   getLetterGrade,
   getLetterGradeColor,
   getMonochromeCardColor,
@@ -19,8 +20,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { GradeScaleEditor } from "@/components/grade-scale-editor"
 import { RollingNumber } from "@/components/rolling-number"
 import { DEFAULT_GRADE_SCALE } from "@/lib/types"
-
-const cloneGradeScale = (scale: GradeScale[]) => scale.map((grade) => ({ ...grade }))
 
 const buildPassFailScale = (settings: { passLabel?: string; failLabel?: string; threshold?: number }): GradeScale[] => {
   const passLabel = settings.passLabel?.trim() || "P"

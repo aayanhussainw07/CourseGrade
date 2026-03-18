@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { calculateCourseGrade, getLetterGrade, getLetterGradeColor } from "@/lib/grade-utils"
+import { calculateCourseGrade, getLetterGrade } from "@/lib/grade-utils"
 import type { Course } from "@/lib/types"
 import { BarChart3, PieChart } from "lucide-react"
 import { useMemo, useState } from "react"
@@ -13,78 +13,55 @@ interface GradeDistributionChartProps {
 }
 
 const GRADE_ORDER = ["A+", "A", "A-", "B+", "B", "B-", "C+", "C", "C-", "D+", "D", "D-", "F"]
-const MAX_BAR_HEIGHT = 130
 
-interface ChartBase {
+const CHART_COLORS: Record<string, string> = {
+  "A+": "#e8756a",
+  "A":  "#d9645a",
+  "A-": "#c5534a",
+  "B+": "#e8a068",
+  "B":  "#d98e58",
+  "B-": "#c57e4a",
+  "C+": "#d9c058",
+  "C":  "#c8ae48",
+  "C-": "#b59a3a",
+  "D+": "#9898d0",
+  "D":  "#8484be",
+  "D-": "#7070ac",
+  "F":  "#8a8a8a",
+}
+
+interface ChartEntry {
   letter: string
   count: number
-  fillColor: string
-}
-
-interface ChartBar extends ChartBase {
-  hasData: boolean
-  barHeight: number
-}
-
-interface ChartSlice extends ChartBase {
-  startFraction: number
-  fraction: number
+  color: string
+  pct: number
 }
 
 export function GradeDistributionChart({ courses, title = "Grade Distribution" }: GradeDistributionChartProps) {
   const [chartType, setChartType] = useState<"bar" | "pie">("bar")
 
-  const chartData = useMemo(() => {
-    if (!courses.length) {
-      return { totalCount: 0, bars: [] as ChartBar[], slices: [] as ChartSlice[] }
-    }
-
-    const distribution: Record<string, number> = {}
-
+  const data = useMemo((): ChartEntry[] => {
+    if (!courses.length) return []
+    const dist: Record<string, number> = {}
     for (const course of courses) {
-      const numericGrade = calculateCourseGrade(course.criteria, course.percentBoost)
-      const letterGrade = getLetterGrade(numericGrade, course.gradeScale)
-      distribution[letterGrade] = (distribution[letterGrade] || 0) + 1
+      const numeric = calculateCourseGrade(course.criteria, course.percentBoost)
+      const letter = getLetterGrade(numeric, course.gradeScale)
+      dist[letter] = (dist[letter] || 0) + 1
     }
-
-    const ordered = GRADE_ORDER.map((letter) => ({
+    const total = Object.values(dist).reduce((s, v) => s + v, 0)
+    if (!total) return []
+    return GRADE_ORDER.filter((l) => dist[l]).map((letter) => ({
       letter,
-      count: distribution[letter] || 0,
-    })).filter(({ count }) => count > 0)
-
-    if (!ordered.length) {
-      return { totalCount: 0, bars: [] as ChartBar[], slices: [] as ChartSlice[] }
-    }
-
-    const totalCount = ordered.reduce((sum, grade) => sum + grade.count, 0)
-    const maxCount = Math.max(...ordered.map((grade) => grade.count), 1)
-
-    const bars: ChartBar[] = ordered.map(({ letter, count }) => ({
-      letter,
-      count,
-      fillColor: getLetterGradeColor(letter),
-      hasData: count > 0,
-      barHeight: count ? Math.max(6, (count / maxCount) * MAX_BAR_HEIGHT) : 0,
+      count: dist[letter],
+      color: CHART_COLORS[letter] ?? "#888",
+      pct: Math.round((dist[letter] / total) * 100),
     }))
-
-    let cumulativeFraction = 0
-    const slices: ChartSlice[] = ordered.map(({ letter, count }) => {
-      const fraction = count / totalCount
-      const slice = {
-        letter,
-        count,
-        fillColor: getLetterGradeColor(letter),
-        fraction,
-        startFraction: cumulativeFraction,
-      }
-      cumulativeFraction += fraction
-      return slice
-    })
-
-    return { totalCount, bars, slices }
   }, [courses])
 
-  if (!courses.length || chartData.totalCount === 0) return null
+  if (!data.length) return null
+
+  const total = data.reduce((s, d) => s + d.count, 0)
+  const maxCount = Math.max(...data.map((d) => d.count), 1)
 
   return (
     <Card className="border-2 border-primary/35 shadow-under-white-strong">
@@ -106,98 +83,152 @@ export function GradeDistributionChart({ courses, title = "Grade Distribution" }
               size="icon"
               className="h-8 w-8"
               onClick={() => setChartType("pie")}
-              title="Pie chart"
+              title="Donut chart"
             >
               <PieChart className="h-4 w-4" />
             </Button>
           </div>
         </div>
       </CardHeader>
-      <CardContent className="min-h-[250px]">
+      <CardContent>
         {chartType === "bar" ? (
-          <div className="mt-4 flex h-56 items-end justify-between gap-2 border-t border-border/40 pt-4">
-            {chartData.bars.map(({ letter, count, fillColor, hasData, barHeight }) => (
-              <div key={letter} className="flex min-w-[32px] flex-1 flex-col items-center">
-                <div className="relative flex w-full flex-col items-center">
-                  {hasData ? (
-                    <div
-                      className="flex w-full items-end justify-center rounded-t-md transition-all"
-                      style={{
-                        height: `${barHeight}px`,
-                        backgroundColor: fillColor,
-                      }}
-                    >
-                      <span className="mb-2 text-sm font-semibold text-black">{count}</span>
-                    </div>
-                  ) : (
-                    <div className="flex h-12 w-full items-end justify-center">
-                      <div className="h-1 w-full rounded-full bg-muted" />
-                    </div>
-                  )}
-                  <div className="mt-2 h-1 w-full rounded-full bg-muted" />
-                </div>
-                <span className={`mt-2 text-xs font-semibold tracking-wide ${hasData ? "" : "text-muted-foreground"}`}>
-                  {letter}
-                </span>
-              </div>
-            ))}
-          </div>
+          <BarView data={data} maxCount={maxCount} />
         ) : (
-          <div className="flex flex-col items-center gap-4">
-            <svg viewBox="0 0 260 260" className="h-60 w-60">
-              {chartData.slices.map(({ letter, count, fillColor, startFraction, fraction }) => {
-                const radius = 110
-                const center = 130
-                if (fraction >= 1) {
-                  return (
-                    <g key={letter}>
-                      <circle cx={center} cy={center} r={radius} fill={fillColor} />
-                      <text x={center} y={center - 6} fill="#050505" fontSize="16" fontWeight="700" textAnchor="middle">
-                        {letter}
-                      </text>
-                      <text x={center} y={center + 12} fill="#050505" fontSize="12" textAnchor="middle">
-                        {count}
-                      </text>
-                    </g>
-                  )
-                }
-
-                const startAngle = startFraction * 360
-                const angle = fraction * 360
-                const endAngle = startAngle + angle
-
-                const startRad = ((startAngle - 90) * Math.PI) / 180
-                const endRad = ((endAngle - 90) * Math.PI) / 180
-
-                const x1 = center + radius * Math.cos(startRad)
-                const y1 = center + radius * Math.sin(startRad)
-                const x2 = center + radius * Math.cos(endRad)
-                const y2 = center + radius * Math.sin(endRad)
-
-                const largeArc = angle > 180 ? 1 : 0
-                const path = `M ${center} ${center} L ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2} Z`
-
-                const midAngle = ((startAngle + endAngle) / 2 - 90) * (Math.PI / 180)
-                const labelRadius = radius * 0.65
-                const labelX = center + labelRadius * Math.cos(midAngle)
-                const labelY = center + labelRadius * Math.sin(midAngle)
-
-                return (
-                  <g key={letter}>
-                    <path d={path} fill={fillColor} stroke="#080808" strokeWidth="1" />
-                    <text x={labelX} y={labelY - 6} fill="#050505" fontSize="12" fontWeight="700" textAnchor="middle">
-                      {letter}
-                    </text>
-                    <text x={labelX} y={labelY + 10} fill="#050505" fontSize="11" textAnchor="middle">
-                      {count}
-                    </text>
-                  </g>
-                )
-              })}
-            </svg>
-          </div>
+          <DonutView data={data} total={total} />
         )}
       </CardContent>
     </Card>
+  )
+}
+
+function BarView({ data, maxCount }: { data: ChartEntry[]; maxCount: number }) {
+  return (
+    <div className="flex items-end gap-1.5 px-1 pt-2" style={{ height: "220px" }}>
+      {data.map(({ letter, count, color, pct }) => {
+        const heightPct = Math.max(10, (count / maxCount) * 78)
+        return (
+          <div key={letter} className="flex flex-1 flex-col items-center gap-1">
+            <span className="text-[10px] font-medium text-muted-foreground">{pct}%</span>
+            <div className="flex w-full flex-1 flex-col justify-end">
+              <div
+                className="w-full rounded-t-lg transition-all duration-500"
+                style={{
+                  height: `${heightPct}%`,
+                  backgroundColor: color,
+                  boxShadow: `0 -3px 10px ${color}66`,
+                }}
+              >
+                <span className="flex w-full justify-center pt-1.5 text-[11px] font-bold text-white/90 drop-shadow">
+                  {count}
+                </span>
+              </div>
+            </div>
+            <div className="h-px w-full bg-border/50" />
+            <span className="text-[11px] font-semibold text-foreground">{letter}</span>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+function DonutView({ data, total }: { data: ChartEntry[]; total: number }) {
+  const SIZE = 200
+  const cx = SIZE / 2
+  const cy = SIZE / 2
+  const outerR = 84
+  const innerR = 52
+  const GAP = 1.8
+
+  function arc(cx: number, cy: number, r: number, deg: number) {
+    const rad = ((deg - 90) * Math.PI) / 180
+    return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) }
+  }
+
+  let cum = 0
+  const slices = data.map((entry) => {
+    const start = cum
+    cum += entry.count / total
+    return { ...entry, start, fraction: entry.count / total }
+  })
+
+  function slicePath(start: number, fraction: number) {
+    const startDeg = start * 360 + GAP / 2
+    const endDeg = (start + fraction) * 360 - GAP / 2
+    const large = (endDeg - startDeg) > 180 ? 1 : 0
+    const p1 = arc(cx, cy, outerR, startDeg)
+    const p2 = arc(cx, cy, outerR, endDeg)
+    const p3 = arc(cx, cy, innerR, endDeg)
+    const p4 = arc(cx, cy, innerR, startDeg)
+    return [
+      `M ${p1.x} ${p1.y}`,
+      `A ${outerR} ${outerR} 0 ${large} 1 ${p2.x} ${p2.y}`,
+      `L ${p3.x} ${p3.y}`,
+      `A ${innerR} ${innerR} 0 ${large} 0 ${p4.x} ${p4.y}`,
+      "Z",
+    ].join(" ")
+  }
+
+  const labelR = (outerR + innerR) / 2
+
+  return (
+    <div className="flex flex-col items-center">
+      <svg viewBox={`0 0 ${SIZE} ${SIZE}`} className="h-52 w-52">
+        {slices.map((s) => {
+          const midDeg = (s.start + s.fraction / 2) * 360
+          const lp = arc(cx, cy, labelR, midDeg)
+          const showLabel = s.fraction >= 1 || s.fraction > 0.07
+
+          if (s.fraction >= 1) {
+            return (
+              <g key={s.letter}>
+                <circle cx={cx} cy={cy} r={outerR} fill={s.color} />
+                <circle cx={cx} cy={cy} r={innerR} fill="var(--card)" />
+                <text x={cx} y={cy - 4} textAnchor="middle" fontSize="13" fontWeight="700" fill="#fff">{s.letter}</text>
+                <text x={cx} y={cy + 12} textAnchor="middle" fontSize="10" fill="#fff" opacity="0.85">{s.pct}%</text>
+              </g>
+            )
+          }
+
+          return (
+            <g key={s.letter} className="cursor-pointer">
+              <path
+                d={slicePath(s.start, s.fraction)}
+                fill={s.color}
+                className="transition-opacity hover:opacity-75"
+              />
+              {showLabel && (
+                <>
+                  <text
+                    x={lp.x}
+                    y={lp.y - 4}
+                    textAnchor="middle"
+                    fontSize="11"
+                    fontWeight="700"
+                    fill="#fff"
+                    style={{ pointerEvents: "none" }}
+                  >
+                    {s.letter}
+                  </text>
+                  <text
+                    x={lp.x}
+                    y={lp.y + 9}
+                    textAnchor="middle"
+                    fontSize="9"
+                    fill="#fff"
+                    opacity="0.85"
+                    style={{ pointerEvents: "none" }}
+                  >
+                    {s.pct}%
+                  </text>
+                </>
+              )}
+            </g>
+          )
+        })}
+        <text x={cx} y={cy - 7} textAnchor="middle" fontSize="22" fontWeight="700" fill="var(--foreground)">{total}</text>
+        <text x={cx} y={cy + 11} textAnchor="middle" fontSize="9" letterSpacing="1.5" fill="var(--muted-foreground)">COURSES</text>
+      </svg>
+    </div>
   )
 }

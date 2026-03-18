@@ -8,21 +8,21 @@ export const marketingFeatures: {
   icon: LucideIcon;
 }[] = [
   {
-    title: "Organize every semester",
+    title: "Stop guessing your GPA",
     description:
-      "Group classes by term and drag semesters in the order you remember them.",
+      "You have a 73.4 in Calc II. Is that good? Is that bad? CourseGrade knows. You probably don't want to.",
     icon: Layers,
   },
   {
-    title: "Visualize progress instantly",
+    title: "Find out before your recruiters do",
     description:
-      "GPA timelines and grade distributions surface trends so you can intervene before finals week.",
+      "GPA timelines and grade charts so you can pretend you noticed the problem weeks ago.",
     icon: TrendingUp,
   },
   {
-    title: "Model any grading rule",
+    title: "Your syllabus is a fever dream",
     description:
-      "Weighted criteria, extra credit, drop-lowest policies, pass/fail scales—CourseGrade handles real syllabi.",
+      "Weighted quizzes, extra credit for showing up, drop-lowest for some reason... CourseGrade handles all of it without crying.",
     icon: Sparkles,
   },
 ];
@@ -148,8 +148,8 @@ export const marketingWorkflow = [
 export const marketingHighlights = [
   {
     value: "Unlimited courses",
-    detail: "Per semester with drag-and-drop ordering",
+    detail: "Yes, even that one you regret signing up for.",
   },
-  { value: "CSV + JSON export", detail: "Portable backups & quick sharing" },
-  { value: "Secure Google sign-in", detail: "Syncs your data across browsers" },
+  { value: "Automatic GPA calculations", detail: "No calc (short for calculator, btw) required. We checked." },
+  { value: "Google sign-in", detail: "One less password to forget. You're welcome." },
 ];

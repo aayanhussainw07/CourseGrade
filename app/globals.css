@@ -1,4 +1,12 @@
 @import url("https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap");
+
+@font-face {
+  font-family: "Etna";
+  src: url("/fonts/Etna.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
 @import "tailwindcss";
 @import "tw-animate-css";
 
@@ -7,9 +15,9 @@
 :root {
   --font-sans: "Space Grotesk", "Avenir Next", "Segoe UI", sans-serif;
   --font-display: "Fredoka", "Trebuchet MS", sans-serif;
-  --background: #f9f5f3;
+  --background: #f5edea;
   --foreground: #4d1f1a;
-  --card: rgba(255, 250, 248, 0.96);
+  --card: rgba(255, 255, 255, 0.96);
   --card-foreground: #4d1f1a;
   --popover: rgba(255, 246, 243, 0.98);
   --popover-foreground: #4d1f1a;
@@ -125,6 +133,13 @@
 }
 
 @layer utilities {
+  .font-etna {
+    font-family: "Etna", sans-serif;
+    text-transform: none;
+    letter-spacing: 0.01em;
+    color: #d4826e !important;
+  }
+
   .shadow-under-white-soft {
     box-shadow: var(--shadow-under-white-soft);
   }

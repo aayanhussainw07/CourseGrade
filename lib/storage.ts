@@ -123,100 +123,81 @@ export const storage = {
 
   async updateCourse(_semesterId: string, course: Course): Promise<Course> {
     const currentCriteria = Array.isArray(course.criteria) ? course.criteria : []
-    await courseApi.update(course.id, {
-      name: course.name,
-      credits: course.credits,
-      is_pass_fail: course.isPassFail ?? false,
-      percent_boost: course.percentBoost ?? 0,
-    })
 
-    const assignmentsResponse = await assignmentApi.getAll(course.id)
+    // Fetch existing assignments and update course metadata in parallel
+    const [, assignmentsResponse] = await Promise.all([
+      courseApi.update(course.id, {
+        name: course.name,
+        credits: course.credits,
+        is_pass_fail: course.isPassFail ?? false,
+        percent_boost: course.percentBoost ?? 0,
+      }),
+      assignmentApi.getAll(course.id),
+    ])
+
     const existingAssignments = extractApiList(assignmentsResponse)
-    const existingIds = new Set(existingAssignments.map((assignment) => assignment.id.toString()))
-    const desiredIds = new Set<string>()
-    const subItemsSnapshot = new Map<string, Course["criteria"][number]["subItems"]>()
-    const clientIdMap = new Map<string, string>()
-    const originalCriteriaByClientId = new Map<string, Course["criteria"][number]>()
+    const existingIds = new Set(existingAssignments.map((a) => a.id.toString()))
 
-    for (const criterion of currentCriteria) {
-      const criterionName = typeof criterion.name === "string" ? criterion.name : ""
-      const clientId = criterion.clientId ?? criterion.id
-      originalCriteriaByClientId.set(clientId, criterion)
-      const snapshot = normalizeSubItems(criterion.subItems)
-      const payload = {
-        name: criterionName,
-        weight: Math.min(criterion.weight, 100),
-        earned: normalizeScore(getCriterionScoreValue(criterion)),
-        total: 100,
-        drop_lowest: criterion.dropLowest ?? 0,
-      }
-
-      if (criterion.id && isServerAssignmentId(criterion.id) && existingIds.has(criterion.id)) {
-        let serverId = criterion.id
-        try {
-          await assignmentApi.update(criterion.id, payload)
-        } catch (e) {
-          if (e instanceof Error && e.message === "Not found.") {
-            const created = await assignmentApi.create({ course: course.id, ...payload })
-            serverId = created.id.toString()
-          } else {
-            throw e
-          }
+    // Update/create all criteria in parallel
+    const criterionResults = await Promise.all(
+      currentCriteria.map(async (criterion) => {
+        const clientId = criterion.clientId ?? criterion.id
+        const snapshot = normalizeSubItems(criterion.subItems)
+        const payload = {
+          name: typeof criterion.name === "string" ? criterion.name : "",
+          weight: Math.min(criterion.weight, 100),
+          earned: normalizeScore(getCriterionScoreValue(criterion)),
+          total: 100,
+          drop_lowest: criterion.dropLowest ?? 0,
         }
-        desiredIds.add(serverId)
-        clientIdMap.set(serverId, clientId)
-        subItemsSnapshot.set(serverId, snapshot)
-      } else {
-        const created = await assignmentApi.create({
-          course: course.id,
-          ...payload,
-        })
-        const newId = created.id.toString()
-        desiredIds.add(newId)
-        clientIdMap.set(newId, clientId)
-        subItemsSnapshot.set(newId, snapshot)
-      }
-    }
 
-    for (const assignment of existingAssignments) {
-      const assignmentId = assignment.id.toString()
-      if (!desiredIds.has(assignmentId)) {
-        try {
-          await assignmentApi.delete(assignmentId)
-        } catch (e) {
-          if (!(e instanceof Error && e.message === "Not found.")) {
-            throw e
+        if (criterion.id && isServerAssignmentId(criterion.id) && existingIds.has(criterion.id)) {
+          let serverId = criterion.id
+          try {
+            await assignmentApi.update(criterion.id, payload)
+          } catch (e) {
+            if (e instanceof Error && e.message === "Not found.") {
+              const created = await assignmentApi.create({ course: course.id, ...payload })
+              serverId = created.id.toString()
+            } else {
+              throw e
+            }
           }
+          return { serverId, clientId, snapshot, criterion }
+        } else {
+          const created = await assignmentApi.create({ course: course.id, ...payload })
+          return { serverId: created.id.toString(), clientId, snapshot, criterion }
         }
-      }
-    }
+      }),
+    )
 
-    const refreshed = await courseApi.getOne(course.id)
-    const frontendCourse = apiToFrontendCourse(refreshed)
-    frontendCourse.gradeScale = course.gradeScale
-    frontendCourse.gradeScaleSnapshot = course.gradeScaleSnapshot
-      ? course.gradeScaleSnapshot.map((grade) => ({ ...grade }))
-      : undefined
-    frontendCourse.collapsed = course.collapsed ?? false
-    frontendCourse.isPassFail = course.isPassFail ?? false
-    frontendCourse.passLabel = course.passLabel ?? "P"
-    frontendCourse.failLabel = course.failLabel ?? "F"
-    frontendCourse.passThreshold = course.passThreshold ?? 60
-    frontendCourse.cardColor = course.cardColor ?? null
-    frontendCourse.percentBoost = course.percentBoost ?? frontendCourse.percentBoost ?? 0
-    frontendCourse.criteria = frontendCourse.criteria.map((criterion, index) => {
-      const mappedClientId = clientIdMap.get(criterion.id) ?? criterion.id
-      const originalCriterion =
-        originalCriteriaByClientId.get(mappedClientId) ?? currentCriteria[index] ?? null
-      return {
+    const desiredIds = new Set(criterionResults.map((r) => r.serverId))
+
+    // Delete removed assignments in parallel
+    await Promise.all(
+      existingAssignments
+        .filter((a) => !desiredIds.has(a.id.toString()))
+        .map(async (a) => {
+          try {
+            await assignmentApi.delete(a.id.toString())
+          } catch (e) {
+            if (!(e instanceof Error && e.message === "Not found.")) {
+              throw e
+            }
+          }
+        }),
+    )
+
+    // Build result directly from client state + server IDs — no extra round trip needed
+    return {
+      ...course,
+      criteria: criterionResults.map(({ serverId, clientId, snapshot, criterion }) => ({
         ...criterion,
-        clientId: mappedClientId,
-        subItems: subItemsSnapshot.get(criterion.id) ?? [],
-        dropLowest: originalCriterion?.dropLowest ?? criterion.dropLowest ?? 0,
-        extraCredit: originalCriterion?.extraCredit ?? criterion.extraCredit ?? 0,
-      }
-    })
-    return frontendCourse
+        id: serverId,
+        clientId,
+        subItems: snapshot,
+      })),
+    }
   },
 
   async deleteCourse(_semesterId: string, id: string): Promise<void> {
