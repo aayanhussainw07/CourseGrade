@@ -192,6 +192,52 @@ export function CourseCard({
   const interactiveDragSelector =
     "button, input, textarea, select, a[href], [contenteditable='true'], [role='button'], [draggable='false']";
 
+  // Clear stale drafts when criteria are updated externally (e.g. by the AI)
+  const prevCriteriaRef = useRef(course.criteria);
+  useEffect(() => {
+    const prev = prevCriteriaRef.current;
+    prevCriteriaRef.current = course.criteria;
+    if (prev === course.criteria) return;
+
+    const changedIds = new Set<string>();
+    for (const cr of course.criteria) {
+      const p = prev.find((x) => x.id === cr.id);
+      if (!p || p.score !== cr.score || p.weight !== cr.weight || p.name !== cr.name || p.extraCredit !== cr.extraCredit || p.dropLowest !== cr.dropLowest) {
+        changedIds.add(cr.id);
+      }
+    }
+    if (changedIds.size === 0) return;
+
+    setCriterionDrafts((d) => {
+      const next = { ...d };
+      for (const id of changedIds) delete next[id];
+      return next;
+    });
+    setCriterionNameDrafts((d) => {
+      const next = { ...d };
+      for (const id of changedIds) delete next[id];
+      return next;
+    });
+    setSubItemDrafts((d) => {
+      const next = { ...d };
+      for (const cr of course.criteria) {
+        if (changedIds.has(cr.id)) {
+          for (const si of cr.subItems ?? []) delete next[si.id];
+        }
+      }
+      return next;
+    });
+    setSubItemWeightDrafts((d) => {
+      const next = { ...d };
+      for (const cr of course.criteria) {
+        if (changedIds.has(cr.id)) {
+          for (const si of cr.subItems ?? []) delete next[si.id];
+        }
+      }
+      return next;
+    });
+  }, [course.criteria]);
+
   useEffect(() => {
     setNameDraft(course.name);
   }, [course.name]);

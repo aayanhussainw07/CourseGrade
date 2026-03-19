@@ -1143,11 +1143,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         } else if (action.type === "set_percent_boost") {
           updated = { ...course, percentBoost: action.percentBoost };
         } else if (action.type === "update_criterion") {
-          // Extract name from changes for fuzzy matching
-          const crName = typeof action.changes.name === "string" ? action.changes.name : undefined;
-          const crId = resolveCriterionId(course, action.criterionId, crName);
+          // Defensively handle malformed AI responses (changes missing or flat structure)
+          const rawAction = action as Record<string, unknown>;
+          const changes: Record<string, unknown> =
+            rawAction.changes && typeof rawAction.changes === "object"
+              ? (rawAction.changes as Record<string, unknown>)
+              : { score: rawAction.score, weight: rawAction.weight, name: rawAction.name };
+
+          const crName = typeof changes.name === "string" ? changes.name : undefined;
+          const crId = resolveCriterionId(course, action.criterionId ?? (rawAction.criterionId as string) ?? "", crName);
           if (!crId || !course.criteria.some((cr) => cr.id === crId)) {
-            // Criterion not found — this is a common AI mistake
             result.failed++;
             result.errors.push(
               `Criterion "${action.criterionId}" not found in "${course.name}". ` +
@@ -1157,10 +1162,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             );
             continue;
           }
+          // Coerce numeric fields to numbers in case AI sent strings
+          const safeChanges: Partial<Criterion> = { ...changes } as Partial<Criterion>;
+          if (safeChanges.score !== undefined) safeChanges.score = Number(safeChanges.score);
+          if (safeChanges.weight !== undefined) safeChanges.weight = Number(safeChanges.weight);
+          if (safeChanges.extraCredit !== undefined) safeChanges.extraCredit = Number(safeChanges.extraCredit);
+          if (safeChanges.dropLowest !== undefined) safeChanges.dropLowest = Number(safeChanges.dropLowest);
           updated = {
             ...course,
             criteria: course.criteria.map((cr) =>
-              cr.id === crId ? { ...cr, ...action.changes } : cr,
+              cr.id === crId ? { ...cr, ...safeChanges } : cr,
             ),
           };
         } else if (action.type === "add_criterion") {
