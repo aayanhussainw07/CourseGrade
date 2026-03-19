@@ -83,10 +83,10 @@ export function GpaTimelineChart({ data }: GpaTimelineChartProps) {
 
   return (
     <Card className="border-2 border-primary/35 shadow-under-white-strong bg-white">
-      <CardHeader>
-        <CardTitle className="text-xl text-primary font-bold">GPA Timeline</CardTitle>
+      <CardHeader className="pb-2 pt-4 px-4">
+        <CardTitle className="text-base text-primary font-bold">GPA Timeline</CardTitle>
       </CardHeader>
-      <CardContent className="pt-0">
+      <CardContent className="pt-0 px-4 pb-3">
         <svg viewBox={`0 0 ${VW} ${VH}`} className="w-full">
           <defs>
             <linearGradient id="tl-area" x1="0" y1="0" x2="0" y2="1">

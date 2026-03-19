@@ -224,6 +224,39 @@ export const assignmentApi = {
     }),
 }
 
+// Syllabus AI import
+export type SyllabusExtracted = {
+  courseName: string
+  credits: number
+  isPassFail: boolean
+  assignments: Array<{ name: string; weight: number; drop_lowest: number }>
+}
+
+export const syllabusApi = {
+  analyze: async (
+    formData: FormData,
+  ): Promise<{ extracted: SyllabusExtracted; importsRemaining: number }> => {
+    const response = await fetch("/api/syllabus", {
+      method: "POST",
+      body: formData,
+      // Do NOT set Content-Type — browser sets multipart boundary automatically
+    })
+    const payload = await response.json().catch(() => ({}))
+    if (!response.ok) {
+      const error = new Error(payload.error || `Error ${response.status}`) as Error & {
+        code?: string
+        status?: number
+        retryAfterSeconds?: number
+      }
+      error.code = payload.code
+      error.status = response.status
+      error.retryAfterSeconds = payload.retryAfterSeconds
+      throw error
+    }
+    return payload
+  },
+}
+
 // Grade Scale API calls
 export const gradeScaleApi = {
   getAll: () => apiFetch<ApiListResponse<ApiGradeScale>>("/grade-scales/"),

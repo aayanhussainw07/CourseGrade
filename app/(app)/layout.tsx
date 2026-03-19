@@ -15,9 +15,15 @@ import {
   TrendingUp,
   Layers,
   Pencil,
+  Sparkles,
 } from "lucide-react";
 import Image from "next/image";
-import { type Course, type Semester } from "@/lib/types";
+import {
+  type Course,
+  type Criterion,
+  type Semester,
+  type SubItem,
+} from "@/lib/types";
 import { storage, ApiUnavailableError } from "@/lib/storage";
 import {
   serializeCourseCsv,
@@ -56,6 +62,8 @@ import {
   writeStoredSemesterOrder,
 } from "@/app/page-utils";
 import { usePathname, useRouter } from "next/navigation";
+import { SyllabusImportDialog } from "@/components/syllabus-import-dialog";
+import { ChatPanel, type ChatAction } from "@/components/chat-panel";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -93,6 +101,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [dashboardMessage, setDashboardMessage] = useState("");
   const [dashboardMessageDraft, setDashboardMessageDraft] = useState("");
   const [isEditingQuote, setIsEditingQuote] = useState(false);
+  const [syllabusImportOpen, setSyllabusImportOpen] = useState(false);
+  const [chatPanelOpen, setChatPanelOpen] = useState(false);
   const [isEditingSemesterName, setIsEditingSemesterName] = useState(false);
   const [semesterNameDraft, setSemesterNameDraft] = useState("");
   const dashboardMessageScopeId = useMemo(
@@ -349,7 +359,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       setServerOffline(false);
       const loadedSemesters = await storage.getSemesters();
       const mergedSemesters = applyStoredSettingsToSemesters(loadedSemesters);
-      setSemesters(mergedSemesters);
+      setSemesters(
+        mergedSemesters.map((s) => ({
+          ...s,
+          courses: s.courses.map((c) => ({ ...c, collapsed: true })),
+        })),
+      );
 
       const savedOrder = readStoredSemesterOrder();
       if (savedOrder.length > 0) {
@@ -442,6 +457,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       localStorage.setItem(ACTIVE_SEMESTER_STORAGE_KEY, activeSemesterId);
     }
   }, [activeSemesterId]);
+
+  useEffect(() => {
+    if (loading) return;
+    if (isDashboardView) {
+      document.title = "Dashboard";
+    } else if (activeSemester) {
+      document.title = activeSemester.name;
+    } else {
+      document.title = "CourseGrade";
+    }
+  }, [isDashboardView, activeSemester, loading]);
 
   // -------------------------------
   // SCROLL FUNCTIONALITY
@@ -716,7 +742,21 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         activeSemesterId,
         sanitizedCourse,
       );
-      applyCourseUpdate(syncedCourse);
+      // Only update criteria (to pick up server-assigned IDs for new assignments).
+      // Preserve all other in-memory state (e.g. collapsed) to avoid race conditions
+      // where a stale snapshot from a concurrent call overwrites a newer local change.
+      setSemesters((prev) =>
+        prev.map((s) =>
+          s.id === activeSemesterId
+            ? {
+                ...s,
+                courses: s.courses.map((c) =>
+                  c.id === id ? { ...c, criteria: syncedCourse.criteria } : c,
+                ),
+              }
+            : s,
+        ),
+      );
       persistCourseSettings(syncedCourse);
       setServerOffline(false);
     } catch (error) {
@@ -843,6 +883,246 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     },
     [importPortableCourse],
   );
+
+  const importCourseFromSyllabus = useCallback(
+    async (data: CoursePortableData, semesterId: string) => {
+      const importedCourse = await importPortableCourse(data, semesterId);
+      setSemesters((prev) =>
+        prev.map((s) =>
+          s.id === semesterId
+            ? { ...s, courses: [...s.courses, importedCourse] }
+            : s,
+        ),
+      );
+      setTimeout(() => scrollToCourse(importedCourse.id), 100);
+      setServerOffline(false);
+    },
+    [importPortableCourse],
+  );
+
+  const duplicateCourse = async (courseId: string) => {
+    if (!activeSemesterId) return;
+    const course = courses.find((c) => c.id === courseId);
+    if (!course) return;
+    try {
+      const duplicated = await importPortableCourse(
+        courseToPortable(course),
+        activeSemesterId,
+      );
+      setSemesters((prev) =>
+        prev.map((s) =>
+          s.id === activeSemesterId
+            ? { ...s, courses: [...s.courses, duplicated] }
+            : s,
+        ),
+      );
+      setServerOffline(false);
+      setTimeout(() => scrollToCourse(duplicated.id), 100);
+    } catch (error) {
+      if (error instanceof ApiUnavailableError) {
+        setServerOffline(true);
+      } else {
+        console.error("[v0] Failed to duplicate course:", error);
+      }
+    }
+  };
+
+  const handleChatAction = async (action: ChatAction) => {
+    // --- Semester operations (any semester by ID) ---
+    if (action.type === "add_semester") {
+      try {
+        const newSem = await storage.createSemester(action.name);
+        setSemesters((prev) => [...prev, newSem]);
+        setServerOffline(false);
+      } catch (error) {
+        if (error instanceof ApiUnavailableError) setServerOffline(true);
+      }
+      return;
+    }
+    if (action.type === "delete_semester") {
+      await deleteSemester(action.semesterId);
+      return;
+    }
+    if (action.type === "rename_semester") {
+      await editSemester(action.semesterId, action.newName);
+      return;
+    }
+    if (action.type === "duplicate_semester") {
+      const source = semesters.find((s) => s.id === action.semesterId);
+      if (!source) return;
+
+      // Build a full optimistic copy with temp IDs — show instantly
+      const tempSemId = generateClientId();
+      const optimisticCourses: Course[] = source.courses.map((course) => {
+        const tempId = generateClientId();
+        return {
+          ...deepCopy(course),
+          id: tempId,
+          clientId: tempId,
+          criteria: (course.criteria ?? []).map((cr) => {
+            const cid = generateClientId();
+            return { ...cr, id: cid, clientId: cid };
+          }),
+        };
+      });
+      setSemesters((prev) => [
+        ...prev,
+        {
+          ...source,
+          id: tempSemId,
+          name: `${source.name} (Copy)`,
+          courses: optimisticCourses,
+        },
+      ]);
+
+      // Sync to server in background, then swap in real IDs
+      (async () => {
+        try {
+          const newSem = await storage.createSemester(`${source.name} (Copy)`);
+          const syncedCourses: Course[] = [];
+          for (const course of source.courses) {
+            const dup = await importPortableCourse(
+              courseToPortable(course),
+              newSem.id,
+            );
+            syncedCourses.push(dup);
+          }
+          setSemesters((prev) =>
+            prev.map((s) =>
+              s.id === tempSemId ? { ...newSem, courses: syncedCourses } : s,
+            ),
+          );
+          setServerOffline(false);
+        } catch (error) {
+          if (error instanceof ApiUnavailableError) setServerOffline(true);
+        }
+      })();
+      return;
+    }
+
+    // --- Course operations (active semester) ---
+    if (!activeSemesterId) return;
+    const activeSem = semesters.find((s) => s.id === activeSemesterId);
+    if (!activeSem) return;
+
+    if (action.type === "add_course") {
+      try {
+        const newCourse = await storage.createCourse(
+          activeSemesterId,
+          action.name,
+          action.credits,
+        );
+        setSemesters((prev) =>
+          prev.map((s) =>
+            s.id === activeSemesterId
+              ? { ...s, courses: [...s.courses, newCourse] }
+              : s,
+          ),
+        );
+        setServerOffline(false);
+      } catch (error) {
+        if (error instanceof ApiUnavailableError) setServerOffline(true);
+      }
+      return;
+    }
+    if (action.type === "delete_course") {
+      await deleteCourse(action.courseId);
+      return;
+    }
+    if (action.type === "duplicate_course") {
+      await duplicateCourse(action.courseId);
+      return;
+    }
+
+    // Actions that need the course object
+    const course = activeSem.courses.find((c) => c.id === action.courseId);
+    if (!course) return;
+
+    if (action.type === "rename_course") {
+      updateCourse(action.courseId, { ...course, name: action.newName });
+    } else if (action.type === "set_credits") {
+      updateCourse(action.courseId, { ...course, credits: action.credits });
+    } else if (action.type === "set_pass_fail") {
+      updateCourse(action.courseId, {
+        ...course,
+        isPassFail: action.isPassFail,
+      });
+    } else if (action.type === "set_percent_boost") {
+      updateCourse(action.courseId, {
+        ...course,
+        percentBoost: action.percentBoost,
+      });
+    } else if (action.type === "update_criterion") {
+      const updatedCriteria = course.criteria.map((cr) =>
+        cr.id === action.criterionId ? { ...cr, ...action.changes } : cr,
+      );
+      updateCourse(action.courseId, { ...course, criteria: updatedCriteria });
+    } else if (action.type === "add_criterion") {
+      const cid = generateClientId();
+      const newCriterion: Criterion = {
+        id: cid,
+        clientId: cid,
+        name: action.criterion.name,
+        weight: action.criterion.weight,
+        score: action.criterion.score ?? 0,
+      };
+      updateCourse(action.courseId, {
+        ...course,
+        criteria: [...course.criteria, newCriterion],
+      });
+    } else if (action.type === "remove_criterion") {
+      updateCourse(action.courseId, {
+        ...course,
+        criteria: course.criteria.filter((cr) => cr.id !== action.criterionId),
+      });
+    } else if (action.type === "add_sub_item") {
+      const sid = generateClientId();
+      const newSubItem: SubItem = {
+        id: sid,
+        name: action.subItem.name,
+        score: action.subItem.score,
+        weight: action.subItem.weight,
+      };
+      updateCourse(action.courseId, {
+        ...course,
+        criteria: course.criteria.map((cr) =>
+          cr.id === action.criterionId
+            ? { ...cr, subItems: [...(cr.subItems ?? []), newSubItem] }
+            : cr,
+        ),
+      });
+    } else if (action.type === "update_sub_item") {
+      updateCourse(action.courseId, {
+        ...course,
+        criteria: course.criteria.map((cr) =>
+          cr.id === action.criterionId
+            ? {
+                ...cr,
+                subItems: (cr.subItems ?? []).map((si) =>
+                  si.id === action.subItemId
+                    ? { ...si, ...action.changes }
+                    : si,
+                ),
+              }
+            : cr,
+        ),
+      });
+    } else if (action.type === "remove_sub_item") {
+      updateCourse(action.courseId, {
+        ...course,
+        criteria: course.criteria.map((cr) =>
+          cr.id === action.criterionId
+            ? {
+                ...cr,
+                subItems: (cr.subItems ?? []).filter(
+                  (si) => si.id !== action.subItemId,
+                ),
+              }
+            : cr,
+        ),
+      });
+    }
+  };
 
   const importDashboardBackup = useCallback(
     async (file: File) => {
@@ -1089,7 +1369,24 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="fixed left-4 top-6 z-50 lg:hidden">
+      {/* AI chat toggle button — hidden when panel is open */}
+      {!chatPanelOpen && (
+        <div className="fixed right-4 top-4 z-50">
+          <Button
+            onClick={() => setChatPanelOpen(true)}
+            className="flex items-center gap-2 border border-sidebar-border bg-sidebar px-3 py-2 text-sm text-sidebar-foreground hover:bg-sidebar-accent"
+            style={{
+              backgroundImage:
+                "repeating-linear-gradient(0deg, rgba(77,31,26,0.08) 0px, rgba(77,31,26,0.08) 1px, transparent 1px, transparent 20px), repeating-linear-gradient(90deg, rgba(77,31,26,0.08) 0px, rgba(77,31,26,0.08) 1px, transparent 1px, transparent 20px)",
+            }}
+          >
+            <Sparkles className="h-4 w-4" />
+            Chat
+          </Button>
+        </div>
+      )}
+
+      <div className="fixed left-4 top-6 z-50 md:hidden">
         <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
           <SheetTrigger asChild>
             <Button className="flex items-center gap-2 border border-border/70 bg-card/90 px-3 py-2 text-sm text-foreground shadow-under-white hover:bg-card">
@@ -1119,12 +1416,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               onEditSemester={editSemester}
               onDeleteCourse={deleteCourse}
               onEditCourse={editCourse}
-              onExportSemester={exportSemesterToJson}
               onImportSemester={importSemesterFromJson}
-              onExportCourse={exportCourseToJson}
-              onImportCourse={importCourseFromJson}
-              onExportDashboard={exportDashboardBackup}
-              onImportDashboard={importDashboardBackup}
               onReorderSemesters={handleReorderSemesters}
               onReorderCourses={handleReorderCourses}
               dashboardSummary={totalSemesters ? dashboardSummary : undefined}
@@ -1134,6 +1426,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 router.push("/dashboard");
               }}
               isDashboardActive={isDashboardView}
+              userEmail={session?.user?.email ?? undefined}
+              onSignOut={() => signOut()}
             />
           </SheetContent>
         </Sheet>
@@ -1152,12 +1446,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         onEditSemester={editSemester}
         onDeleteCourse={deleteCourse}
         onEditCourse={editCourse}
-        onExportSemester={exportSemesterToJson}
         onImportSemester={importSemesterFromJson}
-        onExportCourse={exportCourseToJson}
-        onImportCourse={importCourseFromJson}
-        onExportDashboard={exportDashboardBackup}
-        onImportDashboard={importDashboardBackup}
         onReorderSemesters={handleReorderSemesters}
         onReorderCourses={handleReorderCourses}
         dashboardSummary={totalSemesters ? dashboardSummary : undefined}
@@ -1166,10 +1455,18 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           router.push("/dashboard");
         }}
         isDashboardActive={isDashboardView}
+        userEmail={session?.user?.email ?? undefined}
+        onSignOut={() => signOut()}
         variant="desktop"
       />
 
-      <div className="mx-auto w-full max-w-7xl px-4 py-8 transition-all duration-300 sm:px-6 lg:px-8 lg:pl-[18rem]">
+      <div
+        className="w-full px-4 py-8 transition-all duration-300 md:pl-[14rem]"
+        style={{
+          paddingRight: chatPanelOpen ? "17rem" : "2rem",
+          paddingLeft: chatPanelOpen ? "17rem" : "19rem",
+        }}
+      >
         {isDashboardView ? (
           <div className="space-y-6">
             <p className="w-fit mx-auto text-2xl font-bold uppercase tracking-widest bg-primary text-white px-8 py-2 [box-shadow:5px_5px_0_rgba(77,31,26,0.55),10px_10px_0_rgba(77,31,26,0.25)]">
@@ -1239,7 +1536,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               </div>
             ) : (
               <>
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                <div className="grid grid-cols-3 gap-4">
                   <div className="rounded-lg border border-primary/35 bg-card/85 p-4 text-left shadow-under-white-soft">
                     <p className="text-sm text-muted-foreground">Overall GPA</p>
                     <p className="mt-2 flex items-baseline gap-2 text-3xl font-bold text-primary">
@@ -1266,7 +1563,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   </div>
                 </div>
 
-                <div className="grid gap-6 lg:grid-cols-2">
+                <div className="grid gap-6 md:grid-cols-2">
                   <GpaTimelineChart data={timelineData} />
                   {allCourses.length > 0 ? (
                     <GradeDistributionChart
@@ -1404,7 +1701,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         )}
 
         {!isDashboardView && courses.length > 0 && (
-          <div className="mb-8 grid gap-6 lg:grid-cols-2">
+          <div className="mb-8 grid gap-6 md:grid-cols-2">
             <GpaSummary courses={courses} />
             <GradeDistributionChart courses={courses} />
           </div>
@@ -1436,6 +1733,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     }
                     onDelete={deleteCourse}
                     onExportCourse={exportCourseToJson}
+                    onDuplicate={() => duplicateCourse(course.id)}
                   />
                 </motion.div>
               ))}
@@ -1458,7 +1756,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 event.target.value = "";
               }}
             />
-            <div className="mt-8 flex justify-center gap-3">
+            <div className="mt-8 flex flex-wrap justify-center gap-3">
               <Button
                 onClick={addCourse}
                 size="lg"
@@ -1512,6 +1810,27 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </div>
         )}
       </div>
+
+      <ChatPanel
+        open={chatPanelOpen}
+        onOpenChange={setChatPanelOpen}
+        semesters={semesters}
+        activeSemesterId={activeSemesterId}
+        onApplyAction={handleChatAction}
+        onOpenSyllabusImport={() => setSyllabusImportOpen(true)}
+      />
+
+      {activeSemesterId && (
+        <SyllabusImportDialog
+          open={syllabusImportOpen}
+          onOpenChange={setSyllabusImportOpen}
+          semesterId={activeSemesterId}
+          semesterName={
+            semesters.find((s) => s.id === activeSemesterId)?.name ?? "Semester"
+          }
+          onImport={importCourseFromSyllabus}
+        />
+      )}
 
       <div className="hidden">{children}</div>
     </div>

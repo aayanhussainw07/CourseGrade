@@ -65,9 +65,9 @@ export function GradeDistributionChart({ courses, title = "Grade Distribution" }
 
   return (
     <Card className="border-2 border-primary/35 shadow-under-white-strong">
-      <CardHeader>
+      <CardHeader className="pb-2 pt-4 px-4">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-xl text-primary">{title}</CardTitle>
+          <CardTitle className="text-base text-primary">{title}</CardTitle>
           <div className="flex gap-1">
             <Button
               variant={chartType === "bar" ? "default" : "ghost"}
@@ -90,7 +90,7 @@ export function GradeDistributionChart({ courses, title = "Grade Distribution" }
           </div>
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="px-4 pb-3">
         {chartType === "bar" ? (
           <BarView data={data} maxCount={maxCount} />
         ) : (
@@ -103,7 +103,7 @@ export function GradeDistributionChart({ courses, title = "Grade Distribution" }
 
 function BarView({ data, maxCount }: { data: ChartEntry[]; maxCount: number }) {
   return (
-    <div className="flex items-end gap-1.5 px-1 pt-2" style={{ height: "220px" }}>
+    <div className="flex items-end gap-1.5 px-1 pt-2" style={{ height: "160px" }}>
       {data.map(({ letter, count, color, pct }) => {
         const heightPct = Math.max(10, (count / maxCount) * 78)
         return (
@@ -136,8 +136,8 @@ function DonutView({ data, total }: { data: ChartEntry[]; total: number }) {
   const SIZE = 200
   const cx = SIZE / 2
   const cy = SIZE / 2
-  const outerR = 84
-  const innerR = 52
+  const outerR = 92
+  const innerR = 56
   const GAP = 1.8
 
   function arc(cx: number, cy: number, r: number, deg: number) {
@@ -173,7 +173,7 @@ function DonutView({ data, total }: { data: ChartEntry[]; total: number }) {
 
   return (
     <div className="flex flex-col items-center">
-      <svg viewBox={`0 0 ${SIZE} ${SIZE}`} className="h-52 w-52">
+      <svg viewBox={`0 0 ${SIZE} ${SIZE}`} className="w-full" style={{ aspectRatio: "1" }}>
         {slices.map((s) => {
           const midDeg = (s.start + s.fraction / 2) * 360
           const lp = arc(cx, cy, labelR, midDeg)

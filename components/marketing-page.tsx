@@ -3,13 +3,22 @@
 import { signIn } from "next-auth/react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
+
+const GoogleIcon = () => (
+  <svg
+    viewBox="0 0 24 24"
+    className="h-4 w-4 fill-white shrink-0"
+    aria-hidden="true"
+  >
+    <path d="M21.35 11.1h-9.17v2.73h6.51c-.33 3.81-3.5 5.44-6.5 5.44C8.36 19.27 5 16.25 5 12c0-4.1 3.2-7.27 7.2-7.27 3.09 0 4.9 1.97 4.9 1.97L19 4.72S16.56 2 12.1 2C6.42 2 2.03 6.8 2.03 12c0 5.05 4.13 10 10.22 10 5.35 0 9.25-3.67 9.25-9.09 0-1.15-.15-1.81-.15-1.81z" />
+  </svg>
+);
 import { GpaTimelineChart } from "@/components/gpa-timeline-chart";
 import { GradeDistributionChart } from "@/components/grade-distribution-chart";
 import Image from "next/image";
 import {
   marketingCourses,
   marketingFeatures,
-  marketingHighlights,
   marketingTimelineData,
 } from "@/app/page-marketing-data";
 
@@ -71,7 +80,9 @@ export function MarketingPage() {
                     className="h-12 w-12"
                   />
                 </motion.div>
-                <span className="font-etna text-3xl" style={{ color: "white" }}>coursegrade.</span>
+                <span className="font-etna text-3xl text-white">
+                  coursegrade.
+                </span>
               </div>
 
               <div className="space-y-3">
@@ -88,17 +99,18 @@ export function MarketingPage() {
               </div>
 
               <p className="text-lg text-white/70 max-w-lg mx-auto text-center">
-                Ditch those spreadsheets. Marry us instead! Sign in and find the
-                next love of your life.
+                Divorce those spreadsheets. Marry us instead! Sign in and find
+                the next love of your life.
               </p>
 
               <div className="flex flex-wrap justify-center gap-3 pt-2">
                 <Button
                   size="lg"
-                  className="bg-primary text-white px-8 hover:bg-primary/90 [box-shadow:4px_4px_0_rgba(77,31,26,0.6)] hover:translate-y-px hover:[box-shadow:2px_2px_0_rgba(77,31,26,0.6)] transition-all"
+                  className="gap-2 bg-primary text-white px-8 hover:bg-primary/90 [box-shadow:4px_4px_0_rgba(77,31,26,0.6)] hover:translate-y-px hover:[box-shadow:2px_2px_0_rgba(77,31,26,0.6)] transition-all"
                   onClick={() => signIn("google")}
                 >
-                  SIGN IN W/ GOOGLE
+                  <GoogleIcon />
+                  Sign In!
                 </Button>
               </div>
             </motion.div>
@@ -153,7 +165,7 @@ export function MarketingPage() {
       </section>
 
       {/* CHARTS — full bleed primary band */}
-      <section className="bg-primary/10 border-y border-primary/20 py-20">
+      <section className="bg-background py-20">
         <div className="mx-auto max-w-7xl px-6 lg:px-12">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
@@ -176,30 +188,20 @@ export function MarketingPage() {
         </div>
       </section>
 
-      {/* HIGHLIGHTS — dark band */}
-      <section className="bg-foreground text-white pt-20 pb-0">
-        <div className="mx-auto max-w-7xl px-6 lg:px-12">
-          <div className="grid gap-px md:grid-cols-3 border border-white/10">
-            {marketingHighlights.map((h) => (
-              <div
-                key={h.value}
-                className="bg-white/5 p-8 hover:bg-primary/80 transition-colors group"
-              >
-                <p className="text-2xl font-bold text-primary group-hover:text-white transition-colors">
-                  {h.value}
-                </p>
-                <p className="mt-2 text-xs uppercase tracking-widest text-white/50 group-hover:text-white/70 transition-colors">
-                  {h.detail}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* CTA */}
-      <section className="bg-foreground text-white pt-16 pb-24">
-        <div className="mx-auto max-w-4xl px-6 text-center">
+      {/* CTA + FOOTER */}
+      <section className="relative bg-foreground text-white pb-10 overflow-hidden">
+        <div
+          className="absolute inset-0 opacity-[0.04]"
+          style={{
+            backgroundImage:
+              "repeating-linear-gradient(0deg, white 0px, white 1px, transparent 1px, transparent 40px), repeating-linear-gradient(90deg, white 0px, white 1px, transparent 1px, transparent 40px)",
+          }}
+        />
+        <div
+          className="h-12 bg-background"
+          style={{ clipPath: "polygon(0 0, 100% 0, 0 100%)" }}
+        />
+        <div className="relative mx-auto max-w-4xl px-6 pt-10 text-center">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -224,28 +226,32 @@ export function MarketingPage() {
             </p>
             <Button
               size="lg"
-              className="bg-primary text-white px-10 hover:bg-primary/90 [box-shadow:4px_4px_0_rgba(77,31,26,0.7)] hover:translate-y-px hover:[box-shadow:2px_2px_0_rgba(77,31,26,0.7)] transition-all"
+              className="gap-2 bg-primary text-white px-10 hover:bg-primary/90 [box-shadow:4px_4px_0_rgba(77,31,26,0.7)] hover:translate-y-px hover:[box-shadow:2px_2px_0_rgba(77,31,26,0.7)] transition-all"
               onClick={() => signIn("google")}
             >
-              Sign in with Google
+              <GoogleIcon />
+              Sign In!
             </Button>
           </motion.div>
-        </div>
-      </section>
 
-      {/* FOOTER */}
-      <section className="bg-foreground border-t border-white/10 py-6 text-center space-y-2">
-        <p className="text-xs text-white/40">Made with ♥ by @aayanh7</p>
-        <motion.a
-          href="https://www.buymeacoffee.com/aayanh7"
-          target="_blank"
-          rel="noreferrer"
-          className="text-xs text-white/30 hover:text-white/60 transition-colors"
-          animate={{ y: [0, -4, 0] }}
-          transition={{ repeat: Infinity, duration: 2.4, ease: "easeInOut" }}
-        >
-          ☕ buy me a coffee (if you want!)
-        </motion.a>
+          <div className="mt-16 flex flex-col items-center gap-1.5 pt-6">
+            <p className="text-xs text-white/40">Made with ♥ by @aayanh7</p>
+            <motion.a
+              href="https://www.buymeacoffee.com/aayanh7"
+              target="_blank"
+              rel="noreferrer"
+              className="text-xs text-white/30 hover:text-white/60 transition-colors"
+              animate={{ y: [0, -4, 0] }}
+              transition={{
+                repeat: Infinity,
+                duration: 2.4,
+                ease: "easeInOut",
+              }}
+            >
+              ☕ buy me a coffee (if you want!)
+            </motion.a>
+          </div>
+        </div>
       </section>
     </div>
   );

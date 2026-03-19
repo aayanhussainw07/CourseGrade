@@ -37,6 +37,8 @@ interface CourseSidebarProps {
   onImportSemester?: (file: File) => void;
   onReorderSemesters?: (orderedSemesterIds: string[]) => void;
   onReorderCourses?: (semesterId: string, orderedCourseIds: string[]) => void;
+  userEmail?: string;
+  onSignOut?: () => void;
   dashboardSummary?: {
     overallGpa: number;
     totalCredits: number;
@@ -63,6 +65,8 @@ export function CourseSidebar({
   dashboardSummary,
   onDashboardClick,
   isDashboardActive,
+  userEmail,
+  onSignOut,
   variant = "desktop",
 }: CourseSidebarProps) {
   const [editingSemesterId, setEditingSemesterId] = useState<string | null>(
@@ -202,7 +206,7 @@ export function CourseSidebar({
   const containerClass = cn(
     "overflow-hidden border-r border-white/10 bg-foreground text-white flex flex-col",
     variant === "desktop"
-      ? "fixed left-0 top-0 hidden h-screen w-64 lg:flex"
+      ? "fixed left-0 top-0 hidden h-screen w-52 md:flex lg:w-64"
       : "h-full w-full rounded-none border-0",
   );
 
@@ -215,8 +219,8 @@ export function CourseSidebar({
             "repeating-linear-gradient(0deg, rgba(255,255,255,0.04) 0px, rgba(255,255,255,0.04) 1px, transparent 1px, transparent 40px), repeating-linear-gradient(90deg, rgba(255,255,255,0.04) 0px, rgba(255,255,255,0.04) 1px, transparent 1px, transparent 40px)",
         }}
       >
-        <div className="flex items-center justify-between border-b-2 border-white/10 p-2">
-          <div className="flex mx-auto mt-1 items-center gap-2">
+        <div className="border-b-2 border-white/10">
+          <div className="flex mx-auto mt-1 items-center justify-center gap-2 px-2 pt-2 pb-1">
             <Image
               src="/coursegrade.png"
               alt="CourseGrade"
@@ -228,6 +232,19 @@ export function CourseSidebar({
               coursegrade.
             </span>
           </div>
+          {userEmail && (
+            <div className="flex flex-col items-center pb-2 gap-0.5">
+              <span className="text-[10px] text-white/60 truncate max-w-[90%]">{userEmail}</span>
+              {onSignOut && (
+                <button
+                  onClick={onSignOut}
+                  className="text-[10px] text-white/45 hover:text-white/80 transition-colors"
+                >
+                  Sign out
+                </button>
+              )}
+            </div>
+          )}
           <input
             ref={semesterFileInputRef}
             type="file"

@@ -23,23 +23,18 @@ const normalizeCriteria = (criteria?: Criterion[] | null): Criterion[] => (Array
 
 function getCriterionScore(criterion: Criterion): number {
   if (criterion.subItems && criterion.subItems.length > 0) {
-    const scores = criterion.subItems.map(item => item.score)
+    const items = criterion.subItems
+    const hasWeights = items.some((item) => item.weight !== undefined && item.weight > 0)
     const dropLowest = criterion.dropLowest || 0
-
-    // If we have items to drop and enough scores
-    if (dropLowest > 0 && scores.length > dropLowest) {
-      // Sort scores in ascending order
-      const sortedScores = [...scores].sort((a, b) => a - b)
-      // Remove the lowest N scores
-      const keptScores = sortedScores.slice(dropLowest)
-      // Calculate average of remaining scores
-      const total = keptScores.reduce((sum, score) => sum + score, 0)
-      return total / keptScores.length
+    let effectiveItems = items
+    if (dropLowest > 0 && items.length > dropLowest) {
+      effectiveItems = [...items].sort((a, b) => a.score - b.score).slice(dropLowest)
     }
-
-    // Default behavior: average all scores
-    const total = scores.reduce((sum, score) => sum + score, 0)
-    return total / scores.length
+    if (hasWeights) {
+      return effectiveItems.reduce((sum, item) => sum + item.score * (item.weight ?? 0) / 100, 0)
+    }
+    const total = effectiveItems.reduce((sum, item) => sum + item.score, 0)
+    return total / effectiveItems.length
   }
   return criterion.score
 }

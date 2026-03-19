@@ -23,7 +23,7 @@ export function GpaSummary({ courses }: GpaSummaryProps) {
         <CardTitle className="text-center text-xl text-primary">GPA Summary</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
+        <div className="grid grid-cols-3 gap-4">
           <div className="text-center">
             <p className="text-sm font-medium text-muted-foreground">GPA</p>
             <p className="mt-2 text-5xl font-bold text-primary">
@@ -68,8 +68,8 @@ export function GpaSummary({ courses }: GpaSummaryProps) {
                   dir={safeCourses.length > 4 ? "ltr" : undefined}
                   style={backgroundStyle}
                 >
-                  <span className="font-medium">{course.name}</span>
-                  <div className="flex items-center gap-4">
+                  <span className="min-w-0 truncate font-medium">{course.name}</span>
+                  <div className="flex shrink-0 items-center gap-3">
                     <span className="text-muted-foreground">{course.credits} credits</span>
                     <span className="font-semibold text-primary">
                       <RollingNumber value={grade} decimals={1} />%

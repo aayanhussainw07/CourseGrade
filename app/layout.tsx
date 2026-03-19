@@ -3,7 +3,6 @@ import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
 import "./globals.css";
 import { AuthProvider } from "@/components/auth-provider";
-import { UserInfoBar } from "@/components/user-info-bar";
 
 export const metadata: Metadata = {
   title: "CourseGrade",
@@ -22,7 +21,6 @@ export default function RootLayout({
         className={`font-sans antialiased ${GeistSans.variable} ${GeistMono.variable}`}
       >
         <AuthProvider>
-          <UserInfoBar />
           {children}
         </AuthProvider>
       </body>
