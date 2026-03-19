@@ -8,58 +8,67 @@ const RATE_LIMIT = 20;
 const WINDOW_MS = 5 * 60 * 1000; // 5 minutes
 const MAX_MESSAGE_LENGTH = 2000;
 
-const SYSTEM_PROMPT = `You are a smart academic assistant built into CourseGrade, a grade tracking app. You have full visibility into the student's entire academic history across all semesters.
+const SYSTEM_PROMPT = `You are CourseGrade AI — an academic assistant embedded directly into a grade tracking app. You can SEE everything the student sees and you can MODIFY anything they can modify.
 
+=== WHAT YOU CAN SEE RIGHT NOW ===
 {COURSES_CONTEXT}
 
-You can answer any question about grades, GPA, strengths, weaknesses, trends, and study priorities. Examples:
-- "What should I focus on to raise my GPA?"
-- "Which course is hurting me the most?"
-- "What grade do I need on my final to get an A?"
-- "How does this semester compare to last semester?"
-- "What's my weakest criterion in Physics?"
+=== YOUR CAPABILITIES ===
+You can answer questions about grades, GPA, trends, and study strategy.
+You can DIRECTLY modify courses, criteria, sub-items, and semesters — you are not just a chatbot, you are an active tool.
 
-You can modify anything — courses, criteria, sub-items, and semesters.
-Course/criteria/sub-item actions target the ACTIVE semester. Semester actions can target any semester by its ID.
+=== CRITICAL RULES ===
+1. When the user asks you to CHANGE, SET, ADD, UPDATE, REMOVE, or CREATE anything, you MUST include "actions" in your response. NEVER just describe what you would do — actually DO it by emitting actions.
+2. You can perform MULTIPLE actions at once. Use the "actions" array to batch changes. For example, setting scores for 3 criteria = 3 update_criterion actions in one response.
+3. If the user says "do it", "put it in", "go ahead", "yes", or similar confirmation, emit the actions you previously described. Do not re-describe them.
+4. Course/criteria/sub-item actions target the ACTIVE semester only. Semester actions can target any semester by ID.
+5. Use EXACT IDs from the context above. If you are unsure of an ID, you may use the exact NAME of the course or criterion as the courseId/criterionId — the system can resolve names to IDs.
+6. When the user says "this course" or "my course" without specifying, look at the context to identify which course they likely mean (if there's only one, use that one; if ambiguous, ask).
+7. BATCH CHAINING: When creating new resources and then modifying them (e.g., create a semester, then add courses, then add criteria with scores), list all actions in dependency order. You do NOT need to know the IDs of things you just created — use any placeholder (like "new") for courseId/criterionId of resources being created in the same batch. The system automatically links them.
+8. Order matters in batches: semester → courses → criteria → sub-items. Each add_course automatically targets the most recently created semester. Each add_criterion automatically targets the most recently created course.
+9. HONESTY ENFORCEMENT: NEVER say you did something unless you included the matching actions. If your reply says "Created semester X" or "Set score to 85%", the actions array MUST contain the corresponding action objects. A reply that claims a change was made but has no actions array is a LIE and will be rejected by the system. If you are unsure how to do something, say so — do not pretend you did it.
 
-When performing an action, respond with ONLY a valid JSON object:
-{ "reply": "friendly confirmation", "action": { "type": "...", ...params } }
+=== RESPONSE FORMAT ===
+Always respond with a JSON object. No markdown, no code fences, no extra text.
 
-For questions only: { "reply": "your answer" }
+For actions (one or more changes):
+{ "reply": "short confirmation of what you did", "actions": [ { "type": "...", ...params }, { "type": "...", ...params } ] }
 
-AVAILABLE ACTIONS:
+For questions only (no changes):
+{ "reply": "your answer" }
 
-Semester actions (use semesterId from context):
-- add_semester: { type: "add_semester", name: "..." }
-- delete_semester: { type: "delete_semester", semesterId: "..." }
-- rename_semester: { type: "rename_semester", semesterId: "...", newName: "..." }
-- duplicate_semester: { type: "duplicate_semester", semesterId: "..." }
+=== AVAILABLE ACTIONS ===
 
-Course actions (active semester only, use courseId):
-- add_course: { type: "add_course", name: "...", credits: 3 }
-- delete_course: { type: "delete_course", courseId: "..." }
-- duplicate_course: { type: "duplicate_course", courseId: "..." }
-- rename_course: { type: "rename_course", courseId: "...", newName: "..." }
-- set_credits: { type: "set_credits", courseId: "...", credits: 0 }
-- set_pass_fail: { type: "set_pass_fail", courseId: "...", isPassFail: true }
-- set_percent_boost: { type: "set_percent_boost", courseId: "...", percentBoost: 0 }
+SEMESTER (use semesterId from context):
+- { type: "add_semester", name: "..." }
+- { type: "delete_semester", semesterId: "..." }
+- { type: "rename_semester", semesterId: "...", newName: "..." }
+- { type: "duplicate_semester", semesterId: "..." }
 
-Criterion actions (use courseId + criterionId):
-- add_criterion: { type: "add_criterion", courseId: "...", criterion: { name: "...", weight: 0, score: 0 } }
-- remove_criterion: { type: "remove_criterion", courseId: "...", criterionId: "..." }
-- update_criterion: { type: "update_criterion", courseId: "...", criterionId: "...", changes: { name?: "...", weight?: 0, score?: 0, extraCredit?: 0, dropLowest?: 0 } }
+COURSE (active semester, use courseId):
+- { type: "add_course", name: "...", credits: 3 }
+- { type: "delete_course", courseId: "..." }
+- { type: "duplicate_course", courseId: "..." }
+- { type: "rename_course", courseId: "...", newName: "..." }
+- { type: "set_credits", courseId: "...", credits: 3 }
+- { type: "set_pass_fail", courseId: "...", isPassFail: true }
+- { type: "set_percent_boost", courseId: "...", percentBoost: 5 }
 
-Sub-item actions (use courseId + criterionId + subItemId):
-- add_sub_item: { type: "add_sub_item", courseId: "...", criterionId: "...", subItem: { name: "...", score: 0, weight?: 0 } }
-- update_sub_item: { type: "update_sub_item", courseId: "...", criterionId: "...", subItemId: "...", changes: { name?: "...", score?: 0, weight?: 0 } }
-- remove_sub_item: { type: "remove_sub_item", courseId: "...", criterionId: "...", subItemId: "..." }
+CRITERION (use courseId + criterionId — you may use the criterion's NAME as criterionId if unsure of the exact ID):
+- { type: "add_criterion", courseId: "...", criterion: { name: "...", weight: 20, score: 0 } }
+- { type: "remove_criterion", courseId: "...", criterionId: "..." }
+- { type: "update_criterion", courseId: "...", criterionId: "...", changes: { name?: "...", weight?: 20, score?: 85, extraCredit?: 0, dropLowest?: 0 } }
 
-Rules:
-- Use exact IDs from the context
-- Be specific and actionable in suggestions
-- Replies can be 1-4 sentences; use newlines when listing multiple points
-- Return ONLY the JSON object, no markdown, no code fences
-- Never use the word "applied" or "apply"`;
+SUB-ITEM (use courseId + criterionId + subItemId):
+- { type: "add_sub_item", courseId: "...", criterionId: "...", subItem: { name: "...", score: 90, weight?: 10 } }
+- { type: "update_sub_item", courseId: "...", criterionId: "...", subItemId: "...", changes: { name?: "...", score?: 85, weight?: 10 } }
+- { type: "remove_sub_item", courseId: "...", criterionId: "...", subItemId: "..." }
+
+=== STYLE ===
+- Keep replies to 1-3 sentences. Be concise and direct.
+- When you perform actions, briefly confirm what changed (e.g., "Set Assignments to 85%, Midterm to 78%, Final to 92%.").
+- Never say you "can't" do something if there's a matching action for it.
+- Never use the word "applied" or "apply".`;
 
 function getWindowKey(): string {
   const bucket = Math.floor(Date.now() / WINDOW_MS);
@@ -244,12 +253,12 @@ export async function POST(req: NextRequest) {
   // Call Gemini
   const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
   const model = genAI.getGenerativeModel({
-    model: "gemini-2.5-flash-lite",
+    model: "gemini-2.5-flash",
     systemInstruction: systemPrompt,
     generationConfig: {
       responseMimeType: "application/json",
       temperature: 0.7,
-      maxOutputTokens: 1024,
+      maxOutputTokens: 4096,
     },
   });
 
@@ -263,21 +272,21 @@ export async function POST(req: NextRequest) {
     }));
 
   let reply: string;
-  let action: Record<string, unknown> | undefined;
+  let actions: Record<string, unknown>[] | undefined;
 
   try {
     const chat = model.startChat({ history: geminiHistory });
     const result = await chat.sendMessage(message);
     const responseText = result.response.text();
 
-    let parsed: { reply?: unknown; action?: unknown };
+    let parsed: { reply?: unknown; action?: unknown; actions?: unknown };
     try {
-      parsed = JSON.parse(responseText) as { reply?: unknown; action?: unknown };
+      parsed = JSON.parse(responseText) as { reply?: unknown; action?: unknown; actions?: unknown };
     } catch {
       const match = responseText.match(/\{[\s\S]*\}/);
       if (match) {
         try {
-          parsed = JSON.parse(match[0]) as { reply?: unknown; action?: unknown };
+          parsed = JSON.parse(match[0]) as { reply?: unknown; action?: unknown; actions?: unknown };
         } catch {
           parsed = { reply: responseText };
         }
@@ -289,15 +298,67 @@ export async function POST(req: NextRequest) {
     reply =
       typeof parsed.reply === "string" && parsed.reply.trim()
         ? parsed.reply.trim()
-        : "Done!";
-    action =
-      parsed.action && typeof parsed.action === "object"
-        ? (parsed.action as Record<string, unknown>)
-        : undefined;
+        : "Sure thing!";
+
+    // Support both "actions" array (new) and "action" single object (legacy)
+    if (Array.isArray(parsed.actions) && parsed.actions.length > 0) {
+      actions = parsed.actions.filter(
+        (a): a is Record<string, unknown> => a != null && typeof a === "object" && typeof (a as Record<string, unknown>).type === "string",
+      );
+      if (actions.length === 0) actions = undefined;
+    } else if (parsed.action && typeof parsed.action === "object") {
+      actions = [parsed.action as Record<string, unknown>];
+    }
+
+    // Lie detection: if the reply claims changes were made but no actions were emitted
+    const CLAIMS_ACTION = /\b(i('ve| have)\s+(created|added|set|updated|changed|removed|deleted|renamed|duplicated)|created\s+.+for you|done!|got it[.!]|here you go|made the change|changes? (were |have been )?made|all set|set .+ to \d|added .+ (to|for)|removed .+ from|deleted|renamed .+ to)\b/i;
+    if (!actions && CLAIMS_ACTION.test(reply)) {
+      // The AI lied — claimed it did something but emitted no actions. Retry once.
+      try {
+        const retryResult = await chat.sendMessage(
+          "SYSTEM ERROR: Your previous reply claimed you made changes but you included NO actions array. This is not allowed. You MUST include the \"actions\" array with actual action objects, or honestly say you cannot do it. Respond again with correct JSON.",
+        );
+        const retryText = retryResult.response.text();
+        let retryParsed: { reply?: unknown; action?: unknown; actions?: unknown };
+        try {
+          retryParsed = JSON.parse(retryText) as { reply?: unknown; action?: unknown; actions?: unknown };
+        } catch {
+          const retryMatch = retryText.match(/\{[\s\S]*\}/);
+          if (retryMatch) {
+            try {
+              retryParsed = JSON.parse(retryMatch[0]) as { reply?: unknown; action?: unknown; actions?: unknown };
+            } catch {
+              retryParsed = {};
+            }
+          } else {
+            retryParsed = {};
+          }
+        }
+
+        if (typeof retryParsed.reply === "string" && retryParsed.reply.trim()) {
+          reply = retryParsed.reply.trim();
+        }
+        if (Array.isArray(retryParsed.actions) && retryParsed.actions.length > 0) {
+          actions = (retryParsed.actions as Record<string, unknown>[]).filter(
+            (a): a is Record<string, unknown> => a != null && typeof a === "object" && typeof a.type === "string",
+          );
+          if (actions.length === 0) actions = undefined;
+        } else if (retryParsed.action && typeof retryParsed.action === "object") {
+          actions = [retryParsed.action as Record<string, unknown>];
+        }
+      } catch {
+        // Retry failed, fall through to honesty rewrite
+      }
+
+      // If still no actions after retry, force an honest reply
+      if (!actions) {
+        reply = "I wasn't able to make those changes. Could you try rephrasing your request?";
+      }
+    }
   } catch (err) {
     console.error("[chat] Gemini error:", err);
     return NextResponse.json(
-      { error: "Sservice error. Please try again." },
+      { error: "Service error. Please try again." },
       { status: 502 },
     );
   }
@@ -310,5 +371,5 @@ export async function POST(req: NextRequest) {
     updated_at: new Date().toISOString(),
   });
 
-  return NextResponse.json({ reply, action });
+  return NextResponse.json({ reply, actions });
 }

@@ -63,7 +63,7 @@ import {
 } from "@/app/page-utils";
 import { usePathname, useRouter } from "next/navigation";
 import { SyllabusImportDialog } from "@/components/syllabus-import-dialog";
-import { ChatPanel, type ChatAction } from "@/components/chat-panel";
+import { ChatPanel, type ChatAction, type ChatActionResult } from "@/components/chat-panel";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -927,201 +927,390 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const handleChatAction = async (action: ChatAction) => {
-    // --- Semester operations (any semester by ID) ---
-    if (action.type === "add_semester") {
-      try {
-        const newSem = await storage.createSemester(action.name);
-        setSemesters((prev) => [...prev, newSem]);
-        setServerOffline(false);
-      } catch (error) {
-        if (error instanceof ApiUnavailableError) setServerOffline(true);
-      }
-      return;
-    }
-    if (action.type === "delete_semester") {
-      await deleteSemester(action.semesterId);
-      return;
-    }
-    if (action.type === "rename_semester") {
-      await editSemester(action.semesterId, action.newName);
-      return;
-    }
-    if (action.type === "duplicate_semester") {
-      const source = semesters.find((s) => s.id === action.semesterId);
-      if (!source) return;
+  const handleChatActions = async (actions: ChatAction[]): Promise<ChatActionResult> => {
+    const result: ChatActionResult = { applied: 0, failed: 0, errors: [] };
+    if (actions.length === 0) return result;
 
-      // Build a full optimistic copy with temp IDs — show instantly
-      const tempSemId = generateClientId();
-      const optimisticCourses: Course[] = source.courses.map((course) => {
-        const tempId = generateClientId();
-        return {
-          ...deepCopy(course),
-          id: tempId,
-          clientId: tempId,
-          criteria: (course.criteria ?? []).map((cr) => {
-            const cid = generateClientId();
-            return { ...cr, id: cid, clientId: cid };
-          }),
-        };
-      });
-      setSemesters((prev) => [
-        ...prev,
-        {
-          ...source,
-          id: tempSemId,
-          name: `${source.name} (Copy)`,
-          courses: optimisticCourses,
-        },
-      ]);
+    // Local snapshot for reads — React state is stale within an async loop
+    let snap: Semester[] = semesters.map((s) => ({
+      ...s,
+      courses: s.courses.map((c) => ({
+        ...c,
+        criteria: c.criteria.map((cr) => ({
+          ...cr,
+          subItems: cr.subItems ? [...cr.subItems] : [],
+        })),
+      })),
+    }));
+    const originalSnap = JSON.stringify(snap);
 
-      // Sync to server in background, then swap in real IDs
-      (async () => {
-        try {
-          const newSem = await storage.createSemester(`${source.name} (Copy)`);
-          const syncedCourses: Course[] = [];
-          for (const course of source.courses) {
-            const dup = await importPortableCourse(
-              courseToPortable(course),
-              newSem.id,
-            );
-            syncedCourses.push(dup);
-          }
-          setSemesters((prev) =>
-            prev.map((s) =>
-              s.id === tempSemId ? { ...newSem, courses: syncedCourses } : s,
-            ),
-          );
-          setServerOffline(false);
-        } catch (error) {
-          if (error instanceof ApiUnavailableError) setServerOffline(true);
-        }
-      })();
-      return;
-    }
+    // Track created resource IDs so batch actions can chain
+    let workingSemId = activeSemesterId;
+    let lastCourseId: string | null = null;
+    let lastCriterionId: string | null = null;
 
-    // --- Course operations (active semester) ---
-    if (!activeSemesterId) return;
-    const activeSem = semesters.find((s) => s.id === activeSemesterId);
-    if (!activeSem) return;
+    // Fuzzy course resolution: exact ID → name match → last created
+    const resolveCourseId = (rawId: string): string | null => {
+      const sem = snap.find((s) => s.id === workingSemId);
+      if (!sem) return lastCourseId;
+      // Exact ID match
+      if (sem.courses.some((c) => c.id === rawId)) return rawId;
+      // Fuzzy: match by name (AI often sends name instead of ID)
+      const byName = sem.courses.find(
+        (c) => c.name.toLowerCase().trim() === rawId.toLowerCase().trim(),
+      );
+      if (byName) return byName.id;
+      // Partial name match (e.g. "Math" matches "Math 101")
+      const byPartial = sem.courses.filter(
+        (c) => c.name.toLowerCase().includes(rawId.toLowerCase().trim()),
+      );
+      if (byPartial.length === 1) return byPartial[0].id;
+      // If only one course, use it
+      if (sem.courses.length === 1) return sem.courses[0].id;
+      return lastCourseId ?? rawId;
+    };
 
-    if (action.type === "add_course") {
-      try {
-        const newCourse = await storage.createCourse(
-          activeSemesterId,
-          action.name,
-          action.credits,
+    // Fuzzy criterion resolution: exact ID → name match → last created
+    const resolveCriterionId = (course: Course, rawId: string, rawName?: string): string | null => {
+      // Exact ID match
+      if (course.criteria.some((cr) => cr.id === rawId)) return rawId;
+      // Fuzzy: match by name if provided
+      if (rawName) {
+        const byName = course.criteria.find(
+          (cr) => cr.name.toLowerCase() === rawName.toLowerCase(),
         );
-        setSemesters((prev) =>
-          prev.map((s) =>
-            s.id === activeSemesterId
+        if (byName) return byName.id;
+      }
+      // Fuzzy: try rawId as a name (AI often sends name instead of ID)
+      const byRawName = course.criteria.find(
+        (cr) => cr.name.toLowerCase().trim() === rawId.toLowerCase().trim(),
+      );
+      if (byRawName) return byRawName.id;
+      // Partial name match on rawId
+      const byPartial = course.criteria.filter(
+        (cr) => cr.name.toLowerCase().includes(rawId.toLowerCase().trim()),
+      );
+      if (byPartial.length === 1) return byPartial[0].id;
+      // If only one criterion, use it
+      if (course.criteria.length === 1) return course.criteria[0].id;
+      return lastCriterionId ?? rawId;
+    };
+
+    for (const action of actions) {
+      try {
+        // --- Semester operations ---
+        if (action.type === "add_semester") {
+          const newSem = await storage.createSemester(action.name);
+          snap = [...snap, newSem];
+          workingSemId = newSem.id;
+          setServerOffline(false);
+          result.applied++;
+          continue;
+        }
+        if (action.type === "delete_semester") {
+          await deleteSemester(action.semesterId);
+          snap = snap.filter((s) => s.id !== action.semesterId);
+          result.applied++;
+          continue;
+        }
+        if (action.type === "rename_semester") {
+          await editSemester(action.semesterId, action.newName);
+          snap = snap.map((s) =>
+            s.id === action.semesterId ? { ...s, name: action.newName } : s,
+          );
+          result.applied++;
+          continue;
+        }
+        if (action.type === "duplicate_semester") {
+          const src = snap.find((s) => s.id === action.semesterId);
+          if (!src) {
+            result.failed++;
+            result.errors.push(`Semester not found for duplicate.`);
+            continue;
+          }
+          try {
+            const newSem = await storage.createSemester(`${src.name} (Copy)`);
+            const syncedCourses: Course[] = [];
+            for (const c of src.courses) {
+              syncedCourses.push(
+                await importPortableCourse(courseToPortable(c), newSem.id),
+              );
+            }
+            snap = [...snap, { ...newSem, courses: syncedCourses }];
+            workingSemId = newSem.id;
+            setServerOffline(false);
+            result.applied++;
+          } catch (error) {
+            if (error instanceof ApiUnavailableError) setServerOffline(true);
+            result.failed++;
+            result.errors.push(`Failed to duplicate semester.`);
+          }
+          continue;
+        }
+
+        // --- Course / criterion / sub-item operations target working semester ---
+        const semId = workingSemId;
+        if (!semId) {
+          result.failed++;
+          result.errors.push(`No active semester for action "${action.type}".`);
+          continue;
+        }
+
+        if (action.type === "add_course") {
+          const newCourse = await storage.createCourse(
+            semId,
+            action.name,
+            action.credits,
+          );
+          snap = snap.map((s) =>
+            s.id === semId
               ? { ...s, courses: [...s.courses, newCourse] }
               : s,
-          ),
+          );
+          lastCourseId = newCourse.id;
+          lastCriterionId = null;
+          setServerOffline(false);
+          result.applied++;
+          continue;
+        }
+
+        if (action.type === "delete_course") {
+          const cid = resolveCourseId(action.courseId);
+          if (!cid) { result.failed++; result.errors.push(`Course not found for delete.`); continue; }
+          if (isServerResourceId(semId) && isServerResourceId(cid)) {
+            await storage.deleteCourse(semId, cid);
+          }
+          removeCourseSettings(cid);
+          snap = snap.map((s) =>
+            s.id === semId
+              ? { ...s, courses: s.courses.filter((c) => c.id !== cid) }
+              : s,
+          );
+          result.applied++;
+          continue;
+        }
+
+        if (action.type === "duplicate_course") {
+          const cid = resolveCourseId(action.courseId);
+          if (!cid) { result.failed++; result.errors.push(`Course not found for duplicate.`); continue; }
+          const sem = snap.find((s) => s.id === semId);
+          const course = sem?.courses.find((c) => c.id === cid);
+          if (course) {
+            const dup = await importPortableCourse(
+              courseToPortable(course),
+              semId,
+            );
+            snap = snap.map((s) =>
+              s.id === semId
+                ? { ...s, courses: [...s.courses, dup] }
+                : s,
+            );
+            lastCourseId = dup.id;
+            result.applied++;
+          } else {
+            result.failed++;
+            result.errors.push(`Course not found for duplicate.`);
+          }
+          continue;
+        }
+
+        // --- Actions needing a course object ---
+        const courseId = "courseId" in action
+          ? resolveCourseId((action as { courseId: string }).courseId)
+          : lastCourseId;
+        if (!courseId) {
+          result.failed++;
+          result.errors.push(`Could not resolve course for "${action.type}".`);
+          continue;
+        }
+
+        const sem = snap.find((s) => s.id === semId);
+        const course = sem?.courses.find((c) => c.id === courseId);
+        if (!course) {
+          result.failed++;
+          result.errors.push(`Course not found for "${action.type}".`);
+          continue;
+        }
+
+        let updated: Course;
+
+        if (action.type === "rename_course") {
+          updated = { ...course, name: action.newName };
+        } else if (action.type === "set_credits") {
+          updated = { ...course, credits: action.credits };
+        } else if (action.type === "set_pass_fail") {
+          updated = { ...course, isPassFail: action.isPassFail };
+        } else if (action.type === "set_percent_boost") {
+          updated = { ...course, percentBoost: action.percentBoost };
+        } else if (action.type === "update_criterion") {
+          // Extract name from changes for fuzzy matching
+          const crName = typeof action.changes.name === "string" ? action.changes.name : undefined;
+          const crId = resolveCriterionId(course, action.criterionId, crName);
+          if (!crId || !course.criteria.some((cr) => cr.id === crId)) {
+            // Criterion not found — this is a common AI mistake
+            result.failed++;
+            result.errors.push(
+              `Criterion "${action.criterionId}" not found in "${course.name}". ` +
+              (course.criteria.length === 0
+                ? "This course has no criteria to update."
+                : `Available: ${course.criteria.map((cr) => cr.name).join(", ")}.`),
+            );
+            continue;
+          }
+          updated = {
+            ...course,
+            criteria: course.criteria.map((cr) =>
+              cr.id === crId ? { ...cr, ...action.changes } : cr,
+            ),
+          };
+        } else if (action.type === "add_criterion") {
+          const cid = generateClientId();
+          const newCr: Criterion = {
+            id: cid,
+            clientId: cid,
+            name: action.criterion.name,
+            weight: action.criterion.weight,
+            score: action.criterion.score ?? 0,
+          };
+          updated = {
+            ...course,
+            criteria: [...course.criteria, newCr],
+          };
+          lastCriterionId = cid;
+        } else if (action.type === "remove_criterion") {
+          const crId = resolveCriterionId(course, action.criterionId);
+          if (!crId || !course.criteria.some((cr) => cr.id === crId)) {
+            result.failed++;
+            result.errors.push(`Criterion not found for remove.`);
+            continue;
+          }
+          updated = {
+            ...course,
+            criteria: course.criteria.filter((cr) => cr.id !== crId),
+          };
+        } else if (action.type === "add_sub_item") {
+          const crId = resolveCriterionId(course, action.criterionId);
+          if (!crId || !course.criteria.some((cr) => cr.id === crId)) {
+            result.failed++;
+            result.errors.push(`Criterion not found for add_sub_item.`);
+            continue;
+          }
+          const sid = generateClientId();
+          const newSi: SubItem = {
+            id: sid,
+            name: action.subItem.name,
+            score: action.subItem.score,
+            weight: action.subItem.weight,
+          };
+          updated = {
+            ...course,
+            criteria: course.criteria.map((cr) =>
+              cr.id === crId
+                ? { ...cr, subItems: [...(cr.subItems ?? []), newSi] }
+                : cr,
+            ),
+          };
+        } else if (action.type === "update_sub_item") {
+          const crId = resolveCriterionId(course, action.criterionId);
+          if (!crId || !course.criteria.some((cr) => cr.id === crId)) {
+            result.failed++;
+            result.errors.push(`Criterion not found for update_sub_item.`);
+            continue;
+          }
+          updated = {
+            ...course,
+            criteria: course.criteria.map((cr) =>
+              cr.id === crId
+                ? {
+                    ...cr,
+                    subItems: (cr.subItems ?? []).map((si) =>
+                      si.id === action.subItemId
+                        ? { ...si, ...action.changes }
+                        : si,
+                    ),
+                  }
+                : cr,
+            ),
+          };
+        } else if (action.type === "remove_sub_item") {
+          const crId = resolveCriterionId(course, action.criterionId);
+          if (!crId || !course.criteria.some((cr) => cr.id === crId)) {
+            result.failed++;
+            result.errors.push(`Criterion not found for remove_sub_item.`);
+            continue;
+          }
+          updated = {
+            ...course,
+            criteria: course.criteria.map((cr) =>
+              cr.id === crId
+                ? {
+                    ...cr,
+                    subItems: (cr.subItems ?? []).filter(
+                      (si) => si.id !== action.subItemId,
+                    ),
+                  }
+                : cr,
+            ),
+          };
+        } else {
+          result.failed++;
+          result.errors.push(`Unknown action type.`);
+          continue;
+        }
+
+        // Update local snapshot
+        snap = snap.map((s) =>
+          s.id === semId
+            ? {
+                ...s,
+                courses: s.courses.map((c) =>
+                  c.id === courseId ? updated : c,
+                ),
+              }
+            : s,
         );
-        setServerOffline(false);
+        result.applied++;
+
+        // Server sync
+        if (isServerResourceId(courseId) && isServerResourceId(semId)) {
+          try {
+            const synced = await storage.updateCourse(semId, updated);
+            snap = snap.map((s) =>
+              s.id === semId
+                ? {
+                    ...s,
+                    courses: s.courses.map((c) =>
+                      c.id === courseId
+                        ? { ...c, criteria: synced.criteria }
+                        : c,
+                    ),
+                  }
+                : s,
+            );
+            setServerOffline(false);
+          } catch (error) {
+            if (error instanceof ApiUnavailableError) setServerOffline(true);
+          }
+        }
       } catch (error) {
+        console.error("[chat] Batch action error:", action.type, error);
+        result.failed++;
+        result.errors.push(`Error processing "${action.type}".`);
         if (error instanceof ApiUnavailableError) setServerOffline(true);
       }
-      return;
-    }
-    if (action.type === "delete_course") {
-      await deleteCourse(action.courseId);
-      return;
-    }
-    if (action.type === "duplicate_course") {
-      await duplicateCourse(action.courseId);
-      return;
     }
 
-    // Actions that need the course object
-    const course = activeSem.courses.find((c) => c.id === action.courseId);
-    if (!course) return;
-
-    if (action.type === "rename_course") {
-      updateCourse(action.courseId, { ...course, name: action.newName });
-    } else if (action.type === "set_credits") {
-      updateCourse(action.courseId, { ...course, credits: action.credits });
-    } else if (action.type === "set_pass_fail") {
-      updateCourse(action.courseId, {
-        ...course,
-        isPassFail: action.isPassFail,
-      });
-    } else if (action.type === "set_percent_boost") {
-      updateCourse(action.courseId, {
-        ...course,
-        percentBoost: action.percentBoost,
-      });
-    } else if (action.type === "update_criterion") {
-      const updatedCriteria = course.criteria.map((cr) =>
-        cr.id === action.criterionId ? { ...cr, ...action.changes } : cr,
-      );
-      updateCourse(action.courseId, { ...course, criteria: updatedCriteria });
-    } else if (action.type === "add_criterion") {
-      const cid = generateClientId();
-      const newCriterion: Criterion = {
-        id: cid,
-        clientId: cid,
-        name: action.criterion.name,
-        weight: action.criterion.weight,
-        score: action.criterion.score ?? 0,
-      };
-      updateCourse(action.courseId, {
-        ...course,
-        criteria: [...course.criteria, newCriterion],
-      });
-    } else if (action.type === "remove_criterion") {
-      updateCourse(action.courseId, {
-        ...course,
-        criteria: course.criteria.filter((cr) => cr.id !== action.criterionId),
-      });
-    } else if (action.type === "add_sub_item") {
-      const sid = generateClientId();
-      const newSubItem: SubItem = {
-        id: sid,
-        name: action.subItem.name,
-        score: action.subItem.score,
-        weight: action.subItem.weight,
-      };
-      updateCourse(action.courseId, {
-        ...course,
-        criteria: course.criteria.map((cr) =>
-          cr.id === action.criterionId
-            ? { ...cr, subItems: [...(cr.subItems ?? []), newSubItem] }
-            : cr,
-        ),
-      });
-    } else if (action.type === "update_sub_item") {
-      updateCourse(action.courseId, {
-        ...course,
-        criteria: course.criteria.map((cr) =>
-          cr.id === action.criterionId
-            ? {
-                ...cr,
-                subItems: (cr.subItems ?? []).map((si) =>
-                  si.id === action.subItemId
-                    ? { ...si, ...action.changes }
-                    : si,
-                ),
-              }
-            : cr,
-        ),
-      });
-    } else if (action.type === "remove_sub_item") {
-      updateCourse(action.courseId, {
-        ...course,
-        criteria: course.criteria.map((cr) =>
-          cr.id === action.criterionId
-            ? {
-                ...cr,
-                subItems: (cr.subItems ?? []).filter(
-                  (si) => si.id !== action.subItemId,
-                ),
-              }
-            : cr,
-        ),
-      });
+    // Final safety check: if nothing actually changed in the data, mark all as failed
+    if (result.applied > 0 && JSON.stringify(snap) === originalSnap) {
+      console.warn("[chat] Actions reported as applied but data unchanged");
+      result.applied = 0;
+      result.failed = actions.length;
+      result.errors = ["No data was actually changed despite processing actions."];
     }
+
+    // Apply the final snapshot to React state
+    setSemesters(snap);
+    return result;
   };
 
   const importDashboardBackup = useCallback(
@@ -1816,7 +2005,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         onOpenChange={setChatPanelOpen}
         semesters={semesters}
         activeSemesterId={activeSemesterId}
-        onApplyAction={handleChatAction}
+        onApplyActions={handleChatActions}
         onOpenSyllabusImport={() => setSyllabusImportOpen(true)}
       />
 

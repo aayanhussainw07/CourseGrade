@@ -41,12 +41,18 @@ interface ChatMessage {
   content: string;
 }
 
+export interface ChatActionResult {
+  applied: number;
+  failed: number;
+  errors: string[];
+}
+
 interface ChatPanelProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   semesters: Semester[];
   activeSemesterId: string | null;
-  onApplyAction: (action: ChatAction) => void | Promise<void>;
+  onApplyActions: (actions: ChatAction[]) => Promise<ChatActionResult>;
   onOpenSyllabusImport: () => void;
 }
 
@@ -68,7 +74,7 @@ export function ChatPanel({
   onOpenChange,
   semesters,
   activeSemesterId,
-  onApplyAction,
+  onApplyActions,
   onOpenSyllabusImport,
 }: ChatPanelProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([WELCOME]);
@@ -76,6 +82,8 @@ export function ChatPanel({
   const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const messagesRef = useRef<ChatMessage[]>(messages);
+  messagesRef.current = messages;
 
   useEffect(() => {
     if (open) {
@@ -100,7 +108,7 @@ export function ChatPanel({
     setLoading(true);
 
     try {
-      const history = messages
+      const history = messagesRef.current
         .filter((m) => m.id !== "welcome")
         .map((m) => ({ role: m.role, content: m.content }));
 
@@ -126,8 +134,49 @@ export function ChatPanel({
       };
       setMessages((prev) => [...prev, aiMsg]);
 
-      if (data.action && typeof data.action === "object") {
-        onApplyAction(data.action as ChatAction);
+      // Collect all actions and pass as batch for chained processing
+      const actionList: ChatAction[] = [];
+      if (Array.isArray(data.actions)) {
+        for (const a of data.actions) {
+          if (a && typeof a === "object" && typeof a.type === "string") {
+            actionList.push(a as ChatAction);
+          }
+        }
+      } else if (data.action && typeof data.action === "object") {
+        actionList.push(data.action as ChatAction);
+      }
+      if (actionList.length > 0) {
+        const result = await onApplyActions(actionList);
+        // If no actions actually applied, override the AI's reply with honest feedback
+        if (result.applied === 0) {
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === aiMsg.id
+                ? {
+                    ...m,
+                    content:
+                      "I tried to make those changes but none of them went through. " +
+                      (result.errors.length > 0
+                        ? result.errors[0]
+                        : "Please try again with a more specific request."),
+                  }
+                : m,
+            ),
+          );
+        } else if (result.failed > 0) {
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === aiMsg.id
+                ? {
+                    ...m,
+                    content:
+                      m.content +
+                      ` (${result.applied} change${result.applied !== 1 ? "s" : ""} succeeded, ${result.failed} failed)`,
+                  }
+                : m,
+            ),
+          );
+        }
       }
     } catch (err) {
       setMessages((prev) => [
@@ -141,7 +190,7 @@ export function ChatPanel({
     } finally {
       setLoading(false);
     }
-  }, [input, loading, semesters, activeSemesterId, onApplyAction]);
+  }, [input, loading, semesters, activeSemesterId, onApplyActions]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
