@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { DeleteConfirmationDialog } from "@/components/delete-confirmation-dialog";
 import {
   calculateCourseGrade,
+  calculateGPA,
   getLetterGrade,
   getLetterGradeColor,
   isCourseDefault,
@@ -19,6 +20,8 @@ import {
   X,
   Upload,
   TrendingUp,
+  Copy,
+  Settings,
 } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
@@ -37,8 +40,10 @@ interface CourseSidebarProps {
   onImportSemester?: (file: File) => void;
   onReorderSemesters?: (orderedSemesterIds: string[]) => void;
   onReorderCourses?: (semesterId: string, orderedCourseIds: string[]) => void;
+  onDuplicateSemester?: (semesterId: string) => void;
   userEmail?: string;
   onSignOut?: () => void;
+  onSettingsOpen?: () => void;
   dashboardSummary?: {
     overallGpa: number;
     totalCredits: number;
@@ -62,11 +67,13 @@ export function CourseSidebar({
   onImportSemester,
   onReorderSemesters,
   onReorderCourses,
+  onDuplicateSemester,
   dashboardSummary,
   onDashboardClick,
   isDashboardActive,
   userEmail,
   onSignOut,
+  onSettingsOpen,
   variant = "desktop",
 }: CourseSidebarProps) {
   const [editingSemesterId, setEditingSemesterId] = useState<string | null>(
@@ -232,19 +239,30 @@ export function CourseSidebar({
               coursegrade.
             </span>
           </div>
-          {userEmail && (
-            <div className="flex flex-col items-center pb-2 gap-0.5">
-              <span className="text-[10px] text-white/60 truncate max-w-[90%]">{userEmail}</span>
-              {onSignOut && (
-                <button
-                  onClick={onSignOut}
-                  className="text-[10px] text-white/45 hover:text-white/80 transition-colors"
-                >
-                  Sign out
-                </button>
-              )}
-            </div>
-          )}
+          <div className="flex flex-col items-center pb-2 gap-0.5">
+            {onSettingsOpen && (
+              <button
+                onClick={onSettingsOpen}
+                className="flex items-center gap-1.5 text-[10px] text-white/45 hover:text-white/80 transition-colors"
+              >
+                <Settings className="h-3 w-3" />
+                Settings
+              </button>
+            )}
+            {userEmail && (
+              <span className="text-[10px] text-white/60 truncate max-w-[90%]">
+                {userEmail}
+              </span>
+            )}
+            {onSignOut && (
+              <button
+                onClick={onSignOut}
+                className="text-[10px] text-white/45 hover:text-white/80 transition-colors"
+              >
+                Sign out
+              </button>
+            )}
+          </div>
           <input
             ref={semesterFileInputRef}
             type="file"
@@ -443,6 +461,11 @@ export function CourseSidebar({
                             <div className="truncate text-sm font-semibold">
                               {semester.name}
                             </div>
+                            {semester.courses.length > 0 && (
+                              <div className="text-[10px] text-white/45 mt-0.5">
+                                {calculateGPA(semester.courses).toFixed(2)}
+                              </div>
+                            )}
                           </div>
                         </Button>
                         <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -453,9 +476,21 @@ export function CourseSidebar({
                             onClick={() =>
                               startEditingSemester(semester.id, semester.name)
                             }
+                            title="Rename"
                           >
                             <Edit2 className="h-3 w-3" />
                           </Button>
+                          {onDuplicateSemester && (
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-8 w-8 shrink-0 text-white/50 hover:text-white hover:bg-white/10"
+                              onClick={() => onDuplicateSemester(semester.id)}
+                              title="Duplicate"
+                            >
+                              <Copy className="h-3 w-3" />
+                            </Button>
+                          )}
                           <Button
                             size="icon"
                             variant="ghost"

@@ -87,37 +87,19 @@ export const storage = {
   },
 
   async createCourse(semesterId: string, name: string, credits: number): Promise<Course> {
-    const templateAssignments = defaultAssignmentTemplates.map((assignment) => ({
-      ...assignment,
-      drop_lowest: 0,
-    }))
-
     const apiCourse = await courseApi.create({
       semester: semesterId,
       name,
       credits,
       is_pass_fail: false,
       percent_boost: 0,
-      assignments: templateAssignments,
+      assignments: [],
     })
 
-    let hydratedCourse = apiCourse
-    if (!Array.isArray(apiCourse.assignments) || apiCourse.assignments.length === 0) {
-      await Promise.all(
-        templateAssignments.map((assignment) =>
-          assignmentApi.create({
-            course: apiCourse.id.toString(),
-            ...assignment,
-          }),
-        ),
-      )
-      hydratedCourse = await courseApi.getOne(apiCourse.id.toString())
-    }
-
-    const createdCourse = apiToFrontendCourse(hydratedCourse)
+    const createdCourse = apiToFrontendCourse(apiCourse)
     createdCourse.collapsed = false
     createdCourse.isPassFail = false
-    createdCourse.percentBoost = createdCourse.percentBoost ?? 0
+    createdCourse.percentBoost = 0
     return createdCourse
   },
 

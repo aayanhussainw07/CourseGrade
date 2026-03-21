@@ -73,10 +73,10 @@ export function getLetterGrade(numericGrade: number, gradeScale: GradeScale[]): 
   return sorted[sorted.length - 1]?.letter
 }
 
-export function letterGradeToGPA(letter: string): number {
+export function letterGradeToGPA(letter: string, aPlusValue = 4.3): number {
   const normalized = letter?.trim().toUpperCase()
   const gpaMap: Record<string, number> = {
-    "A+": 4.3,
+    "A+": aPlusValue,
     A: 4.0,
     "A-": 3.7,
     "B+": 3.3,
@@ -95,7 +95,7 @@ export function letterGradeToGPA(letter: string): number {
   return gpaMap[normalized] ?? -1.0
 }
 
-export function calculateGPA(courses: Course[] | null | undefined): number {
+export function calculateGPA(courses: Course[] | null | undefined, aPlusValue = 4.3): number {
   const safeCourses = Array.isArray(courses) ? courses : []
   if (safeCourses.length === 0) return 0
 
@@ -108,7 +108,7 @@ export function calculateGPA(courses: Course[] | null | undefined): number {
 
     const numericGrade = calculateCourseGrade(course.criteria, course.percentBoost)
     const letterGrade = getLetterGrade(numericGrade, course.gradeScale)
-    const gradePoints = letterGradeToGPA(letterGrade)
+    const gradePoints = letterGradeToGPA(letterGrade, aPlusValue)
 
     if (gradePoints != -1.0) {
       totalPoints += gradePoints * course.credits

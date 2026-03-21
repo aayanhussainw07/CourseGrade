@@ -104,6 +104,9 @@
 }
 
 @layer base {
+  html {
+    font-size: 80%;
+  }
   * {
     @apply border-border outline-ring/50;
   }
@@ -163,5 +166,47 @@
     background-color: rgba(255, 242, 238, 0.98);
     box-shadow: var(--shadow-under-white-strong);
     color: var(--foreground);
+  }
+}
+
+@media print {
+  /* Hide all nav/toolbar/sidebar elements */
+  nav,
+  aside,
+  .print\:hidden,
+  [class*="fixed"],
+  [class*="ChatPanel"],
+  button {
+    display: none !important;
+  }
+
+  /* Reset page margins and background */
+  body {
+    background: white !important;
+    color: black !important;
+    font-size: 11pt;
+  }
+
+  /* Expand all cards for printing */
+  [class*="collapsed"] {
+    display: block !important;
+  }
+
+  /* Remove shadows and fancy borders */
+  [class*="shadow"] {
+    box-shadow: none !important;
+  }
+
+  /* Ensure cards print cleanly */
+  .border-primary\/35 {
+    border-color: #ccc !important;
+  }
+
+  /* Page break control */
+  [class*="CourseCard"],
+  article,
+  section {
+    page-break-inside: avoid;
+    break-inside: avoid;
   }
 }

@@ -2,6 +2,7 @@
 
 import type React from "react";
 import { useEffect, useState, useRef, useMemo, useCallback } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,6 +20,8 @@ import {
   Download,
   GripVertical,
   Copy,
+  FlaskConical,
+  Pencil,
 } from "lucide-react";
 import {
   calculateCourseGrade,
@@ -119,6 +122,7 @@ const parseFractionOrNumber = (value: string) => {
 // Props passed into this component: a single course object and functions to update or delete it.
 interface CourseCardProps {
   course: Course;
+  highlighted?: boolean;
   onUpdate: (id: string, course: Course) => void | Promise<void>;
   onDelete: (id: string) => void;
   onExportCourse?: (courseId: string) => void;
@@ -128,6 +132,7 @@ interface CourseCardProps {
 // The CourseCard component — displays one course, lets you edit criteria, grade scale, etc.
 export function CourseCard({
   course,
+  highlighted = false,
   onUpdate,
   onDelete,
   onExportCourse,
@@ -189,6 +194,10 @@ export function CourseCard({
   >({});
   const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dragOverIdRef = useRef<string | null>(null);
+  const [whatIfMode, setWhatIfMode] = useState(false);
+  const [whatIfScores, setWhatIfScores] = useState<Record<string, string>>({});
+  const [directGradeEditing, setDirectGradeEditing] = useState(false);
+  const [directGradeDraft, setDirectGradeDraft] = useState("");
   const interactiveDragSelector =
     "button, input, textarea, select, a[href], [contenteditable='true'], [role='button'], [draggable='false']";
 
@@ -284,16 +293,27 @@ export function CourseCard({
     [course.criteria],
   );
 
-  const { numericGrade, letterGrade, gradeColor, totalWeight } = useMemo(() => {
+  const { numericGrade, letterGrade, gradeColor, totalWeight, whatIfNumericGrade, whatIfLetterGrade, whatIfGradeColor } = useMemo(() => {
     const numeric = calculateCourseGrade(courseCriteria, course.percentBoost);
     const letter = getLetterGrade(numeric, course.gradeScale);
+    const whatIfCriteria = courseCriteria.map((c) => {
+      const raw = whatIfScores[c.id];
+      if (raw === undefined) return c;
+      const parsed = parseScoreInput(raw, course.gradeScale);
+      return parsed !== null ? { ...c, score: parsed } : c;
+    });
+    const whatIfNumeric = calculateCourseGrade(whatIfCriteria, course.percentBoost);
+    const whatIfLetter = getLetterGrade(whatIfNumeric, course.gradeScale);
     return {
       numericGrade: numeric,
       letterGrade: letter,
       gradeColor: getLetterGradeColor(letter),
       totalWeight: courseCriteria.reduce((sum, c) => sum + c.weight, 0),
+      whatIfNumericGrade: whatIfNumeric,
+      whatIfLetterGrade: whatIfLetter,
+      whatIfGradeColor: getLetterGradeColor(whatIfLetter),
     };
-  }, [courseCriteria, course.gradeScale, course.percentBoost]);
+  }, [courseCriteria, course.gradeScale, course.percentBoost, whatIfScores]);
 
   // Toggle collapse/expand for the entire course card
   const toggleCollapse = () => {
@@ -1130,7 +1150,7 @@ export function CourseCard({
 
   return (
     <Card
-      className="border-2 border-primary/35 shadow-under-white"
+      className={`border-2 shadow-under-white transition-all duration-300 ${highlighted ? "border-primary ring-2 ring-primary/40 ring-offset-2" : "border-primary/35"}`}
       style={cardBackgroundStyle}
     >
       {/* Course header with title, collapse toggle, delete button, and grade scale editor */}
@@ -1250,36 +1270,38 @@ export function CourseCard({
                   className="w-20 rounded-md border-2 border-primary/20 bg-transparent px-3 py-2 text-sm outline-none placeholder:text-muted-foreground/60 focus-visible:ring-2 focus-visible:ring-primary/50"
                 />
               </div>
-              <div className="flex items-center gap-2">
-                <Label
-                  htmlFor={`boost-${course.id}`}
-                  className="text-sm font-medium"
-                >
-                  Boost (%):
-                </Label>
-                <input
-                  id={`boost-${course.id}`}
-                  type="text"
-                  inputMode="decimal"
-                  value={percentBoostDraft}
-                  onFocus={() => setPercentBoostFocused(true)}
-                  onChange={(e) => setPercentBoostDraft(e.target.value)}
-                  onBlur={() => {
-                    setPercentBoostFocused(false);
-                    commitPercentBoost();
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
+              {courseCriteria.length > 0 && (
+                <div className="flex items-center gap-2">
+                  <Label
+                    htmlFor={`boost-${course.id}`}
+                    className="text-sm font-medium"
+                  >
+                    Boost (%):
+                  </Label>
+                  <input
+                    id={`boost-${course.id}`}
+                    type="text"
+                    inputMode="decimal"
+                    value={percentBoostDraft}
+                    onFocus={() => setPercentBoostFocused(true)}
+                    onChange={(e) => setPercentBoostDraft(e.target.value)}
+                    onBlur={() => {
                       setPercentBoostFocused(false);
                       commitPercentBoost();
-                      e.currentTarget.blur();
-                    }
-                  }}
-                  placeholder="0"
-                  className="w-24 rounded-md border-2 border-primary/20 bg-transparent px-3 py-2 text-sm outline-none placeholder:text-muted-foreground/60 focus-visible:ring-2 focus-visible:ring-primary/50"
-                  title="Percent boost applied to the final course grade"
-                />
-              </div>
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        setPercentBoostFocused(false);
+                        commitPercentBoost();
+                        e.currentTarget.blur();
+                      }
+                    }}
+                    placeholder="0"
+                    className="w-24 rounded-md border-2 border-primary/20 bg-transparent px-3 py-2 text-sm outline-none placeholder:text-muted-foreground/60 focus-visible:ring-2 focus-visible:ring-primary/50"
+                    title="Percent boost applied to the final course grade"
+                  />
+                </div>
+              )}
             </div>
           </div>
 
@@ -1340,6 +1362,22 @@ export function CourseCard({
               <Download className="h-4 w-4" />
             </Button>
             <Button
+              variant={whatIfMode ? "default" : "outline"}
+              size="icon"
+              className="shrink-0"
+              title={whatIfMode ? "Exit What-If Mode" : "What-If Mode"}
+              onClick={() => {
+                if (!whatIfMode) {
+                  const initial: Record<string, string> = {};
+                  for (const c of courseCriteria) initial[c.id] = c.score > 0 ? String(c.score) : "";
+                  setWhatIfScores(initial);
+                }
+                setWhatIfMode((prev) => !prev);
+              }}
+            >
+              <FlaskConical className="h-4 w-4" />
+            </Button>
+            <Button
               variant="destructive"
               size="icon"
               onClick={() => onDelete(course.id)}
@@ -1351,8 +1389,17 @@ export function CourseCard({
         </div>
       </CardHeader>
 
-      {/* Full expanded course view */}
-      {!course.collapsed && (
+      {/* Course content — animated expand/collapse */}
+      <AnimatePresence initial={false} mode="wait">
+      {!course.collapsed ? (
+        <motion.div
+          key="expanded"
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: "auto" }}
+          exit={{ opacity: 0, height: 0 }}
+          transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
+          style={{ overflow: "hidden" }}
+        >
         <CardContent className="pt-6">
           {/* Weighted criteria section */}
           <div
@@ -1362,14 +1409,17 @@ export function CourseCard({
           >
             <div className="flex items-center justify-between">
               <h3 className="font-semibold text-primary">Distribution</h3>
-              <span
-                className={`text-sm font-medium ${
-                  totalWeight === 100 ? "text-primary" : "text-muted-foreground"
-                }`}
-              >
-                Total Weight: {totalWeight}%
-                {totalWeight !== 100 && " (should be 100%)"}
-              </span>
+              {courseCriteria.length > 0 && (
+                <span
+                  className={`text-xs font-semibold ${
+                    totalWeight === 100
+                      ? "text-primary"
+                      : "rounded-full border border-amber-300 bg-amber-100 px-2 py-0.5 text-amber-700"
+                  }`}
+                >
+                  {totalWeight}%{totalWeight !== 100 && " ≠ 100"}
+                </span>
+              )}
             </div>
 
             {/* Render all criteria */}
@@ -1506,6 +1556,28 @@ export function CourseCard({
                           />
                         )}
                       </div>
+
+                      {/* What-If score */}
+                      {whatIfMode && (
+                        <div>
+                          <Label className="text-xs font-semibold text-primary/80">
+                            What-If (%)
+                          </Label>
+                          <Input
+                            type="text"
+                            inputMode="decimal"
+                            value={whatIfScores[criterion.id] ?? ""}
+                            onChange={(e) =>
+                              setWhatIfScores((prev) => ({
+                                ...prev,
+                                [criterion.id]: e.target.value,
+                              }))
+                            }
+                            placeholder={String(criterion.score || 0)}
+                            className="border-primary/50 bg-primary/5"
+                          />
+                        </div>
+                      )}
 
                       {/* Extra credit */}
                       <div>
@@ -1774,6 +1846,12 @@ export function CourseCard({
               />
             )}
 
+            {courseCriteria.length === 0 && (
+              <div className="rounded-lg border-2 border-dashed border-primary/20 py-8 text-center text-muted-foreground">
+                <p className="text-sm">No criteria yet — add one below to start tracking your grade.</p>
+              </div>
+            )}
+
             {/* Button to add a new criterion */}
             <Button
               onClick={addCriterion}
@@ -1790,12 +1868,48 @@ export function CourseCard({
           <div className="mt-6 rounded-lg border border-primary/30 bg-primary/5/60 p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">
+                <p className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
                   Numeric Grade
+                  {courseCriteria.length === 0 && !directGradeEditing && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDirectGradeDraft(numericGrade > 0 ? String(numericGrade) : "");
+                        setDirectGradeEditing(true);
+                      }}
+                      className="ml-0.5 rounded p-0.5 text-muted-foreground/50 hover:text-primary transition-colors"
+                      title="Enter final grade"
+                    >
+                      <Pencil className="h-3 w-3" />
+                    </button>
+                  )}
                 </p>
-                <p className="mt-1 text-4xl font-bold text-primary">
-                  <RollingNumber value={numericGrade} decimals={2} />%
-                </p>
+                {courseCriteria.length === 0 && directGradeEditing ? (
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    autoFocus
+                    value={directGradeDraft}
+                    onChange={(e) => setDirectGradeDraft(e.target.value)}
+                    onBlur={() => {
+                      const parsed = Number.parseFloat(directGradeDraft.trim());
+                      const normalized = !Number.isNaN(parsed) ? Math.min(100, Math.max(0, Number.parseFloat(parsed.toFixed(2)))) : 0;
+                      setPercentBoostDraft(normalized > 0 ? String(normalized) : "");
+                      updateCourse({ percentBoost: normalized });
+                      setDirectGradeEditing(false);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") e.currentTarget.blur();
+                      if (e.key === "Escape") { setDirectGradeEditing(false); }
+                    }}
+                    placeholder="0–100"
+                    className="mt-1 w-32 rounded-md border-2 border-primary/40 bg-transparent px-3 py-1 text-3xl font-bold text-primary outline-none focus:border-primary"
+                  />
+                ) : (
+                  <p className="mt-1 text-4xl font-bold text-primary">
+                    <RollingNumber value={numericGrade} decimals={2} />%
+                  </p>
+                )}
               </div>
               <div className="text-right">
                 <p className="text-sm font-medium text-muted-foreground">
@@ -1809,21 +1923,78 @@ export function CourseCard({
                 </p>
               </div>
             </div>
+            {whatIfMode && (
+              <div className="mt-4 border-t border-primary/20 pt-4">
+                <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-widest text-primary/70">
+                  <FlaskConical className="h-3 w-3" />
+                  What-If
+                </p>
+                <div className="flex items-center justify-between">
+                  <p className="text-3xl font-bold text-primary/80">
+                    <RollingNumber value={whatIfNumericGrade} decimals={2} />%
+                  </p>
+                  <p className="text-4xl font-bold" style={{ color: whatIfGradeColor }}>
+                    {whatIfLetterGrade}
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         </CardContent>
-      )}
-
-      {/* Compact view when collapsed */}
-      {course.collapsed && (
+        </motion.div>
+      ) : (
+        <motion.div
+          key="collapsed"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.15 }}
+        >
         <CardContent className="pt-4 pb-6">
           <div className="flex items-center justify-between rounded-lg border border-primary/20 bg-primary/5/60 p-4">
             <div>
-              <p className="text-sm font-medium text-muted-foreground">
+              <p className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
                 Numeric Grade
+                {courseCriteria.length === 0 && !directGradeEditing && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDirectGradeDraft(numericGrade > 0 ? String(numericGrade) : "");
+                      setDirectGradeEditing(true);
+                    }}
+                    className="ml-0.5 rounded p-0.5 text-muted-foreground/50 hover:text-primary transition-colors"
+                    title="Enter final grade"
+                  >
+                    <Pencil className="h-3 w-3" />
+                  </button>
+                )}
               </p>
-              <p className="mt-1 text-2xl font-bold text-primary">
-                <RollingNumber value={numericGrade} decimals={2} />%
-              </p>
+              {courseCriteria.length === 0 && directGradeEditing ? (
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  autoFocus
+                  value={directGradeDraft}
+                  onChange={(e) => setDirectGradeDraft(e.target.value)}
+                  onBlur={() => {
+                    const parsed = Number.parseFloat(directGradeDraft.trim());
+                    const normalized = !Number.isNaN(parsed) ? Math.min(100, Math.max(0, Number.parseFloat(parsed.toFixed(2)))) : 0;
+                    setPercentBoostDraft(normalized > 0 ? String(normalized) : "");
+                    updateCourse({ percentBoost: normalized });
+                    setDirectGradeEditing(false);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") e.currentTarget.blur();
+                    if (e.key === "Escape") { setDirectGradeEditing(false); }
+                  }}
+                  placeholder="0–100"
+                  className="mt-1 w-28 rounded-md border-2 border-primary/40 bg-transparent px-2 py-0.5 text-2xl font-bold text-primary outline-none focus:border-primary"
+                />
+              ) : (
+                <p className="mt-1 text-2xl font-bold text-primary">
+                  <RollingNumber value={numericGrade} decimals={2} />%
+                </p>
+              )}
             </div>
             <div className="text-right">
               <p className="text-sm font-medium text-muted-foreground">
@@ -1838,7 +2009,9 @@ export function CourseCard({
             </div>
           </div>
         </CardContent>
+        </motion.div>
       )}
+      </AnimatePresence>
     </Card>
   );
 }

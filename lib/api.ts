@@ -121,6 +121,9 @@ async function apiFetch<T>(endpoint: string, options?: RequestInit): Promise<T> 
   }
 
   if (!response.ok) {
+    if (response.status >= 500) {
+      throw new ApiUnavailableError()
+    }
     const errorText = await response.text().catch(() => "")
     let message = `API error: ${response.status}`
     if (errorText) {

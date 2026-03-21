@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { CourseCard } from "@/components/course-card";
 import { CourseSidebar } from "@/components/course-sidebar";
-import { GpaSummary } from "@/components/gpa-summary";
+import { SemesterPanel } from "@/components/semester-panel";
 import { GradeDistributionChart } from "@/components/grade-distribution-chart";
 import { GpaTimelineChart } from "@/components/gpa-timeline-chart";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,11 @@ import {
   Layers,
   Pencil,
   Sparkles,
+  Printer,
+  ChevronsUp,
+  ChevronsDown,
+  Share2,
+  Check,
 } from "lucide-react";
 import Image from "next/image";
 import {
@@ -64,6 +69,8 @@ import {
 import { usePathname, useRouter } from "next/navigation";
 import { SyllabusImportDialog } from "@/components/syllabus-import-dialog";
 import { ChatPanel, type ChatAction, type ChatActionResult } from "@/components/chat-panel";
+import { SettingsDialog } from "@/components/settings-dialog";
+import { loadAppSettings, type AppSettings } from "@/lib/app-settings";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -105,6 +112,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [chatPanelOpen, setChatPanelOpen] = useState(false);
   const [isEditingSemesterName, setIsEditingSemesterName] = useState(false);
   const [semesterNameDraft, setSemesterNameDraft] = useState("");
+  const [highlightedCourseId, setHighlightedCourseId] = useState<string | null>(null);
+  const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const saveStatusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const [shareCopied, setShareCopied] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [appSettings, setAppSettings] = useState<AppSettings>(loadAppSettings);
   const dashboardMessageScopeId = useMemo(
     () => session?.user?.id || session?.user?.email || "default",
     [session?.user?.id, session?.user?.email],
@@ -238,8 +253,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     [orderedSemesters],
   );
   const overallGpa = useMemo(
-    () => (allCourses.length > 0 ? calculateGPA(allCourses) : 0),
-    [allCourses],
+    () => (allCourses.length > 0 ? calculateGPA(allCourses, appSettings.aPlusGpaValue) : 0),
+    [allCourses, appSettings.aPlusGpaValue],
   );
   const totalCredits = useMemo(
     () => allCourses.reduce((sum, course) => sum + course.credits, 0),
@@ -257,7 +272,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           (sum, course) => sum + course.credits,
           0,
         );
-        const gpa = coursesList.length > 0 ? calculateGPA(coursesList) : 0;
+        const gpa = coursesList.length > 0 ? calculateGPA(coursesList, appSettings.aPlusGpaValue) : 0;
         return {
           id: semester.id,
           name: semester.name,
@@ -325,6 +340,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       } else if (key === "y" || (key === "z" && event.shiftKey)) {
         event.preventDefault();
         handleRedo();
+      } else if (key === "k") {
+        event.preventDefault();
+        setChatPanelOpen((prev) => !prev);
       }
     };
     window.addEventListener("keydown", handleKeydown);
@@ -477,6 +495,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     const element = courseRefs.current[courseId];
     if (element) {
       element.scrollIntoView({ behavior: "smooth", block: "start" });
+      setHighlightedCourseId(courseId);
+      if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
+      highlightTimerRef.current = setTimeout(() => setHighlightedCourseId(null), 1800);
     }
   };
 
@@ -559,6 +580,32 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const clearAllData = async () => {
+    for (const s of semesters) {
+      try { await storage.deleteSemester(s.id); } catch { /* best effort */ }
+    }
+    setSemesters([]);
+    setActiveSemesterId(null);
+    localStorage.removeItem("grade-calculator-course-settings");
+  };
+
+  const duplicateSemester = async (semesterId: string) => {
+    const src = semesters.find((s) => s.id === semesterId);
+    if (!src) return;
+    try {
+      const newSem = await storage.createSemester(`${src.name} (Copy)`);
+      const syncedCourses: Course[] = [];
+      for (const c of src.courses) {
+        syncedCourses.push(await importPortableCourse(courseToPortable(c), newSem.id));
+      }
+      setSemesters((prev) => [...prev, { ...newSem, courses: syncedCourses }]);
+      setServerOffline(false);
+    } catch (error) {
+      if (error instanceof ApiUnavailableError) setServerOffline(true);
+      else console.error("[v0] Failed to duplicate semester:", error);
+    }
+  };
+
   // -------------------------------
   // COURSE MANAGEMENT
   // -------------------------------
@@ -570,8 +617,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       const newCourse = await storage.createCourse(
         activeSemesterId,
         `Course ${courses.length + 1}`,
-        3,
+        appSettings.defaultCredits,
       );
+      newCourse.gradeScale = appSettings.defaultGradeScale.map((g) => ({ ...g }));
 
       setSemesters((prev) =>
         prev.map((s) =>
@@ -737,6 +785,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       return;
     }
 
+    setSaveStatus("saving");
     try {
       const syncedCourse = await storage.updateCourse(
         activeSemesterId,
@@ -759,7 +808,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       );
       persistCourseSettings(syncedCourse);
       setServerOffline(false);
+      setSaveStatus("saved");
+      if (saveStatusTimerRef.current) clearTimeout(saveStatusTimerRef.current);
+      saveStatusTimerRef.current = setTimeout(() => setSaveStatus("idle"), 2000);
     } catch (error) {
+      setSaveStatus("error");
+      if (saveStatusTimerRef.current) clearTimeout(saveStatusTimerRef.current);
+      saveStatusTimerRef.current = setTimeout(() => setSaveStatus("idle"), 3000);
       if (error instanceof ApiUnavailableError) {
         setServerOffline(true);
       } else {
@@ -926,6 +981,55 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       }
     }
   };
+
+  const collapseAllCourses = () => {
+    if (!activeSemesterId) return;
+    setSemesters((prev) =>
+      prev.map((s) =>
+        s.id === activeSemesterId
+          ? { ...s, courses: s.courses.map((c) => ({ ...c, collapsed: true })) }
+          : s,
+      ),
+    );
+  };
+
+  const expandAllCourses = () => {
+    if (!activeSemesterId) return;
+    setSemesters((prev) =>
+      prev.map((s) =>
+        s.id === activeSemesterId
+          ? { ...s, courses: s.courses.map((c) => ({ ...c, collapsed: false })) }
+          : s,
+      ),
+    );
+  };
+
+  const generateShareUrl = useCallback(() => {
+    const semester = semesters.find((s) => s.id === activeSemesterId);
+    if (!semester) return;
+    const payload = {
+      name: semester.name,
+      courses: semester.courses.map((c) => ({
+        name: c.name,
+        credits: c.credits,
+        isPassFail: c.isPassFail,
+        percentBoost: c.percentBoost,
+        criteria: c.criteria.map((cr) => ({
+          name: cr.name,
+          weight: cr.weight,
+          score: cr.score,
+          dropLowest: cr.dropLowest,
+          extraCredit: cr.extraCredit,
+          subItems: cr.subItems,
+        })),
+        gradeScale: c.gradeScale,
+      })),
+    };
+    const encoded = encodeURIComponent(JSON.stringify(payload));
+    const url = `${window.location.origin}/share?data=${encoded}`;
+    setShareUrl(url);
+    setShareCopied(false);
+  }, [semesters, activeSemesterId]);
 
   const handleChatActions = async (actions: ChatAction[]): Promise<ChatActionResult> => {
     const result: ChatActionResult = { applied: 0, failed: 0, errors: [] };
@@ -1571,7 +1675,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen bg-background">
       {/* AI chat toggle button — hidden when panel is open */}
       {!chatPanelOpen && (
-        <div className="fixed right-4 top-4 z-50">
+        <div className="fixed right-4 top-4 z-50 flex flex-col items-end gap-1">
           <Button
             onClick={() => setChatPanelOpen(true)}
             className="flex items-center gap-2 border border-sidebar-border bg-sidebar px-3 py-2 text-sm text-sidebar-foreground hover:bg-sidebar-accent"
@@ -1583,6 +1687,19 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <Sparkles className="h-4 w-4" />
             Chat
           </Button>
+          {saveStatus !== "idle" && (
+            <span
+              className={`text-[10px] font-medium transition-opacity ${
+                saveStatus === "saving"
+                  ? "text-muted-foreground"
+                  : saveStatus === "saved"
+                    ? "text-green-600"
+                    : "text-red-500"
+              }`}
+            >
+              {saveStatus === "saving" ? "Saving…" : saveStatus === "saved" ? "Saved ✓" : "Save failed"}
+            </span>
+          )}
         </div>
       )}
 
@@ -1628,6 +1745,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               isDashboardActive={isDashboardView}
               userEmail={session?.user?.email ?? undefined}
               onSignOut={() => signOut()}
+              onSettingsOpen={() => setSettingsOpen(true)}
             />
           </SheetContent>
         </Sheet>
@@ -1649,6 +1767,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         onImportSemester={importSemesterFromJson}
         onReorderSemesters={handleReorderSemesters}
         onReorderCourses={handleReorderCourses}
+        onDuplicateSemester={duplicateSemester}
         dashboardSummary={totalSemesters ? dashboardSummary : undefined}
         onDashboardClick={() => {
           setActiveSemesterId(null);
@@ -1657,14 +1776,25 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         isDashboardActive={isDashboardView}
         userEmail={session?.user?.email ?? undefined}
         onSignOut={() => signOut()}
+        onSettingsOpen={() => setSettingsOpen(true)}
         variant="desktop"
       />
 
+      <SettingsDialog
+        open={settingsOpen}
+        onClose={() => {
+          setSettingsOpen(false);
+          setAppSettings(loadAppSettings());
+        }}
+        onClearAllData={clearAllData}
+        userEmail={session?.user?.email ?? undefined}
+        userId={session?.user?.id ?? session?.user?.email ?? undefined}
+      />
+
       <div
-        className="w-full px-4 py-8 transition-all duration-300 md:pl-[14rem]"
+        className="w-full px-4 py-8 transition-all duration-300 md:pl-[14rem] lg:pl-[17rem]"
         style={{
-          paddingRight: chatPanelOpen ? "17rem" : "2rem",
-          paddingLeft: chatPanelOpen ? "17rem" : "19rem",
+          paddingRight: chatPanelOpen ? "17rem" : "1rem",
         }}
       >
         {isDashboardView ? (
@@ -1731,8 +1861,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             )}
 
             {semesters.length === 0 ? (
-              <div className="rounded-lg border border-dashed border-primary/30 bg-card/60 p-6 text-center text-sm text-muted-foreground">
-                Add your first semester to populate the dashboard.
+              <div className="flex flex-col items-center justify-center gap-5 rounded-xl border-2 border-dashed border-primary/20 bg-card/40 py-20 text-center">
+                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
+                  <Layers className="h-8 w-8 text-primary/60" />
+                </div>
+                <div>
+                  <p className="text-base font-semibold text-foreground">No semesters yet</p>
+                  <p className="mt-1 text-sm text-muted-foreground">Create your first semester in the sidebar to get started.</p>
+                </div>
               </div>
             ) : (
               <>
@@ -1901,9 +2037,82 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         )}
 
         {!isDashboardView && courses.length > 0 && (
-          <div className="mb-8 grid gap-6 md:grid-cols-2">
-            <GpaSummary courses={courses} />
-            <GradeDistributionChart courses={courses} />
+          <div className="mb-4 flex flex-wrap items-center justify-center gap-1.5 print:hidden">
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={collapseAllCourses}
+              className="h-8 w-8 border-secondary/40 bg-transparent"
+              title="Collapse All"
+            >
+              <ChevronsUp className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={expandAllCourses}
+              className="h-8 w-8 border-secondary/40 bg-transparent"
+              title="Expand All"
+            >
+              <ChevronsDown className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => window.print()}
+              className="h-8 w-8 border-secondary/40 bg-transparent"
+              title="Print"
+            >
+              <Printer className="h-4 w-4" />
+            </Button>
+            <div className="relative">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => {
+                  if (shareUrl) {
+                    setShareUrl(null);
+                  } else {
+                    generateShareUrl();
+                  }
+                }}
+                className="h-8 w-8 border-secondary/40 bg-transparent"
+                title="Share"
+              >
+                <Share2 className="h-4 w-4" />
+              </Button>
+              {shareUrl && (
+                <div className="absolute left-0 top-full z-50 mt-2 w-80 rounded-lg border border-border bg-card p-3 shadow-lg">
+                  <p className="mb-1.5 text-xs font-medium text-muted-foreground">Share link (read-only)</p>
+                  <div className="flex items-center gap-2">
+                    <input
+                      readOnly
+                      value={shareUrl}
+                      className="min-w-0 flex-1 rounded border border-border bg-background px-2 py-1 text-xs outline-none"
+                      onFocus={(e) => e.target.select()}
+                    />
+                    <Button
+                      size="sm"
+                      className="h-7 shrink-0 gap-1 px-2 text-xs"
+                      onClick={() => {
+                        navigator.clipboard.writeText(shareUrl);
+                        setShareCopied(true);
+                        setTimeout(() => setShareCopied(false), 2000);
+                      }}
+                    >
+                      {shareCopied ? <Check className="h-3 w-3" /> : <Share2 className="h-3 w-3" />}
+                      {shareCopied ? "Copied!" : "Copy"}
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {!isDashboardView && courses.length > 0 && (
+          <div className="mb-8">
+            <SemesterPanel courses={courses} />
           </div>
         )}
 
@@ -1928,6 +2137,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 >
                   <CourseCard
                     course={course}
+                    highlighted={highlightedCourseId === course.id}
                     onUpdate={(courseId, nextCourse) =>
                       updateCourse(courseId, nextCourse)
                     }

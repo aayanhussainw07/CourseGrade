@@ -68,7 +68,7 @@ def _serialize_assignment(assignment: Assignment) -> dict:
 
 
 def _serialize_course(course: Course) -> dict:
-    assignments = sorted(course.assignments, key=lambda assignment: assignment.created_at)
+    assignments = sorted(course.assignments, key=lambda assignment: assignment.created_at or datetime.min)
     return {
         "id": course.id,
         "semester": course.semester_id,
@@ -83,7 +83,7 @@ def _serialize_course(course: Course) -> dict:
 
 
 def _serialize_semester(semester: Semester) -> dict:
-    courses = sorted(semester.courses, key=lambda course: course.created_at)
+    courses = sorted(semester.courses, key=lambda course: course.created_at or datetime.min)
     return {
         "id": semester.id,
         "name": semester.name,
