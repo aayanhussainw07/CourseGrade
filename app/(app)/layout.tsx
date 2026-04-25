@@ -1433,7 +1433,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         isDashboardActive={isDashboardView}
         userEmail={session?.user?.email ?? undefined}
         onSignOut={() => signOut()}
-        onSettingsOpen={() => setSettingsOpen(true)}
         variant="desktop"
       />
 
