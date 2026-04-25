@@ -261,7 +261,7 @@ export async function POST(req: NextRequest) {
     }
     console.error("[syllabus] Gemini error:", err);
     return NextResponse.json(
-      { error: "AI service error. Please try again.", code: "AI_ERROR" },
+      { error: "Service error. Please try again.", code: "AI_ERROR" },
       { status: 502 },
     );
   }

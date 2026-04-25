@@ -8,21 +8,21 @@ export const marketingFeatures: {
   icon: LucideIcon;
 }[] = [
   {
-    title: "Stop guessing your GPA",
+    title: "Stop guessing your GPA.",
     description:
-      "You have a 73.4 in Calc II. Is that good? Is that bad? CourseGrade knows. You probably don't want to.",
+      "You have a 73.4 in MATH 2940. Is that bad? You probably don't want to know. But we'll help you find out anyway!",
     icon: Layers,
   },
   {
-    title: "Find out before your recruiters do",
+    title: "Time flies. Your grades may not.",
     description:
-      "GPA timelines and grade charts so you can pretend you noticed the problem weeks ago.",
+      "Watch your grades soar up through the sky with some ol' timelines.",
     icon: TrendingUp,
   },
   {
-    title: "Your syllabus is a fever dream",
+    title: "We can parse it for you.",
     description:
-      "Weighted quizzes, extra credit for showing up, drop-lowest for some reason... CourseGrade handles all of it without crying.",
+      "Too tired to type it all out? Just send in your syllabus and we'll do the rest.",
     icon: Sparkles,
   },
 ];

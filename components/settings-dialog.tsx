@@ -11,7 +11,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { loadAppSettings, saveAppSettings, type AppSettings } from "@/lib/app-settings";
+import {
+  loadAppSettings,
+  saveAppSettings,
+  type AppSettings,
+} from "@/lib/app-settings";
 import { DEFAULT_GRADE_SCALE } from "@/lib/types";
 import { AlertTriangle, ChevronDown, ChevronRight } from "lucide-react";
 
@@ -31,7 +35,9 @@ export function SettingsDialog({
   userId,
 }: SettingsDialogProps) {
   const [settings, setSettings] = useState<AppSettings>(loadAppSettings);
-  const [creditsDraft, setCreditsDraft] = useState(String(settings.defaultCredits));
+  const [creditsDraft, setCreditsDraft] = useState(
+    String(settings.defaultCredits),
+  );
   const [clearStep, setClearStep] = useState<"idle" | "confirm">("idle");
   const [clearing, setClearing] = useState(false);
   const [gradeScaleOpen, setGradeScaleOpen] = useState(false);
@@ -46,7 +52,10 @@ export function SettingsDialog({
     }
   }, [open]);
 
-  const update = <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => {
+  const update = <K extends keyof AppSettings>(
+    key: K,
+    value: AppSettings[K],
+  ) => {
     const next = { ...settings, [key]: value };
     setSettings(next);
     saveAppSettings({ [key]: value });
@@ -54,7 +63,10 @@ export function SettingsDialog({
 
   const commitCredits = () => {
     const parsed = parseInt(creditsDraft.trim(), 10);
-    const clamped = !isNaN(parsed) && parsed >= 1 ? Math.min(parsed, 20) : settings.defaultCredits;
+    const clamped =
+      !isNaN(parsed) && parsed >= 1
+        ? Math.min(parsed, 20)
+        : settings.defaultCredits;
     setCreditsDraft(String(clamped));
     update("defaultCredits", clamped);
   };
@@ -71,17 +83,25 @@ export function SettingsDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
+    <Dialog
+      open={open}
+      onOpenChange={(v) => {
+        if (!v) onClose();
+      }}
+    >
       <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="font-heading text-lg tracking-widest">Settings</DialogTitle>
+          <DialogTitle className="font-heading text-lg tracking-widest">
+            Settings
+          </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-8 py-2">
-
           {/* Course Defaults */}
           <section className="space-y-4">
-            <h3 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Course Defaults</h3>
+            <h3 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+              Course Defaults
+            </h3>
 
             <div className="flex items-center justify-between">
               <Label className="text-sm">Default Credits</Label>
@@ -91,7 +111,9 @@ export function SettingsDialog({
                 value={creditsDraft}
                 onChange={(e) => setCreditsDraft(e.target.value)}
                 onBlur={commitCredits}
-                onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") e.currentTarget.blur();
+                }}
                 className="w-20 text-center"
               />
             </div>
@@ -104,7 +126,9 @@ export function SettingsDialog({
               >
                 <div>
                   <p className="text-sm font-medium">Default Grade Scale</p>
-                  <p className="text-xs text-muted-foreground">Applied to every new course.</p>
+                  <p className="text-xs text-muted-foreground">
+                    Applied to every new course.
+                  </p>
                 </div>
                 {gradeScaleOpen ? (
                   <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
@@ -120,7 +144,11 @@ export function SettingsDialog({
                       onUpdate={(scale) => update("defaultGradeScale", scale)}
                       isPassFail={false}
                       onPassFailChange={() => {}}
-                      passFailSettings={{ passLabel: "P", failLabel: "F", threshold: 60 }}
+                      passFailSettings={{
+                        passLabel: "P",
+                        failLabel: "F",
+                        threshold: 60,
+                      }}
                       onPassFailSettingsChange={() => {}}
                     />
                   </div>
@@ -128,7 +156,12 @@ export function SettingsDialog({
                     variant="outline"
                     size="sm"
                     className="text-xs"
-                    onClick={() => update("defaultGradeScale", DEFAULT_GRADE_SCALE.map((g) => ({ ...g })))}
+                    onClick={() =>
+                      update(
+                        "defaultGradeScale",
+                        DEFAULT_GRADE_SCALE.map((g) => ({ ...g })),
+                      )
+                    }
                   >
                     Reset to default
                   </Button>
@@ -137,21 +170,51 @@ export function SettingsDialog({
             </div>
           </section>
 
+          {/* Behavior */}
+          <section className="space-y-4">
+            <h3 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+              Behavior
+            </h3>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium">Skip semester delete confirmation</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Delete semesters without a confirmation prompt.
+                </p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={settings.skipSemesterDeleteConfirm}
+                onClick={() => update("skipSemesterDeleteConfirm", !settings.skipSemesterDeleteConfirm)}
+                className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${settings.skipSemesterDeleteConfirm ? "bg-primary" : "bg-muted"}`}
+              >
+                <span className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${settings.skipSemesterDeleteConfirm ? "translate-x-4" : "translate-x-0"}`} />
+              </button>
+            </div>
+          </section>
+
           {/* GPA */}
           <section className="space-y-4">
-            <h3 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">GPA</h3>
+            <h3 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+              GPA
+            </h3>
 
             <div className="flex items-center justify-between">
               <div>
-                <Label className="text-sm">A+ Grade Points</Label>
-                <p className="text-xs text-muted-foreground mt-0.5">Some schools treat A+ the same as A.</p>
+                <Label className="text-sm">A+ counts as... </Label>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Some schools treat A+ the same as A.
+                </p>
               </div>
               <div className="flex rounded-lg border border-border overflow-hidden text-sm font-medium">
                 {([4.0, 4.33] as const).map((val) => (
                   <button
                     key={val}
                     type="button"
-                    onClick={() => update("aPlusGpaValue", val === 4.33 ? 4.33 : 4.0)}
+                    onClick={() =>
+                      update("aPlusGpaValue", val === 4.33 ? 4.33 : 4.0)
+                    }
                     className={`px-4 py-1.5 transition-colors ${
                       Math.abs(settings.aPlusGpaValue - val) < 0.01
                         ? "bg-primary text-primary-foreground"
@@ -168,17 +231,23 @@ export function SettingsDialog({
           {/* Account */}
           {(userEmail || userId) && (
             <section className="space-y-3">
-              <h3 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Account</h3>
+              <h3 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                Account
+              </h3>
               {userEmail && (
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">Email</span>
-                  <span className="font-medium truncate max-w-[60%] text-right">{userEmail}</span>
+                  <span className="font-medium truncate max-w-[60%] text-right">
+                    {userEmail}
+                  </span>
                 </div>
               )}
               {userId && (
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">User ID</span>
-                  <span className="font-mono text-xs text-muted-foreground truncate max-w-[60%] text-right">{userId}</span>
+                  <span className="font-mono text-xs text-muted-foreground truncate max-w-[60%] text-right">
+                    {userId}
+                  </span>
                 </div>
               )}
             </section>
@@ -186,13 +255,17 @@ export function SettingsDialog({
 
           {/* Data */}
           <section className="space-y-3">
-            <h3 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Data</h3>
+            <h3 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+              Data
+            </h3>
 
             {clearStep === "idle" ? (
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium">Clear All Data</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">Permanently delete all semesters and courses.</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Permanently delete all semesters and courses.
+                  </p>
                 </div>
                 <Button
                   variant="outline"
@@ -209,7 +282,10 @@ export function SettingsDialog({
                   <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
                   <div>
                     <p className="text-sm font-semibold">Are you sure?</p>
-                    <p className="text-xs mt-0.5 text-destructive/80">This will permanently delete all your semesters and courses. This cannot be undone.</p>
+                    <p className="text-xs mt-0.5 text-destructive/80">
+                      This will permanently delete all your semesters and
+                      courses. This cannot be undone.
+                    </p>
                   </div>
                 </div>
                 <div className="flex gap-2">
@@ -235,7 +311,6 @@ export function SettingsDialog({
               </div>
             )}
           </section>
-
         </div>
       </DialogContent>
     </Dialog>

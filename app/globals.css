@@ -175,7 +175,6 @@
   aside,
   .print\:hidden,
   [class*="fixed"],
-  [class*="ChatPanel"],
   button {
     display: none !important;
   }

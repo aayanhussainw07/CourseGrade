@@ -1032,6 +1032,7 @@ export function CourseCard({
       event.preventDefault();
       return;
     }
+    event.stopPropagation();
     draggingIdRef.current = criterionId;
     setDraggingCriterionId(criterionId);
     event.dataTransfer.effectAllowed = "move";

@@ -4,23 +4,23 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { CourseCard } from "@/components/course-card";
 import { CourseSidebar } from "@/components/course-sidebar";
 import { SemesterPanel } from "@/components/semester-panel";
-import { GradeDistributionChart } from "@/components/grade-distribution-chart";
-import { GpaTimelineChart } from "@/components/gpa-timeline-chart";
+import { DashboardPanel } from "@/components/dashboard-panel";
 import { Button } from "@/components/ui/button";
 import {
   Plus,
   Menu,
   Upload,
+  Sparkles,
   Download,
   TrendingUp,
   Layers,
   Pencil,
-  Sparkles,
   Printer,
   ChevronsUp,
   ChevronsDown,
   Share2,
   Check,
+  Settings,
 } from "lucide-react";
 import Image from "next/image";
 import {
@@ -68,7 +68,7 @@ import {
 } from "@/app/page-utils";
 import { usePathname, useRouter } from "next/navigation";
 import { SyllabusImportDialog } from "@/components/syllabus-import-dialog";
-import { ChatPanel, type ChatAction, type ChatActionResult } from "@/components/chat-panel";
+
 import { SettingsDialog } from "@/components/settings-dialog";
 import { loadAppSettings, type AppSettings } from "@/lib/app-settings";
 
@@ -109,15 +109,25 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [dashboardMessageDraft, setDashboardMessageDraft] = useState("");
   const [isEditingQuote, setIsEditingQuote] = useState(false);
   const [syllabusImportOpen, setSyllabusImportOpen] = useState(false);
-  const [chatPanelOpen, setChatPanelOpen] = useState(false);
+
   const [isEditingSemesterName, setIsEditingSemesterName] = useState(false);
   const [semesterNameDraft, setSemesterNameDraft] = useState("");
-  const [highlightedCourseId, setHighlightedCourseId] = useState<string | null>(null);
+  const [highlightedCourseId, setHighlightedCourseId] = useState<string | null>(
+    null,
+  );
   const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [saveStatus, setSaveStatus] = useState<
+    "idle" | "saving" | "saved" | "error"
+  >("idle");
   const saveStatusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [shareCopied, setShareCopied] = useState(false);
+  const [draggingMainCourseId, setDraggingMainCourseId] = useState<
+    string | null
+  >(null);
+  const [dragOverMainCourseId, setDragOverMainCourseId] = useState<
+    string | null
+  >(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [appSettings, setAppSettings] = useState<AppSettings>(loadAppSettings);
   const dashboardMessageScopeId = useMemo(
@@ -253,9 +263,34 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     [orderedSemesters],
   );
   const overallGpa = useMemo(
-    () => (allCourses.length > 0 ? calculateGPA(allCourses, appSettings.aPlusGpaValue) : 0),
+    () =>
+      allCourses.length > 0
+        ? calculateGPA(allCourses, appSettings.aPlusGpaValue)
+        : 0,
     [allCourses, appSettings.aPlusGpaValue],
   );
+
+  const overallGpaLetter = useMemo(() => {
+    const scale = [
+      { letter: "A+", pts: appSettings.aPlusGpaValue },
+      { letter: "A",  pts: 4.0 },
+      { letter: "A-", pts: 3.7 },
+      { letter: "B+", pts: 3.3 },
+      { letter: "B",  pts: 3.0 },
+      { letter: "B-", pts: 2.7 },
+      { letter: "C+", pts: 2.3 },
+      { letter: "C",  pts: 2.0 },
+      { letter: "C-", pts: 1.7 },
+      { letter: "D+", pts: 1.3 },
+      { letter: "D",  pts: 1.0 },
+      { letter: "D-", pts: 0.7 },
+      { letter: "F",  pts: 0.0 },
+    ];
+    for (const { letter, pts } of scale) {
+      if (overallGpa >= pts) return letter;
+    }
+    return "F";
+  }, [overallGpa, appSettings.aPlusGpaValue]);
   const totalCredits = useMemo(
     () => allCourses.reduce((sum, course) => sum + course.credits, 0),
     [allCourses],
@@ -272,7 +307,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           (sum, course) => sum + course.credits,
           0,
         );
-        const gpa = coursesList.length > 0 ? calculateGPA(coursesList, appSettings.aPlusGpaValue) : 0;
+        const gpa =
+          coursesList.length > 0
+            ? calculateGPA(coursesList, appSettings.aPlusGpaValue)
+            : 0;
         return {
           id: semester.id,
           name: semester.name,
@@ -340,9 +378,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       } else if (key === "y" || (key === "z" && event.shiftKey)) {
         event.preventDefault();
         handleRedo();
-      } else if (key === "k") {
-        event.preventDefault();
-        setChatPanelOpen((prev) => !prev);
       }
     };
     window.addEventListener("keydown", handleKeydown);
@@ -497,7 +532,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       element.scrollIntoView({ behavior: "smooth", block: "start" });
       setHighlightedCourseId(courseId);
       if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
-      highlightTimerRef.current = setTimeout(() => setHighlightedCourseId(null), 1800);
+      highlightTimerRef.current = setTimeout(
+        () => setHighlightedCourseId(null),
+        1800,
+      );
     }
   };
 
@@ -513,7 +551,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     writeStoredDashboardMessage(dashboardMessageScopeId, "");
     setDashboardMessage("");
     setDashboardMessageDraft("");
-    setIsEditingQuote(true);
+    setIsEditingQuote(false);
   }, [dashboardMessageScopeId]);
 
   // -------------------------------
@@ -582,7 +620,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   const clearAllData = async () => {
     for (const s of semesters) {
-      try { await storage.deleteSemester(s.id); } catch { /* best effort */ }
+      try {
+        await storage.deleteSemester(s.id);
+      } catch {
+        /* best effort */
+      }
     }
     setSemesters([]);
     setActiveSemesterId(null);
@@ -596,7 +638,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       const newSem = await storage.createSemester(`${src.name} (Copy)`);
       const syncedCourses: Course[] = [];
       for (const c of src.courses) {
-        syncedCourses.push(await importPortableCourse(courseToPortable(c), newSem.id));
+        syncedCourses.push(
+          await importPortableCourse(courseToPortable(c), newSem.id),
+        );
       }
       setSemesters((prev) => [...prev, { ...newSem, courses: syncedCourses }]);
       setServerOffline(false);
@@ -619,7 +663,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         `Course ${courses.length + 1}`,
         appSettings.defaultCredits,
       );
-      newCourse.gradeScale = appSettings.defaultGradeScale.map((g) => ({ ...g }));
+      newCourse.gradeScale = appSettings.defaultGradeScale.map((g) => ({
+        ...g,
+      }));
 
       setSemesters((prev) =>
         prev.map((s) =>
@@ -810,11 +856,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       setServerOffline(false);
       setSaveStatus("saved");
       if (saveStatusTimerRef.current) clearTimeout(saveStatusTimerRef.current);
-      saveStatusTimerRef.current = setTimeout(() => setSaveStatus("idle"), 2000);
+      saveStatusTimerRef.current = setTimeout(
+        () => setSaveStatus("idle"),
+        2000,
+      );
     } catch (error) {
       setSaveStatus("error");
       if (saveStatusTimerRef.current) clearTimeout(saveStatusTimerRef.current);
-      saveStatusTimerRef.current = setTimeout(() => setSaveStatus("idle"), 3000);
+      saveStatusTimerRef.current = setTimeout(
+        () => setSaveStatus("idle"),
+        3000,
+      );
       if (error instanceof ApiUnavailableError) {
         setServerOffline(true);
       } else {
@@ -998,7 +1050,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     setSemesters((prev) =>
       prev.map((s) =>
         s.id === activeSemesterId
-          ? { ...s, courses: s.courses.map((c) => ({ ...c, collapsed: false })) }
+          ? {
+              ...s,
+              courses: s.courses.map((c) => ({ ...c, collapsed: false })),
+            }
           : s,
       ),
     );
@@ -1030,403 +1085,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     setShareUrl(url);
     setShareCopied(false);
   }, [semesters, activeSemesterId]);
-
-  const handleChatActions = async (actions: ChatAction[]): Promise<ChatActionResult> => {
-    const result: ChatActionResult = { applied: 0, failed: 0, errors: [] };
-    if (actions.length === 0) return result;
-
-    // Local snapshot for reads — React state is stale within an async loop
-    let snap: Semester[] = semesters.map((s) => ({
-      ...s,
-      courses: s.courses.map((c) => ({
-        ...c,
-        criteria: c.criteria.map((cr) => ({
-          ...cr,
-          subItems: cr.subItems ? [...cr.subItems] : [],
-        })),
-      })),
-    }));
-    const originalSnap = JSON.stringify(snap);
-
-    // Track created resource IDs so batch actions can chain
-    let workingSemId = activeSemesterId;
-    let lastCourseId: string | null = null;
-    let lastCriterionId: string | null = null;
-
-    // Fuzzy course resolution: exact ID → name match → last created
-    const resolveCourseId = (rawId: string): string | null => {
-      const sem = snap.find((s) => s.id === workingSemId);
-      if (!sem) return lastCourseId;
-      // Exact ID match
-      if (sem.courses.some((c) => c.id === rawId)) return rawId;
-      // Fuzzy: match by name (AI often sends name instead of ID)
-      const byName = sem.courses.find(
-        (c) => c.name.toLowerCase().trim() === rawId.toLowerCase().trim(),
-      );
-      if (byName) return byName.id;
-      // Partial name match (e.g. "Math" matches "Math 101")
-      const byPartial = sem.courses.filter(
-        (c) => c.name.toLowerCase().includes(rawId.toLowerCase().trim()),
-      );
-      if (byPartial.length === 1) return byPartial[0].id;
-      // If only one course, use it
-      if (sem.courses.length === 1) return sem.courses[0].id;
-      return lastCourseId ?? rawId;
-    };
-
-    // Fuzzy criterion resolution: exact ID → name match → last created
-    const resolveCriterionId = (course: Course, rawId: string, rawName?: string): string | null => {
-      // Exact ID match
-      if (course.criteria.some((cr) => cr.id === rawId)) return rawId;
-      // Fuzzy: match by name if provided
-      if (rawName) {
-        const byName = course.criteria.find(
-          (cr) => cr.name.toLowerCase() === rawName.toLowerCase(),
-        );
-        if (byName) return byName.id;
-      }
-      // Fuzzy: try rawId as a name (AI often sends name instead of ID)
-      const byRawName = course.criteria.find(
-        (cr) => cr.name.toLowerCase().trim() === rawId.toLowerCase().trim(),
-      );
-      if (byRawName) return byRawName.id;
-      // Partial name match on rawId
-      const byPartial = course.criteria.filter(
-        (cr) => cr.name.toLowerCase().includes(rawId.toLowerCase().trim()),
-      );
-      if (byPartial.length === 1) return byPartial[0].id;
-      // If only one criterion, use it
-      if (course.criteria.length === 1) return course.criteria[0].id;
-      return lastCriterionId ?? rawId;
-    };
-
-    for (const action of actions) {
-      try {
-        // --- Semester operations ---
-        if (action.type === "add_semester") {
-          const newSem = await storage.createSemester(action.name);
-          snap = [...snap, newSem];
-          workingSemId = newSem.id;
-          setServerOffline(false);
-          result.applied++;
-          continue;
-        }
-        if (action.type === "delete_semester") {
-          await deleteSemester(action.semesterId);
-          snap = snap.filter((s) => s.id !== action.semesterId);
-          result.applied++;
-          continue;
-        }
-        if (action.type === "rename_semester") {
-          await editSemester(action.semesterId, action.newName);
-          snap = snap.map((s) =>
-            s.id === action.semesterId ? { ...s, name: action.newName } : s,
-          );
-          result.applied++;
-          continue;
-        }
-        if (action.type === "duplicate_semester") {
-          const src = snap.find((s) => s.id === action.semesterId);
-          if (!src) {
-            result.failed++;
-            result.errors.push(`Semester not found for duplicate.`);
-            continue;
-          }
-          try {
-            const newSem = await storage.createSemester(`${src.name} (Copy)`);
-            const syncedCourses: Course[] = [];
-            for (const c of src.courses) {
-              syncedCourses.push(
-                await importPortableCourse(courseToPortable(c), newSem.id),
-              );
-            }
-            snap = [...snap, { ...newSem, courses: syncedCourses }];
-            workingSemId = newSem.id;
-            setServerOffline(false);
-            result.applied++;
-          } catch (error) {
-            if (error instanceof ApiUnavailableError) setServerOffline(true);
-            result.failed++;
-            result.errors.push(`Failed to duplicate semester.`);
-          }
-          continue;
-        }
-
-        // --- Course / criterion / sub-item operations target working semester ---
-        const semId = workingSemId;
-        if (!semId) {
-          result.failed++;
-          result.errors.push(`No active semester for action "${action.type}".`);
-          continue;
-        }
-
-        if (action.type === "add_course") {
-          const newCourse = await storage.createCourse(
-            semId,
-            action.name,
-            action.credits,
-          );
-          snap = snap.map((s) =>
-            s.id === semId
-              ? { ...s, courses: [...s.courses, newCourse] }
-              : s,
-          );
-          lastCourseId = newCourse.id;
-          lastCriterionId = null;
-          setServerOffline(false);
-          result.applied++;
-          continue;
-        }
-
-        if (action.type === "delete_course") {
-          const cid = resolveCourseId(action.courseId);
-          if (!cid) { result.failed++; result.errors.push(`Course not found for delete.`); continue; }
-          if (isServerResourceId(semId) && isServerResourceId(cid)) {
-            await storage.deleteCourse(semId, cid);
-          }
-          removeCourseSettings(cid);
-          snap = snap.map((s) =>
-            s.id === semId
-              ? { ...s, courses: s.courses.filter((c) => c.id !== cid) }
-              : s,
-          );
-          result.applied++;
-          continue;
-        }
-
-        if (action.type === "duplicate_course") {
-          const cid = resolveCourseId(action.courseId);
-          if (!cid) { result.failed++; result.errors.push(`Course not found for duplicate.`); continue; }
-          const sem = snap.find((s) => s.id === semId);
-          const course = sem?.courses.find((c) => c.id === cid);
-          if (course) {
-            const dup = await importPortableCourse(
-              courseToPortable(course),
-              semId,
-            );
-            snap = snap.map((s) =>
-              s.id === semId
-                ? { ...s, courses: [...s.courses, dup] }
-                : s,
-            );
-            lastCourseId = dup.id;
-            result.applied++;
-          } else {
-            result.failed++;
-            result.errors.push(`Course not found for duplicate.`);
-          }
-          continue;
-        }
-
-        // --- Actions needing a course object ---
-        const courseId = "courseId" in action
-          ? resolveCourseId((action as { courseId: string }).courseId)
-          : lastCourseId;
-        if (!courseId) {
-          result.failed++;
-          result.errors.push(`Could not resolve course for "${action.type}".`);
-          continue;
-        }
-
-        const sem = snap.find((s) => s.id === semId);
-        const course = sem?.courses.find((c) => c.id === courseId);
-        if (!course) {
-          result.failed++;
-          result.errors.push(`Course not found for "${action.type}".`);
-          continue;
-        }
-
-        let updated: Course;
-
-        if (action.type === "rename_course") {
-          updated = { ...course, name: action.newName };
-        } else if (action.type === "set_credits") {
-          updated = { ...course, credits: action.credits };
-        } else if (action.type === "set_pass_fail") {
-          updated = { ...course, isPassFail: action.isPassFail };
-        } else if (action.type === "set_percent_boost") {
-          updated = { ...course, percentBoost: action.percentBoost };
-        } else if (action.type === "update_criterion") {
-          // Defensively handle malformed AI responses (changes missing or flat structure)
-          const rawAction = action as Record<string, unknown>;
-          const changes: Record<string, unknown> =
-            rawAction.changes && typeof rawAction.changes === "object"
-              ? (rawAction.changes as Record<string, unknown>)
-              : { score: rawAction.score, weight: rawAction.weight, name: rawAction.name };
-
-          const crName = typeof changes.name === "string" ? changes.name : undefined;
-          const crId = resolveCriterionId(course, action.criterionId ?? (rawAction.criterionId as string) ?? "", crName);
-          if (!crId || !course.criteria.some((cr) => cr.id === crId)) {
-            result.failed++;
-            result.errors.push(
-              `Criterion "${action.criterionId}" not found in "${course.name}". ` +
-              (course.criteria.length === 0
-                ? "This course has no criteria to update."
-                : `Available: ${course.criteria.map((cr) => cr.name).join(", ")}.`),
-            );
-            continue;
-          }
-          // Coerce numeric fields to numbers in case AI sent strings
-          const safeChanges: Partial<Criterion> = { ...changes } as Partial<Criterion>;
-          if (safeChanges.score !== undefined) safeChanges.score = Number(safeChanges.score);
-          if (safeChanges.weight !== undefined) safeChanges.weight = Number(safeChanges.weight);
-          if (safeChanges.extraCredit !== undefined) safeChanges.extraCredit = Number(safeChanges.extraCredit);
-          if (safeChanges.dropLowest !== undefined) safeChanges.dropLowest = Number(safeChanges.dropLowest);
-          updated = {
-            ...course,
-            criteria: course.criteria.map((cr) =>
-              cr.id === crId ? { ...cr, ...safeChanges } : cr,
-            ),
-          };
-        } else if (action.type === "add_criterion") {
-          const cid = generateClientId();
-          const newCr: Criterion = {
-            id: cid,
-            clientId: cid,
-            name: action.criterion.name,
-            weight: action.criterion.weight,
-            score: action.criterion.score ?? 0,
-          };
-          updated = {
-            ...course,
-            criteria: [...course.criteria, newCr],
-          };
-          lastCriterionId = cid;
-        } else if (action.type === "remove_criterion") {
-          const crId = resolveCriterionId(course, action.criterionId);
-          if (!crId || !course.criteria.some((cr) => cr.id === crId)) {
-            result.failed++;
-            result.errors.push(`Criterion not found for remove.`);
-            continue;
-          }
-          updated = {
-            ...course,
-            criteria: course.criteria.filter((cr) => cr.id !== crId),
-          };
-        } else if (action.type === "add_sub_item") {
-          const crId = resolveCriterionId(course, action.criterionId);
-          if (!crId || !course.criteria.some((cr) => cr.id === crId)) {
-            result.failed++;
-            result.errors.push(`Criterion not found for add_sub_item.`);
-            continue;
-          }
-          const sid = generateClientId();
-          const newSi: SubItem = {
-            id: sid,
-            name: action.subItem.name,
-            score: action.subItem.score,
-            weight: action.subItem.weight,
-          };
-          updated = {
-            ...course,
-            criteria: course.criteria.map((cr) =>
-              cr.id === crId
-                ? { ...cr, subItems: [...(cr.subItems ?? []), newSi] }
-                : cr,
-            ),
-          };
-        } else if (action.type === "update_sub_item") {
-          const crId = resolveCriterionId(course, action.criterionId);
-          if (!crId || !course.criteria.some((cr) => cr.id === crId)) {
-            result.failed++;
-            result.errors.push(`Criterion not found for update_sub_item.`);
-            continue;
-          }
-          updated = {
-            ...course,
-            criteria: course.criteria.map((cr) =>
-              cr.id === crId
-                ? {
-                    ...cr,
-                    subItems: (cr.subItems ?? []).map((si) =>
-                      si.id === action.subItemId
-                        ? { ...si, ...action.changes }
-                        : si,
-                    ),
-                  }
-                : cr,
-            ),
-          };
-        } else if (action.type === "remove_sub_item") {
-          const crId = resolveCriterionId(course, action.criterionId);
-          if (!crId || !course.criteria.some((cr) => cr.id === crId)) {
-            result.failed++;
-            result.errors.push(`Criterion not found for remove_sub_item.`);
-            continue;
-          }
-          updated = {
-            ...course,
-            criteria: course.criteria.map((cr) =>
-              cr.id === crId
-                ? {
-                    ...cr,
-                    subItems: (cr.subItems ?? []).filter(
-                      (si) => si.id !== action.subItemId,
-                    ),
-                  }
-                : cr,
-            ),
-          };
-        } else {
-          result.failed++;
-          result.errors.push(`Unknown action type.`);
-          continue;
-        }
-
-        // Update local snapshot
-        snap = snap.map((s) =>
-          s.id === semId
-            ? {
-                ...s,
-                courses: s.courses.map((c) =>
-                  c.id === courseId ? updated : c,
-                ),
-              }
-            : s,
-        );
-        result.applied++;
-
-        // Server sync
-        if (isServerResourceId(courseId) && isServerResourceId(semId)) {
-          try {
-            const synced = await storage.updateCourse(semId, updated);
-            snap = snap.map((s) =>
-              s.id === semId
-                ? {
-                    ...s,
-                    courses: s.courses.map((c) =>
-                      c.id === courseId
-                        ? { ...c, criteria: synced.criteria }
-                        : c,
-                    ),
-                  }
-                : s,
-            );
-            setServerOffline(false);
-          } catch (error) {
-            if (error instanceof ApiUnavailableError) setServerOffline(true);
-          }
-        }
-      } catch (error) {
-        console.error("[chat] Batch action error:", action.type, error);
-        result.failed++;
-        result.errors.push(`Error processing "${action.type}".`);
-        if (error instanceof ApiUnavailableError) setServerOffline(true);
-      }
-    }
-
-    // Final safety check: if nothing actually changed in the data, mark all as failed
-    if (result.applied > 0 && JSON.stringify(snap) === originalSnap) {
-      console.warn("[chat] Actions reported as applied but data unchanged");
-      result.applied = 0;
-      result.failed = actions.length;
-      result.errors = ["No data was actually changed despite processing actions."];
-    }
-
-    // Apply the final snapshot to React state
-    setSemesters(snap);
-    return result;
-  };
 
   const importDashboardBackup = useCallback(
     async (file: File) => {
@@ -1673,11 +1331,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* AI chat toggle button — hidden when panel is open */}
-      {!chatPanelOpen && (
-        <div className="fixed right-4 top-4 z-50 flex flex-col items-end gap-1">
+      {/* Top-right actions */}
+      <div className="fixed right-4 top-4 z-50 flex items-center gap-2">
+        {activeSemesterId && (
           <Button
-            onClick={() => setChatPanelOpen(true)}
+            onClick={() => setSyllabusImportOpen(true)}
             className="flex items-center gap-2 border border-sidebar-border bg-sidebar px-3 py-2 text-sm text-sidebar-foreground hover:bg-sidebar-accent"
             style={{
               backgroundImage:
@@ -1685,23 +1343,21 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             }}
           >
             <Sparkles className="h-4 w-4" />
-            Chat
+            Import Syllabus
           </Button>
-          {saveStatus !== "idle" && (
-            <span
-              className={`text-[10px] font-medium transition-opacity ${
-                saveStatus === "saving"
-                  ? "text-muted-foreground"
-                  : saveStatus === "saved"
-                    ? "text-green-600"
-                    : "text-red-500"
-              }`}
-            >
-              {saveStatus === "saving" ? "Saving…" : saveStatus === "saved" ? "Saved ✓" : "Save failed"}
-            </span>
-          )}
-        </div>
-      )}
+        )}
+        <Button
+          size="icon"
+          onClick={() => setSettingsOpen(true)}
+          className="border border-sidebar-border bg-sidebar text-sidebar-foreground hover:bg-sidebar-accent h-9 w-9"
+          style={{
+            backgroundImage:
+              "repeating-linear-gradient(0deg, rgba(77,31,26,0.08) 0px, rgba(77,31,26,0.08) 1px, transparent 1px, transparent 20px), repeating-linear-gradient(90deg, rgba(77,31,26,0.08) 0px, rgba(77,31,26,0.08) 1px, transparent 1px, transparent 20px)",
+          }}
+        >
+          <Settings className="h-4 w-4" />
+        </Button>
+      </div>
 
       <div className="fixed left-4 top-6 z-50 md:hidden">
         <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
@@ -1730,6 +1386,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               }}
               onAddSemester={addSemester}
               onDeleteSemester={deleteSemester}
+              skipSemesterDeleteConfirm={appSettings.skipSemesterDeleteConfirm}
               onEditSemester={editSemester}
               onDeleteCourse={deleteCourse}
               onEditCourse={editCourse}
@@ -1745,7 +1402,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               isDashboardActive={isDashboardView}
               userEmail={session?.user?.email ?? undefined}
               onSignOut={() => signOut()}
-              onSettingsOpen={() => setSettingsOpen(true)}
+
             />
           </SheetContent>
         </Sheet>
@@ -1794,7 +1451,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <div
         className="w-full px-4 py-8 transition-all duration-300 md:pl-[14rem] lg:pl-[17rem]"
         style={{
-          paddingRight: chatPanelOpen ? "17rem" : "1rem",
+          paddingRight: "1rem",
         }}
       >
         {isDashboardView ? (
@@ -1802,63 +1459,72 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <p className="w-fit mx-auto text-2xl font-bold uppercase tracking-widest bg-primary text-white px-8 py-2 [box-shadow:5px_5px_0_rgba(77,31,26,0.55),10px_10px_0_rgba(77,31,26,0.25)]">
               Dashboard
             </p>
-            {dashboardMessage && !isEditingQuote ? (
-              <div className="group relative w-full rounded-lg border border-primary/35 bg-card/85 px-4 py-3 text-left shadow-under-white-soft">
-                <p className="text-sm italic text-foreground/90">
-                  "{dashboardMessage}"
+            <div className="w-full rounded-lg border border-primary/35 bg-card/85 shadow-under-white-soft overflow-hidden flex">
+              {/* Left 30% — label */}
+              <div className="relative flex shrink-0 items-center justify-center bg-primary border-r border-primary/20 px-5 py-4 overflow-hidden">
+                <p className="relative font-etna text-2xl text-white leading-none">
+                  quote.
                 </p>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="absolute right-2 top-2 h-7 w-7 opacity-0 transition-opacity group-hover:opacity-100"
-                  onClick={() => setIsEditingQuote(true)}
-                >
-                  <Pencil className="h-3.5 w-3.5" />
-                </Button>
               </div>
-            ) : (
-              <div className="w-full rounded-lg border border-primary/35 bg-card/85 p-3 text-left shadow-under-white-soft">
-                <p className="text-xs text-muted-foreground">
-                  Save a quote you want to see every time you open your
-                  dashboard.
-                </p>
-                <textarea
-                  value={dashboardMessageDraft}
-                  onChange={(event) =>
-                    setDashboardMessageDraft(event.target.value)
-                  }
-                  placeholder="Your motivational quote..."
-                  rows={2}
-                  maxLength={280}
-                  className="mt-2 w-full resize-y rounded-md border border-primary/25 bg-background/90 px-3 py-1.5 text-sm text-foreground outline-none transition focus:border-primary/45"
-                />
-                <div className="mt-2 flex items-center gap-2">
-                  <Button size="sm" onClick={saveDashboardMessage}>
-                    Save message
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={clearDashboardMessage}
-                    disabled={
-                      dashboardMessage.length === 0 &&
-                      dashboardMessageDraft.trim().length === 0
-                    }
-                  >
-                    Clear
-                  </Button>
-                  {dashboardMessage && (
+              {/* Right 70% — message */}
+              <div className="flex-1 px-5 py-4">
+                {dashboardMessage && !isEditingQuote ? (
+                  <div className="group relative h-full flex items-center">
+                    <p className="text-lg italic text-foreground/90">
+                      {dashboardMessage.length > 100
+                        ? `"${dashboardMessage.slice(0, 100)}…"`
+                        : `"${dashboardMessage}"`}
+                    </p>
                     <Button
-                      size="sm"
                       variant="ghost"
-                      onClick={() => setIsEditingQuote(false)}
+                      size="icon"
+                      className="absolute right-0 top-0 h-7 w-7 opacity-0 transition-opacity group-hover:opacity-100"
+                      onClick={() => setIsEditingQuote(true)}
                     >
-                      Cancel
+                      <Pencil className="h-3.5 w-3.5" />
                     </Button>
-                  )}
-                </div>
+                  </div>
+                ) : (
+                  <div>
+                    <textarea
+                      value={dashboardMessageDraft}
+                      onChange={(event) =>
+                        setDashboardMessageDraft(event.target.value)
+                      }
+                      placeholder="Your motivational quote..."
+                      rows={2}
+                      maxLength={280}
+                      className="w-full resize-none rounded-md border border-primary/25 bg-background/90 px-3 py-1.5 text-sm text-foreground outline-none transition focus:border-primary/45"
+                    />
+                    <div className="mt-2 flex items-center gap-2">
+                      <Button size="sm" onClick={saveDashboardMessage}>
+                        Save
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={clearDashboardMessage}
+                        disabled={
+                          dashboardMessage.length === 0 &&
+                          dashboardMessageDraft.trim().length === 0
+                        }
+                      >
+                        Clear
+                      </Button>
+                      {dashboardMessage && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setIsEditingQuote(false)}
+                        >
+                          Cancel
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
-            )}
+            </div>
 
             {semesters.length === 0 ? (
               <div className="flex flex-col items-center justify-center gap-5 rounded-xl border-2 border-dashed border-primary/20 bg-card/40 py-20 text-center">
@@ -1866,80 +1532,75 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   <Layers className="h-8 w-8 text-primary/60" />
                 </div>
                 <div>
-                  <p className="text-base font-semibold text-foreground">No semesters yet</p>
-                  <p className="mt-1 text-sm text-muted-foreground">Create your first semester in the sidebar to get started.</p>
+                  <p className="text-base font-semibold text-foreground">
+                    No semesters yet
+                  </p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Let's get started!
+                  </p>
                 </div>
+                <Button onClick={addSemester} size="lg" className="gap-2">
+                  <Plus className="h-5 w-5" />
+                  Add Semester
+                </Button>
               </div>
             ) : (
               <>
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="rounded-lg border border-primary/35 bg-card/85 p-4 text-left shadow-under-white-soft">
-                    <p className="text-sm text-muted-foreground">Overall GPA</p>
-                    <p className="mt-2 flex items-baseline gap-2 text-3xl font-bold text-primary">
-                      <TrendingUp className="h-5 w-5 text-muted-foreground" />
-                      {overallGpa.toFixed(2)}
-                    </p>
-                  </div>
-                  <div className="rounded-lg border border-primary/35 bg-card/85 p-4 text-left shadow-under-white-soft">
-                    <p className="text-sm text-muted-foreground">
-                      Total Credits
-                    </p>
-                    <p className="mt-2 flex items-baseline gap-2 text-3xl font-bold text-primary">
-                      <Layers className="h-5 w-5 text-muted-foreground" />
-                      {totalCredits}
-                    </p>
-                  </div>
-                  <div className="rounded-lg border border-primary/35 bg-card/85 p-4 text-left shadow-under-white-soft">
-                    <p className="text-sm text-muted-foreground">
-                      Semesters Tracked
-                    </p>
-                    <p className="mt-2 text-3xl font-bold text-primary">
-                      {totalSemesters}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="grid gap-6 md:grid-cols-2">
-                  <GpaTimelineChart data={timelineData} />
-                  {allCourses.length > 0 ? (
-                    <GradeDistributionChart
-                      title="Overall Grade Distribution"
-                      courses={allCourses}
-                    />
-                  ) : (
-                    <div className="rounded-lg border bg-card/85 p-4 text-left border-2 border-primary/35 shadow-under-white-strong text-lg text-muted-foreground">
-                      Add your courses to see grade distributions!
-                    </div>
-                  )}
-                </div>
-
-                <div className="grid p-4 gap-4 lg:grid">
-                  {semesterSummaries.map((summary) => (
-                    <div
-                      key={summary.id}
-                      className="rounded-lg border border-primary/35 bg-card/85 p-4 text-left shadow-under-white-soft"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-semibold text-foreground">
-                            {summary.name}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {formatDateLabel(summary.createdAt)}
-                          </p>
-                        </div>
-                        <span className="text-lg font-bold text-primary">
-                          {summary.gpa.toFixed(2)} GPA
-                        </span>
-                      </div>
-                      <p className="mt-2 text-sm text-muted-foreground">
-                        Credits: {summary.credits}
-                      </p>
+                <div className="grid gap-4" style={{ gridTemplateColumns: "1fr 2fr 1fr" }}>
+                  {[
+                    { label: "Total Credits", content: <p className="mt-2 text-5xl font-bold text-white">{totalCredits}</p> },
+                    { label: "Overall GPA", content: <div className="mt-1 flex items-center justify-between pr-8"><p className="flex items-baseline gap-2 text-4xl font-bold text-white"><TrendingUp className="h-5 w-5 text-white/60" />{overallGpa.toFixed(2)}</p><span className="text-7xl font-black text-white/80">{overallGpaLetter}</span></div> },
+                    { label: "Semesters Tracked", content: <p className="mt-2 text-5xl font-bold text-white">{totalSemesters}</p> },
+                  ].map(({ label, content }) => (
+                    <div key={label} className="relative overflow-hidden rounded-lg bg-primary p-4 text-left"
+                      style={{ backgroundImage: "repeating-linear-gradient(0deg, rgba(255,255,255,0.06) 0px, rgba(255,255,255,0.06) 1px, transparent 1px, transparent 20px), repeating-linear-gradient(90deg, rgba(255,255,255,0.06) 0px, rgba(255,255,255,0.06) 1px, transparent 1px, transparent 20px)" }}>
+                      <p className="text-sm font-medium text-white/60 uppercase tracking-widest">{label}</p>
+                      {content}
                     </div>
                   ))}
                 </div>
 
-                <div className="flex justify-end gap-2">
+                <DashboardPanel
+                  timelineData={timelineData}
+                  courses={allCourses}
+                />
+
+                <div className="grid p-4 pb-0 gap-4 lg:grid">
+                  {semesterSummaries.map((summary, i) => {
+                    const even = i % 2 === 0;
+                    const skew = even ? -2 : 2;
+                    return (
+                      <div
+                        key={summary.id}
+                        className="relative overflow-hidden p-5 text-left"
+                        style={{
+                          backgroundColor:
+                            "color-mix(in srgb, var(--primary) 75%, black)",
+                        }}
+                      >
+                        <div
+                          className="flex items-center justify-between"
+                          style={{ transform: `skewX(${-skew}deg)` }}
+                        >
+                          <p className="text-xl font-bold text-white uppercase tracking-wide">
+                            {summary.name}
+                          </p>
+                          <span className="text-2xl font-black text-white">
+                            {summary.gpa.toFixed(2)} GPA
+                          </span>
+                        </div>
+                        <p
+                          className="mt-1 text-sm text-white/60"
+                          style={{ transform: `skewX(${-skew}deg)` }}
+                        >
+                          Credits: {summary.credits}
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="flex justify-end gap-2 mr-5 ml-5">
                   <input
                     ref={dashboardFileInputRef}
                     type="file"
@@ -2015,22 +1676,24 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 </Button>
               </div>
             ) : (
-              <div className="group flex items-center justify-center gap-6">
-                <p className="w-fit text-2xl font-bold uppercase tracking-widest bg-primary text-white px-8 py-2 [box-shadow:5px_5px_0_rgba(77,31,26,0.55),10px_10px_0_rgba(77,31,26,0.25)]">
-                  {activeSemester?.name ?? "Semester"}
-                </p>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7 opacity-0 transition-opacity group-hover:opacity-100"
-                  title="Edit name"
-                  onClick={() => {
-                    setSemesterNameDraft(activeSemester?.name ?? "");
-                    setIsEditingSemesterName(true);
-                  }}
-                >
-                  <Pencil className="h-3.5 w-3.5" />
-                </Button>
+              <div className="flex items-center justify-center">
+                <div className="group relative">
+                  <p className="w-fit text-2xl font-bold uppercase tracking-widest bg-primary text-white px-8 py-2 [box-shadow:5px_5px_0_rgba(77,31,26,0.55),10px_10px_0_rgba(77,31,26,0.25)]">
+                    {activeSemester?.name ?? "Semester"}
+                  </p>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="absolute top-1/2 -translate-y-1/2 left-full ml-4 h-7 w-7 opacity-0 transition-opacity group-hover:opacity-100"
+                    title="Edit name"
+                    onClick={() => {
+                      setSemesterNameDraft(activeSemester?.name ?? "");
+                      setIsEditingSemesterName(true);
+                    }}
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
               </div>
             )}
           </div>
@@ -2083,7 +1746,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               </Button>
               {shareUrl && (
                 <div className="absolute left-0 top-full z-50 mt-2 w-80 rounded-lg border border-border bg-card p-3 shadow-lg">
-                  <p className="mb-1.5 text-xs font-medium text-muted-foreground">Share link (read-only)</p>
+                  <p className="mb-1.5 text-xs font-medium text-muted-foreground">
+                    Share link (read-only)
+                  </p>
                   <div className="flex items-center gap-2">
                     <input
                       readOnly
@@ -2100,7 +1765,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                         setTimeout(() => setShareCopied(false), 2000);
                       }}
                     >
-                      {shareCopied ? <Check className="h-3 w-3" /> : <Share2 className="h-3 w-3" />}
+                      {shareCopied ? (
+                        <Check className="h-3 w-3" />
+                      ) : (
+                        <Share2 className="h-3 w-3" />
+                      )}
                       {shareCopied ? "Copied!" : "Copy"}
                     </Button>
                   </div>
@@ -2135,16 +1804,73 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   }}
                   transition={{ duration: 0.3, ease: "easeOut" }}
                 >
-                  <CourseCard
-                    course={course}
-                    highlighted={highlightedCourseId === course.id}
-                    onUpdate={(courseId, nextCourse) =>
-                      updateCourse(courseId, nextCourse)
-                    }
-                    onDelete={deleteCourse}
-                    onExportCourse={exportCourseToJson}
-                    onDuplicate={() => duplicateCourse(course.id)}
-                  />
+                  <div
+                    draggable
+                    onDragStart={(e) => {
+                      setDraggingMainCourseId(course.id);
+                      e.dataTransfer.effectAllowed = "move";
+                    }}
+                    onDragOver={(e) => {
+                      if (
+                        !draggingMainCourseId ||
+                        draggingMainCourseId === course.id
+                      )
+                        return;
+                      e.preventDefault();
+                      e.dataTransfer.dropEffect = "move";
+                      setDragOverMainCourseId(course.id);
+                    }}
+                    onDragLeave={(e) => {
+                      if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                        setDragOverMainCourseId(null);
+                      }
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      if (
+                        !draggingMainCourseId ||
+                        draggingMainCourseId === course.id ||
+                        !activeSemesterId
+                      )
+                        return;
+                      const courseIds = courses.map((c) => c.id);
+                      const fromIndex = courseIds.indexOf(draggingMainCourseId);
+                      const toIndex = courseIds.indexOf(course.id);
+                      if (fromIndex !== -1 && toIndex !== -1) {
+                        const updated = [...courseIds];
+                        const [moved] = updated.splice(fromIndex, 1);
+                        updated.splice(toIndex, 0, moved);
+                        handleReorderCourses(activeSemesterId, updated);
+                      }
+                      setDraggingMainCourseId(null);
+                      setDragOverMainCourseId(null);
+                    }}
+                    onDragEnd={() => {
+                      setDraggingMainCourseId(null);
+                      setDragOverMainCourseId(null);
+                    }}
+                    style={{
+                      opacity: draggingMainCourseId === course.id ? 0.4 : 1,
+                      outline:
+                        dragOverMainCourseId === course.id
+                          ? "2px solid var(--primary)"
+                          : undefined,
+                      borderRadius:
+                        dragOverMainCourseId === course.id ? "12px" : undefined,
+                      cursor: draggingMainCourseId ? "grabbing" : "grab",
+                    }}
+                  >
+                    <CourseCard
+                      course={course}
+                      highlighted={highlightedCourseId === course.id}
+                      onUpdate={(courseId, nextCourse) =>
+                        updateCourse(courseId, nextCourse)
+                      }
+                      onDelete={deleteCourse}
+                      onExportCourse={exportCourseToJson}
+                      onDuplicate={() => duplicateCourse(course.id)}
+                    />
+                  </div>
                 </motion.div>
               ))}
             </div>
@@ -2200,18 +1926,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </>
         )}
 
-        {semesters.length === 0 && (
-          <div className="mt-12 text-center">
-            <p className="mb-4 text-muted-foreground">
-              No semesters yet. Click "Add Semester" to get started!
-            </p>
-            <Button onClick={addSemester} size="lg" className="gap-2">
-              <Plus className="h-5 w-5" />
-              Add Semester
-            </Button>
-          </div>
-        )}
-
         {activeSemesterId && courses.length === 0 && (
           <div className="mt-12 text-center">
             <p className="text-muted-foreground">
@@ -2220,15 +1934,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </div>
         )}
       </div>
-
-      <ChatPanel
-        open={chatPanelOpen}
-        onOpenChange={setChatPanelOpen}
-        semesters={semesters}
-        activeSemesterId={activeSemesterId}
-        onApplyActions={handleChatActions}
-        onOpenSyllabusImport={() => setSyllabusImportOpen(true)}
-      />
 
       {activeSemesterId && (
         <SyllabusImportDialog

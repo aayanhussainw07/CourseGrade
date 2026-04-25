@@ -21,7 +21,6 @@ import {
   Upload,
   TrendingUp,
   Copy,
-  Settings,
 } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
@@ -41,9 +40,9 @@ interface CourseSidebarProps {
   onReorderSemesters?: (orderedSemesterIds: string[]) => void;
   onReorderCourses?: (semesterId: string, orderedCourseIds: string[]) => void;
   onDuplicateSemester?: (semesterId: string) => void;
+  skipSemesterDeleteConfirm?: boolean;
   userEmail?: string;
   onSignOut?: () => void;
-  onSettingsOpen?: () => void;
   dashboardSummary?: {
     overallGpa: number;
     totalCredits: number;
@@ -68,12 +67,12 @@ export function CourseSidebar({
   onReorderSemesters,
   onReorderCourses,
   onDuplicateSemester,
+  skipSemesterDeleteConfirm,
   dashboardSummary,
   onDashboardClick,
   isDashboardActive,
   userEmail,
   onSignOut,
-  onSettingsOpen,
   variant = "desktop",
 }: CourseSidebarProps) {
   const [editingSemesterId, setEditingSemesterId] = useState<string | null>(
@@ -187,7 +186,7 @@ export function CourseSidebar({
   ) => {
     if (itemType === "semester") {
       const semester = semesters.find((s) => s.id === itemId);
-      if (!semester || semester.courses.length === 0) {
+      if (!semester || semester.courses.length === 0 || skipSemesterDeleteConfirm) {
         onDeleteSemester(itemId);
         return;
       }
@@ -240,15 +239,6 @@ export function CourseSidebar({
             </span>
           </div>
           <div className="flex flex-col items-center pb-2 gap-0.5">
-            {onSettingsOpen && (
-              <button
-                onClick={onSettingsOpen}
-                className="flex items-center gap-1.5 text-[10px] text-white/45 hover:text-white/80 transition-colors"
-              >
-                <Settings className="h-3 w-3" />
-                Settings
-              </button>
-            )}
             {userEmail && (
               <span className="text-[10px] text-white/60 truncate max-w-[90%]">
                 {userEmail}
@@ -445,7 +435,7 @@ export function CourseSidebar({
                         <Button
                           variant="ghost"
                           className={cn(
-                            "flex-1 min-w-0 overflow-hidden p-4 text-left justify-start text-white hover:text-white",
+                            "flex-1 min-w-0 overflow-hidden px-5 py-3.5 text-left justify-start text-white hover:text-white",
                             semesterDragEnabled &&
                               "cursor-grab active:cursor-grabbing",
                             isActive

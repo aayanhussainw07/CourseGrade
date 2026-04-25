@@ -7,12 +7,14 @@ export interface AppSettings {
   defaultCredits: number
   aPlusGpaValue: number // 4.0 or 4.33
   defaultGradeScale: GradeScale[]
+  skipSemesterDeleteConfirm: boolean
 }
 
 const DEFAULT_APP_SETTINGS: AppSettings = {
   defaultCredits: 3,
   aPlusGpaValue: 4.3,
   defaultGradeScale: DEFAULT_GRADE_SCALE,
+  skipSemesterDeleteConfirm: false,
 }
 
 export function loadAppSettings(): AppSettings {

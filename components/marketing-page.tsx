@@ -13,8 +13,7 @@ const GoogleIcon = () => (
     <path d="M21.35 11.1h-9.17v2.73h6.51c-.33 3.81-3.5 5.44-6.5 5.44C8.36 19.27 5 16.25 5 12c0-4.1 3.2-7.27 7.2-7.27 3.09 0 4.9 1.97 4.9 1.97L19 4.72S16.56 2 12.1 2C6.42 2 2.03 6.8 2.03 12c0 5.05 4.13 10 10.22 10 5.35 0 9.25-3.67 9.25-9.09 0-1.15-.15-1.81-.15-1.81z" />
   </svg>
 );
-import { GpaTimelineChart } from "@/components/gpa-timeline-chart";
-import { GradeDistributionChart } from "@/components/grade-distribution-chart";
+import { DashboardPanel } from "@/components/dashboard-panel";
 import Image from "next/image";
 import {
   marketingCourses,
@@ -126,70 +125,57 @@ export function MarketingPage() {
 
       {/* FEATURES */}
       <section id="feature-grid" className="bg-background py-20">
-        <div className="mx-auto max-w-7xl px-6 lg:px-12">
+        <div className="mx-auto max-w-[1400px] px-2 lg:px-4">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, amount: 0.3 }}
             transition={{ duration: 0.6 }}
-            className="mb-12"
+            className="mb-12 px-4"
           >
             <BlockHeading className="text-2xl">Built for students</BlockHeading>
           </motion.div>
-          <div className="grid gap-0 md:grid-cols-3 border border-primary/20">
-            {marketingFeatures.map((feature, i) => {
-              const Icon = feature.icon;
-              return (
-                <motion.div
-                  key={feature.title}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.5, delay: i * 0.1 }}
-                  className="group p-8 border-r border-b border-primary/20 last:border-r-0 bg-card/60 hover:bg-primary hover:text-white transition-colors duration-300"
-                >
-                  <div className="flex h-12 w-12 items-center justify-center border border-primary/30 bg-primary/10 text-primary group-hover:border-white/30 group-hover:bg-white/10 group-hover:text-white mb-6 transition-colors">
-                    <Icon className="h-5 w-5" />
-                  </div>
-                  <h3 className="text-lg font-bold uppercase tracking-wide mb-3 group-hover:text-white">
-                    {feature.title}
-                  </h3>
-                  <p className="text-sm text-muted-foreground group-hover:text-white/80 transition-colors">
-                    {feature.description}
-                  </p>
-                </motion.div>
-              );
-            })}
+          <div className="grid gap-10 md:grid-cols-3 px-4">
+            {marketingFeatures.map((feature, i) => (
+              <motion.div
+                key={feature.title}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5, delay: i * 0.1 }}
+              >
+                <h3 className="text-xl font-bold uppercase tracking-wide mb-4">
+                  {feature.title}
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  {feature.description}
+                </p>
+              </motion.div>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* CHARTS — full bleed primary band */}
-      <section className="bg-background py-20">
-        <div className="mx-auto max-w-7xl px-6 lg:px-12">
+      {/* CHARTS */}
+      <section className="bg-background pb-16">
+        <div className="mx-auto max-w-[1400px] px-2 lg:px-4">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, amount: 0.2 }}
             transition={{ duration: 0.6 }}
-            className="mb-10"
+            className="mb-10 flex justify-end px-4"
           >
             <BlockHeading className="text-2xl">
               See your progress at a glance
             </BlockHeading>
           </motion.div>
-          <div className="grid gap-6 lg:grid-cols-2">
-            <GpaTimelineChart data={marketingTimelineData} />
-            <GradeDistributionChart
-              title="Overall Grade Distribution"
-              courses={marketingCourses}
-            />
-          </div>
+          <DashboardPanel timelineData={marketingTimelineData} courses={marketingCourses} bare />
         </div>
       </section>
 
       {/* CTA + FOOTER */}
-      <section className="relative bg-foreground text-white pb-10 overflow-hidden">
+      <section className="relative bg-foreground text-white pb-10 overflow-hidden -mt-px">
         <div
           className="absolute inset-0 opacity-[0.04]"
           style={{
