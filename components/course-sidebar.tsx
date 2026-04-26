@@ -186,7 +186,11 @@ export function CourseSidebar({
   ) => {
     if (itemType === "semester") {
       const semester = semesters.find((s) => s.id === itemId);
-      if (!semester || semester.courses.length === 0 || skipSemesterDeleteConfirm) {
+      if (
+        !semester ||
+        semester.courses.length === 0 ||
+        skipSemesterDeleteConfirm
+      ) {
         onDeleteSemester(itemId);
         return;
       }
@@ -399,7 +403,7 @@ export function CourseSidebar({
                     onDragEnd={() => setDraggingSemesterId(null)}
                   >
                     {editingSemesterId === semester.id ? (
-                      <div className="flex items-center gap-1 p-1">
+                      <div className="flex items-center gap-2 p-1">
                         <Input
                           value={editingSemesterName}
                           onChange={(e) =>
