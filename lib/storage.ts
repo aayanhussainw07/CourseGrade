@@ -1,6 +1,7 @@
 import { assignmentApi, courseApi, extractApiList, semesterApi, setApiUserScope } from "./api"
 import type { Course, Semester } from "./types"
 import { apiToFrontendCourse, apiToFrontendSemester } from "./types"
+import { getCriterionScore } from "./grade-utils"
 
 const defaultAssignmentTemplates = [
   { name: "Assignments", weight: 30, earned: 0, total: 100 },
@@ -11,19 +12,6 @@ const defaultAssignmentTemplates = [
 const normalizeScore = (value: number | undefined) => {
   if (typeof value !== "number" || Number.isNaN(value)) return 0
   return value
-}
-
-const getCriterionScoreValue = (criterion: Course["criteria"][number]) => {
-  if (criterion.subItems && criterion.subItems.length > 0) {
-    const scores = criterion.subItems.map((item) => item.score || 0)
-    const drop = Math.min(criterion.dropLowest || 0, Math.max(scores.length - 1, 0))
-    const sorted = [...scores].sort((a, b) => a - b)
-    const kept = sorted.slice(drop)
-    if (kept.length === 0) return 0
-    const total = kept.reduce((sum, value) => sum + value, 0)
-    return total / kept.length
-  }
-  return criterion.score
 }
 
 const isServerAssignmentId = (id: string) => /^\d+$/.test(id)
@@ -128,7 +116,7 @@ export const storage = {
         const payload = {
           name: typeof criterion.name === "string" ? criterion.name : "",
           weight: Math.min(criterion.weight, 100),
-          earned: normalizeScore(getCriterionScoreValue(criterion)),
+          earned: normalizeScore(getCriterionScore(criterion)),
           total: 100,
           drop_lowest: criterion.dropLowest ?? 0,
         }

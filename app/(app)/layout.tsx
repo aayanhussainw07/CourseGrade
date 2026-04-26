@@ -47,7 +47,14 @@ import {
 } from "@/lib/course-settings";
 import { calculateGPA } from "@/lib/grade-utils";
 import {
+  HIGHLIGHT_DURATION_MS,
+  SAVE_ERROR_DURATION_MS,
+  SAVE_SUCCESS_DURATION_MS,
+  SCROLL_DELAY_MS,
+} from "@/lib/constants";
+import {
   ACTIVE_SEMESTER_STORAGE_KEY,
+  COURSE_SETTINGS_STORAGE_KEY,
   DASHBOARD_SENTINEL,
   type DashboardBackupPayload,
   type Snapshot,
@@ -56,6 +63,7 @@ import {
   formatDateLabel,
   generateClientId,
   getGpaColor,
+  gpaToLetterGrade,
   isServerResourceId,
   parseSemesterSortValue,
   readStoredDashboardMessage,
@@ -270,27 +278,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     [allCourses, appSettings.aPlusGpaValue],
   );
 
-  const overallGpaLetter = useMemo(() => {
-    const scale = [
-      { letter: "A+", pts: appSettings.aPlusGpaValue },
-      { letter: "A",  pts: 4.0 },
-      { letter: "A-", pts: 3.7 },
-      { letter: "B+", pts: 3.3 },
-      { letter: "B",  pts: 3.0 },
-      { letter: "B-", pts: 2.7 },
-      { letter: "C+", pts: 2.3 },
-      { letter: "C",  pts: 2.0 },
-      { letter: "C-", pts: 1.7 },
-      { letter: "D+", pts: 1.3 },
-      { letter: "D",  pts: 1.0 },
-      { letter: "D-", pts: 0.7 },
-      { letter: "F",  pts: 0.0 },
-    ];
-    for (const { letter, pts } of scale) {
-      if (overallGpa >= pts) return letter;
-    }
-    return "F";
-  }, [overallGpa, appSettings.aPlusGpaValue]);
+  const overallGpaLetter = useMemo(
+    () => gpaToLetterGrade(overallGpa, appSettings.aPlusGpaValue),
+    [overallGpa, appSettings.aPlusGpaValue],
+  );
   const totalCredits = useMemo(
     () => allCourses.reduce((sum, course) => sum + course.credits, 0),
     [allCourses],
@@ -534,7 +525,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
       highlightTimerRef.current = setTimeout(
         () => setHighlightedCourseId(null),
-        1800,
+        HIGHLIGHT_DURATION_MS,
       );
     }
   };
@@ -628,7 +619,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     }
     setSemesters([]);
     setActiveSemesterId(null);
-    localStorage.removeItem("grade-calculator-course-settings");
+    localStorage.removeItem(COURSE_SETTINGS_STORAGE_KEY);
   };
 
   const duplicateSemester = async (semesterId: string) => {
@@ -858,14 +849,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       if (saveStatusTimerRef.current) clearTimeout(saveStatusTimerRef.current);
       saveStatusTimerRef.current = setTimeout(
         () => setSaveStatus("idle"),
-        2000,
+        SAVE_SUCCESS_DURATION_MS,
       );
     } catch (error) {
       setSaveStatus("error");
       if (saveStatusTimerRef.current) clearTimeout(saveStatusTimerRef.current);
       saveStatusTimerRef.current = setTimeout(
         () => setSaveStatus("idle"),
-        3000,
+        SAVE_ERROR_DURATION_MS,
       );
       if (error instanceof ApiUnavailableError) {
         setServerOffline(true);
@@ -1001,7 +992,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             : s,
         ),
       );
-      setTimeout(() => scrollToCourse(importedCourse.id), 100);
+      setTimeout(() => scrollToCourse(importedCourse.id), SCROLL_DELAY_MS);
       setServerOffline(false);
     },
     [importPortableCourse],
@@ -1024,7 +1015,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         ),
       );
       setServerOffline(false);
-      setTimeout(() => scrollToCourse(duplicated.id), 100);
+      setTimeout(() => scrollToCourse(duplicated.id), SCROLL_DELAY_MS);
     } catch (error) {
       if (error instanceof ApiUnavailableError) {
         setServerOffline(true);

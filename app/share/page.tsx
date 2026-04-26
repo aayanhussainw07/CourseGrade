@@ -127,7 +127,7 @@ export default function SharePage() {
             const letter = getLetterGrade(numeric, gradeScale);
             const color = getLetterGradeColor(letter);
             return (
-              <div key={i} className="rounded-lg border-2 border-primary/30 bg-card p-4 shadow-sm">
+              <div key={course.name} className="rounded-lg border-2 border-primary/30 bg-card p-4 shadow-sm">
                 <div className="flex items-start justify-between gap-2">
                   <div>
                     <p className="font-semibold text-foreground">{course.name}</p>
@@ -145,7 +145,7 @@ export default function SharePage() {
                         ? cr.subItems.reduce((s, si) => s + si.score, 0) / cr.subItems.length
                         : cr.score;
                       return (
-                        <div key={j} className="flex items-center justify-between rounded border border-border/50 bg-background/60 px-3 py-1.5 text-sm">
+                        <div key={cr.id} className="flex items-center justify-between rounded border border-border/50 bg-background/60 px-3 py-1.5 text-sm">
                           <span className="text-muted-foreground">{cr.name || "—"}</span>
                           <div className="flex items-center gap-3 text-xs">
                             <span className="text-muted-foreground/70">{cr.weight}%</span>

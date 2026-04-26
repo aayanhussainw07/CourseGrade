@@ -1,5 +1,6 @@
 import { type LucideIcon, GraduationCap, Layers, Sparkles, TrendingUp } from "lucide-react";
 import { DEFAULT_GRADE_SCALE, type Course } from "@/lib/types";
+import { cloneGradeScale } from "@/lib/grade-utils";
 import { getGpaColor } from "./page-utils";
 
 export const marketingFeatures: {
@@ -35,8 +36,6 @@ export const marketingTimelineData = [
   { label: "Fall ’23", gpa: 3.7 },
   { label: "Spring ’24", gpa: 3.8 },
 ].map((entry) => ({ ...entry, color: getGpaColor(entry.gpa) }));
-
-const cloneDefaultScale = () => DEFAULT_GRADE_SCALE.map((grade) => ({ ...grade }));
 
 const MARKETING_COURSE_SEEDS = [
   ["Algorithms", 4, 98],
@@ -82,7 +81,7 @@ export const marketingCourses: Course[] = MARKETING_COURSE_SEEDS.map(
           extraCredit: 0,
         },
       ],
-      gradeScale: cloneDefaultScale(),
+      gradeScale: cloneGradeScale(DEFAULT_GRADE_SCALE),
       collapsed: false,
       isPassFail: false,
     };

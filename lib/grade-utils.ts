@@ -1,27 +1,12 @@
 import type { Course, Criterion, GradeScale } from "./types"
+import { DEFAULT_GRADE_SCALE } from "./types"
 
 export const cloneGradeScale = (scale: GradeScale[]): GradeScale[] => scale.map((grade) => ({ ...grade }))
-
-const defGradeScale = [
-  { letter: "A+", min: 96 },
-  { letter: "A", min: 93 },
-  { letter: "A-", min: 90 },
-  { letter: "B+", min: 87 },
-  { letter: "B", min: 83 },
-  { letter: "B-", min: 80 },
-  { letter: "C+", min: 77 },
-  { letter: "C", min: 73 },
-  { letter: "C-", min: 70 },
-  { letter: "D+", min: 67 },
-  { letter: "D", min: 63 },
-  { letter: "D-", min: 60 },
-  { letter: "F", min: 0 },
-]
 
 // Helper function to calculate criterion score from sub-items if they exist
 const normalizeCriteria = (criteria?: Criterion[] | null): Criterion[] => (Array.isArray(criteria) ? criteria : [])
 
-function getCriterionScore(criterion: Criterion): number {
+export function getCriterionScore(criterion: Criterion): number {
   if (criterion.subItems && criterion.subItems.length > 0) {
     const items = criterion.subItems
     const hasWeights = items.some((item) => item.weight !== undefined && item.weight > 0)
@@ -62,7 +47,7 @@ export function calculateCourseGrade(
 
 export function getLetterGrade(numericGrade: number, gradeScale: GradeScale[]): string {
   // Sort by minimum score descending
-  const sorted = [...gradeScale || defGradeScale].sort((a, b) => b.min - a.min)
+  const sorted = [...gradeScale || DEFAULT_GRADE_SCALE].sort((a, b) => b.min - a.min)
 
   for (const grade of sorted) {
     if (numericGrade >= grade.min) {
