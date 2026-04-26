@@ -1336,10 +1336,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         {activeSemesterId && (
           <Button
             onClick={() => setSyllabusImportOpen(true)}
-            className="flex items-center gap-2 border border-sidebar-border bg-sidebar px-3 py-2 text-sm text-sidebar-foreground hover:bg-sidebar-accent"
+            className="flex items-center gap-2 border border-white/10 bg-foreground px-3 py-2 text-sm text-white hover:bg-foreground/80 shadow-none"
             style={{
               backgroundImage:
-                "repeating-linear-gradient(0deg, rgba(77,31,26,0.08) 0px, rgba(77,31,26,0.08) 1px, transparent 1px, transparent 20px), repeating-linear-gradient(90deg, rgba(77,31,26,0.08) 0px, rgba(77,31,26,0.08) 1px, transparent 1px, transparent 20px)",
+                "repeating-linear-gradient(0deg, rgba(255,255,255,0.04) 0px, rgba(255,255,255,0.04) 1px, transparent 1px, transparent 40px), repeating-linear-gradient(90deg, rgba(255,255,255,0.04) 0px, rgba(255,255,255,0.04) 1px, transparent 1px, transparent 40px)",
             }}
           >
             <Sparkles className="h-4 w-4" />
@@ -1349,10 +1349,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <Button
           size="icon"
           onClick={() => setSettingsOpen(true)}
-          className="border border-sidebar-border bg-sidebar text-sidebar-foreground hover:bg-sidebar-accent h-9 w-9"
+          className="border border-white/10 bg-foreground text-white hover:bg-foreground/80 h-9 w-9 shadow-none"
           style={{
             backgroundImage:
-              "repeating-linear-gradient(0deg, rgba(77,31,26,0.08) 0px, rgba(77,31,26,0.08) 1px, transparent 1px, transparent 20px), repeating-linear-gradient(90deg, rgba(77,31,26,0.08) 0px, rgba(77,31,26,0.08) 1px, transparent 1px, transparent 20px)",
+              "repeating-linear-gradient(0deg, rgba(255,255,255,0.04) 0px, rgba(255,255,255,0.04) 1px, transparent 1px, transparent 40px), repeating-linear-gradient(90deg, rgba(255,255,255,0.04) 0px, rgba(255,255,255,0.04) 1px, transparent 1px, transparent 40px)",
           }}
         >
           <Settings className="h-4 w-4" />
@@ -1634,303 +1634,317 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             )}
           </div>
         ) : (
-          <div className="mb-6">
-            {isEditingSemesterName ? (
-              <div className="flex items-center justify-center gap-2">
-                <input
-                  autoFocus
-                  value={semesterNameDraft}
-                  onChange={(e) => setSemesterNameDraft(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (
-                      e.key === "Enter" &&
-                      semesterNameDraft.trim() &&
-                      activeSemesterId
-                    ) {
-                      editSemester(activeSemesterId, semesterNameDraft.trim());
-                      setIsEditingSemesterName(false);
-                    } else if (e.key === "Escape") {
-                      setIsEditingSemesterName(false);
-                    }
-                  }}
-                  className="rounded-md border border-primary/35 bg-background/90 px-3 py-1 text-2xl font-semibold text-foreground outline-none focus:border-primary/60"
-                />
-                <Button
-                  size="sm"
-                  onClick={() => {
-                    if (semesterNameDraft.trim() && activeSemesterId) {
-                      editSemester(activeSemesterId, semesterNameDraft.trim());
-                    }
-                    setIsEditingSemesterName(false);
-                  }}
-                >
-                  Save
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => setIsEditingSemesterName(false)}
-                >
-                  Cancel
-                </Button>
-              </div>
-            ) : (
-              <div className="flex items-center justify-center">
-                <div className="group relative">
-                  <p className="w-fit text-2xl font-bold uppercase tracking-widest bg-primary text-white px-8 py-2 [box-shadow:5px_5px_0_rgba(77,31,26,0.55),10px_10px_0_rgba(77,31,26,0.25)]">
-                    {activeSemester?.name ?? "Semester"}
-                  </p>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="absolute top-1/2 -translate-y-1/2 left-full ml-4 h-7 w-7 opacity-0 transition-opacity group-hover:opacity-100"
-                    title="Edit name"
-                    onClick={() => {
-                      setSemesterNameDraft(activeSemester?.name ?? "");
-                      setIsEditingSemesterName(true);
-                    }}
-                  >
-                    <Pencil className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {!isDashboardView && courses.length > 0 && (
-          <div className="mb-4 flex flex-wrap items-center justify-center gap-1.5 print:hidden">
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={collapseAllCourses}
-              className="h-8 w-8 border-secondary/40 bg-transparent"
-              title="Collapse All"
+          <>
+            {/* ── Dark header: title + action buttons + semester summary ── */}
+            <div
+              className="-mx-4 -mt-8 px-4 pt-8 pb-0"
+              style={{
+                background: "#2d0008",
+                backgroundImage:
+                  "repeating-linear-gradient(0deg, rgba(255,255,255,0.04) 0px, rgba(255,255,255,0.04) 1px, transparent 1px, transparent 40px), repeating-linear-gradient(90deg, rgba(255,255,255,0.04) 0px, rgba(255,255,255,0.04) 1px, transparent 1px, transparent 40px)",
+              }}
             >
-              <ChevronsUp className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={expandAllCourses}
-              className="h-8 w-8 border-secondary/40 bg-transparent"
-              title="Expand All"
-            >
-              <ChevronsDown className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => window.print()}
-              className="h-8 w-8 border-secondary/40 bg-transparent"
-              title="Print"
-            >
-              <Printer className="h-4 w-4" />
-            </Button>
-            <div className="relative">
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => {
-                  if (shareUrl) {
-                    setShareUrl(null);
-                  } else {
-                    generateShareUrl();
-                  }
-                }}
-                className="h-8 w-8 border-secondary/40 bg-transparent"
-                title="Share"
-              >
-                <Share2 className="h-4 w-4" />
-              </Button>
-              {shareUrl && (
-                <div className="absolute left-0 top-full z-50 mt-2 w-80 rounded-lg border border-border bg-card p-3 shadow-lg">
-                  <p className="mb-1.5 text-xs font-medium text-muted-foreground">
-                    Share link (read-only)
-                  </p>
-                  <div className="flex items-center gap-2">
+              {/* Title */}
+              <div className="mb-6">
+                {isEditingSemesterName ? (
+                  <div className="flex items-center justify-center gap-2">
                     <input
-                      readOnly
-                      value={shareUrl}
-                      className="min-w-0 flex-1 rounded border border-border bg-background px-2 py-1 text-xs outline-none"
-                      onFocus={(e) => e.target.select()}
+                      autoFocus
+                      value={semesterNameDraft}
+                      onChange={(e) => setSemesterNameDraft(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (
+                          e.key === "Enter" &&
+                          semesterNameDraft.trim() &&
+                          activeSemesterId
+                        ) {
+                          editSemester(activeSemesterId, semesterNameDraft.trim());
+                          setIsEditingSemesterName(false);
+                        } else if (e.key === "Escape") {
+                          setIsEditingSemesterName(false);
+                        }
+                      }}
+                      className="rounded-md border border-primary/35 bg-background/90 px-3 py-1 text-2xl font-semibold text-foreground outline-none focus:border-primary/60"
                     />
                     <Button
                       size="sm"
-                      className="h-7 shrink-0 gap-1 px-2 text-xs"
                       onClick={() => {
-                        navigator.clipboard.writeText(shareUrl);
-                        setShareCopied(true);
-                        setTimeout(() => setShareCopied(false), 2000);
+                        if (semesterNameDraft.trim() && activeSemesterId) {
+                          editSemester(activeSemesterId, semesterNameDraft.trim());
+                        }
+                        setIsEditingSemesterName(false);
                       }}
                     >
-                      {shareCopied ? (
-                        <Check className="h-3 w-3" />
-                      ) : (
-                        <Share2 className="h-3 w-3" />
-                      )}
-                      {shareCopied ? "Copied!" : "Copy"}
+                      Save
                     </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="text-white/70 hover:text-white hover:bg-white/10"
+                      onClick={() => setIsEditingSemesterName(false)}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-center">
+                    <div className="group relative">
+                      <p className="w-fit text-5xl font-bold uppercase tracking-widest text-white">
+                        {activeSemester?.name ?? "Semester"}
+                      </p>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="absolute top-1/2 -translate-y-1/2 left-full ml-4 h-7 w-7 opacity-0 transition-opacity group-hover:opacity-100 text-white/60 hover:text-white hover:bg-white/10"
+                        title="Edit name"
+                        onClick={() => {
+                          setSemesterNameDraft(activeSemester?.name ?? "");
+                          setIsEditingSemesterName(true);
+                        }}
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Action buttons — match title color scheme */}
+              {courses.length > 0 && (
+                <div className="mb-4 flex flex-wrap items-center justify-center gap-1.5 print:hidden">
+                  <Button
+                    size="icon"
+                    onClick={collapseAllCourses}
+                    className="h-8 w-8 bg-primary/80 text-white hover:bg-primary border-0 shadow-none"
+                    title="Collapse All"
+                  >
+                    <ChevronsUp className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    size="icon"
+                    onClick={expandAllCourses}
+                    className="h-8 w-8 bg-primary/80 text-white hover:bg-primary border-0 shadow-none"
+                    title="Expand All"
+                  >
+                    <ChevronsDown className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    size="icon"
+                    onClick={() => window.print()}
+                    className="h-8 w-8 bg-primary/80 text-white hover:bg-primary border-0 shadow-none"
+                    title="Print"
+                  >
+                    <Printer className="h-4 w-4" />
+                  </Button>
+                  <div className="relative">
+                    <Button
+                      size="icon"
+                      onClick={() => {
+                        if (shareUrl) {
+                          setShareUrl(null);
+                        } else {
+                          generateShareUrl();
+                        }
+                      }}
+                      className="h-8 w-8 bg-primary/80 text-white hover:bg-primary border-0 shadow-none"
+                      title="Share"
+                    >
+                      <Share2 className="h-4 w-4" />
+                    </Button>
+                    {shareUrl && (
+                      <div className="absolute left-0 top-full z-50 mt-2 w-80 rounded-lg border border-border bg-card p-3 shadow-lg">
+                        <p className="mb-1.5 text-xs font-medium text-muted-foreground">
+                          Share link (read-only)
+                        </p>
+                        <div className="flex items-center gap-2">
+                          <input
+                            readOnly
+                            value={shareUrl}
+                            className="min-w-0 flex-1 rounded border border-border bg-background px-2 py-1 text-xs outline-none"
+                            onFocus={(e) => e.target.select()}
+                          />
+                          <Button
+                            size="sm"
+                            className="h-7 shrink-0 gap-1 px-2 text-xs"
+                            onClick={() => {
+                              navigator.clipboard.writeText(shareUrl);
+                              setShareCopied(true);
+                              setTimeout(() => setShareCopied(false), 2000);
+                            }}
+                          >
+                            {shareCopied ? (
+                              <Check className="h-3 w-3" />
+                            ) : (
+                              <Share2 className="h-3 w-3" />
+                            )}
+                            {shareCopied ? "Copied!" : "Copy"}
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
+
+              {/* Semester summary — no box, bare on dark bg */}
+              {courses.length > 0 && (
+                <div className="pb-8 px-2">
+                  <SemesterPanel courses={courses} />
+                </div>
+              )}
             </div>
-          </div>
-        )}
 
-        {!isDashboardView && courses.length > 0 && (
-          <div className="mb-8">
-            <SemesterPanel courses={courses} />
-          </div>
-        )}
+            {/* Course cards */}
+            {activeSemesterId && (
+              <AnimatePresence mode="popLayout">
+                <div className="space-y-6 mt-8">
+                  {courses.map((course, index) => (
+                    <motion.div
+                      key={`${course.id}-${index}`}
+                      ref={(el) => {
+                        courseRefs.current[course.id] = el;
+                      }}
+                      initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      exit={{
+                        opacity: 0,
+                        scale: 0.85,
+                        y: -20,
+                        transition: { duration: 0.25, ease: "easeInOut" },
+                      }}
+                      transition={{ duration: 0.3, ease: "easeOut" }}
+                    >
+                      <div
+                        draggable
+                        onDragStart={(e) => {
+                          setDraggingMainCourseId(course.id);
+                          e.dataTransfer.effectAllowed = "move";
+                        }}
+                        onDragOver={(e) => {
+                          if (
+                            !draggingMainCourseId ||
+                            draggingMainCourseId === course.id
+                          )
+                            return;
+                          e.preventDefault();
+                          e.dataTransfer.dropEffect = "move";
+                          setDragOverMainCourseId(course.id);
+                        }}
+                        onDragLeave={(e) => {
+                          if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                            setDragOverMainCourseId(null);
+                          }
+                        }}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          if (
+                            !draggingMainCourseId ||
+                            draggingMainCourseId === course.id ||
+                            !activeSemesterId
+                          )
+                            return;
+                          const courseIds = courses.map((c) => c.id);
+                          const fromIndex = courseIds.indexOf(draggingMainCourseId);
+                          const toIndex = courseIds.indexOf(course.id);
+                          if (fromIndex !== -1 && toIndex !== -1) {
+                            const updated = [...courseIds];
+                            const [moved] = updated.splice(fromIndex, 1);
+                            updated.splice(toIndex, 0, moved);
+                            handleReorderCourses(activeSemesterId, updated);
+                          }
+                          setDraggingMainCourseId(null);
+                          setDragOverMainCourseId(null);
+                        }}
+                        onDragEnd={() => {
+                          setDraggingMainCourseId(null);
+                          setDragOverMainCourseId(null);
+                        }}
+                        style={{
+                          opacity: draggingMainCourseId === course.id ? 0.4 : 1,
+                          outline:
+                            dragOverMainCourseId === course.id
+                              ? "2px solid var(--primary)"
+                              : undefined,
+                          borderRadius:
+                            dragOverMainCourseId === course.id ? "12px" : undefined,
+                          cursor: draggingMainCourseId ? "grabbing" : "grab",
+                        }}
+                      >
+                        <CourseCard
+                          course={course}
+                          highlighted={highlightedCourseId === course.id}
+                          onUpdate={(courseId, nextCourse) =>
+                            updateCourse(courseId, nextCourse)
+                          }
+                          onDelete={deleteCourse}
+                          onExportCourse={exportCourseToJson}
+                          onDuplicate={() => duplicateCourse(course.id)}
+                        />
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              </AnimatePresence>
+            )}
 
-        {!isDashboardView && activeSemesterId && (
-          <AnimatePresence mode="popLayout">
-            <div className="space-y-6">
-              {courses.map((course, index) => (
-                <motion.div
-                  key={`${course.id}-${index}`}
-                  ref={(el) => {
-                    courseRefs.current[course.id] = el;
+            {/* Add / Import / Export */}
+            {activeSemesterId && (
+              <>
+                <input
+                  id="course-import-trigger"
+                  type="file"
+                  accept="application/json,.json"
+                  className="hidden"
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    if (file) {
+                      importCourseFromJson(file, activeSemesterId);
+                    }
+                    event.target.value = "";
                   }}
-                  initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                  exit={{
-                    opacity: 0,
-                    scale: 0.85,
-                    y: -20,
-                    transition: { duration: 0.25, ease: "easeInOut" },
-                  }}
-                  transition={{ duration: 0.3, ease: "easeOut" }}
-                >
-                  <div
-                    draggable
-                    onDragStart={(e) => {
-                      setDraggingMainCourseId(course.id);
-                      e.dataTransfer.effectAllowed = "move";
-                    }}
-                    onDragOver={(e) => {
-                      if (
-                        !draggingMainCourseId ||
-                        draggingMainCourseId === course.id
-                      )
-                        return;
-                      e.preventDefault();
-                      e.dataTransfer.dropEffect = "move";
-                      setDragOverMainCourseId(course.id);
-                    }}
-                    onDragLeave={(e) => {
-                      if (!e.currentTarget.contains(e.relatedTarget as Node)) {
-                        setDragOverMainCourseId(null);
-                      }
-                    }}
-                    onDrop={(e) => {
-                      e.preventDefault();
-                      if (
-                        !draggingMainCourseId ||
-                        draggingMainCourseId === course.id ||
-                        !activeSemesterId
-                      )
-                        return;
-                      const courseIds = courses.map((c) => c.id);
-                      const fromIndex = courseIds.indexOf(draggingMainCourseId);
-                      const toIndex = courseIds.indexOf(course.id);
-                      if (fromIndex !== -1 && toIndex !== -1) {
-                        const updated = [...courseIds];
-                        const [moved] = updated.splice(fromIndex, 1);
-                        updated.splice(toIndex, 0, moved);
-                        handleReorderCourses(activeSemesterId, updated);
-                      }
-                      setDraggingMainCourseId(null);
-                      setDragOverMainCourseId(null);
-                    }}
-                    onDragEnd={() => {
-                      setDraggingMainCourseId(null);
-                      setDragOverMainCourseId(null);
-                    }}
-                    style={{
-                      opacity: draggingMainCourseId === course.id ? 0.4 : 1,
-                      outline:
-                        dragOverMainCourseId === course.id
-                          ? "2px solid var(--primary)"
-                          : undefined,
-                      borderRadius:
-                        dragOverMainCourseId === course.id ? "12px" : undefined,
-                      cursor: draggingMainCourseId ? "grabbing" : "grab",
-                    }}
+                />
+                <div className="mt-8 flex flex-wrap justify-center gap-3">
+                  <Button
+                    onClick={addCourse}
+                    size="lg"
+                    variant="outline"
+                    className="gap-2 border-secondary/40 bg-transparent hover:bg-primary hover:text-white hover:border-primary"
                   >
-                    <CourseCard
-                      course={course}
-                      highlighted={highlightedCourseId === course.id}
-                      onUpdate={(courseId, nextCourse) =>
-                        updateCourse(courseId, nextCourse)
-                      }
-                      onDelete={deleteCourse}
-                      onExportCourse={exportCourseToJson}
-                      onDuplicate={() => duplicateCourse(course.id)}
-                    />
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          </AnimatePresence>
-        )}
+                    <Plus className="h-5 w-5" />
+                    Add Course
+                  </Button>
+                  <Button
+                    onClick={() =>
+                      document.getElementById("course-import-trigger")?.click()
+                    }
+                    size="lg"
+                    variant="outline"
+                    className="gap-2 border-secondary/40 bg-transparent hover:bg-primary hover:text-white hover:border-primary"
+                  >
+                    <Upload className="h-5 w-5" />
+                    Import Course
+                  </Button>
+                  <Button
+                    onClick={() => exportSemesterToJson(activeSemesterId)}
+                    size="lg"
+                    variant="outline"
+                    className="gap-2 border-secondary/40 bg-transparent hover:bg-primary hover:text-white hover:border-primary"
+                  >
+                    <Download className="h-5 w-5" />
+                    Export Semester
+                  </Button>
+                </div>
+              </>
+            )}
 
-        {activeSemesterId && (
-          <>
-            <input
-              id="course-import-trigger"
-              type="file"
-              accept="application/json,.json"
-              className="hidden"
-              onChange={(event) => {
-                const file = event.target.files?.[0];
-                if (file) {
-                  importCourseFromJson(file, activeSemesterId);
-                }
-                event.target.value = "";
-              }}
-            />
-            <div className="mt-8 flex flex-wrap justify-center gap-3">
-              <Button
-                onClick={addCourse}
-                size="lg"
-                variant="outline"
-                className="gap-2 border-secondary/40 bg-transparent hover:bg-primary hover:text-white hover:border-primary"
-              >
-                <Plus className="h-5 w-5" />
-                Add Course
-              </Button>
-              <Button
-                onClick={() =>
-                  document.getElementById("course-import-trigger")?.click()
-                }
-                size="lg"
-                variant="outline"
-                className="gap-2 border-secondary/40 bg-transparent hover:bg-primary hover:text-white hover:border-primary"
-              >
-                <Upload className="h-5 w-5" />
-                Import Course
-              </Button>
-              <Button
-                onClick={() => exportSemesterToJson(activeSemesterId)}
-                size="lg"
-                variant="outline"
-                className="gap-2 border-secondary/40 bg-transparent hover:bg-primary hover:text-white hover:border-primary"
-              >
-                <Download className="h-5 w-5" />
-                Export Semester
-              </Button>
-            </div>
+            {activeSemesterId && courses.length === 0 && (
+              <div className="mt-12 text-center">
+                <p className="text-muted-foreground">
+                  No courses in this semester. Click "Add Course" to get started!
+                </p>
+              </div>
+            )}
           </>
-        )}
-
-        {activeSemesterId && courses.length === 0 && (
-          <div className="mt-12 text-center">
-            <p className="text-muted-foreground">
-              No courses in this semester. Click "Add Course" to get started!
-            </p>
-          </div>
         )}
       </div>
 

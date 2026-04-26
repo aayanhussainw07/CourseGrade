@@ -57,7 +57,7 @@ export function SyllabusImportDialog({
   const [editedName, setEditedName] = useState("");
   const [editedCredits, setEditedCredits] = useState(3);
   const [editedAssignments, setEditedAssignments] = useState<
-    Array<{ name: string; weight: number; drop_lowest: number }>
+    Array<{ clientId: string; name: string; weight: number; drop_lowest: number }>
   >([]);
   const [isCreating, setIsCreating] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -133,7 +133,7 @@ export function SyllabusImportDialog({
       setExtracted(result.extracted);
       setEditedName(result.extracted.courseName);
       setEditedCredits(result.extracted.credits);
-      setEditedAssignments(result.extracted.assignments.map((a) => ({ ...a })));
+      setEditedAssignments(result.extracted.assignments.map((a) => ({ ...a, clientId: crypto.randomUUID() })));
       setImportsRemaining(result.importsRemaining);
       setPhase("preview");
     } catch (err: unknown) {
@@ -401,15 +401,15 @@ export function SyllabusImportDialog({
                     Grading Breakdown
                   </label>
                   <div className="space-y-1 rounded-md border border-border/50 bg-muted/20 p-2">
-                    {editedAssignments.map((a, i) => (
-                      <div key={i} className="group flex items-center gap-2">
+                    {editedAssignments.map((a) => (
+                      <div key={a.clientId} className="group flex items-center gap-2">
                         <input
                           type="text"
                           value={a.name}
                           onChange={(e) =>
                             setEditedAssignments((prev) =>
-                              prev.map((x, j) =>
-                                j === i ? { ...x, name: e.target.value } : x,
+                              prev.map((x) =>
+                                x.clientId === a.clientId ? { ...x, name: e.target.value } : x,
                               ),
                             )
                           }
@@ -423,8 +423,8 @@ export function SyllabusImportDialog({
                             value={a.weight}
                             onChange={(e) =>
                               setEditedAssignments((prev) =>
-                                prev.map((x, j) =>
-                                  j === i
+                                prev.map((x) =>
+                                  x.clientId === a.clientId
                                     ? {
                                         ...x,
                                         weight: Math.max(
@@ -448,7 +448,7 @@ export function SyllabusImportDialog({
                         <button
                           onClick={() =>
                             setEditedAssignments((prev) =>
-                              prev.filter((_, j) => j !== i),
+                              prev.filter((x) => x.clientId !== a.clientId),
                             )
                           }
                           className="shrink-0 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all"

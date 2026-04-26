@@ -178,6 +178,7 @@ export function CourseCard({
   const [subItemDrafts, setSubItemDrafts] = useState<Record<string, string>>(
     {},
   );
+  const [subItemNameDrafts, setSubItemNameDrafts] = useState<Record<string, string>>({});
   const [draggingCriterionId, setDraggingCriterionId] = useState<string | null>(
     null,
   );
@@ -228,6 +229,15 @@ export function CourseCard({
       return next;
     });
     setSubItemDrafts((d) => {
+      const next = { ...d };
+      for (const cr of course.criteria) {
+        if (changedIds.has(cr.id)) {
+          for (const si of cr.subItems ?? []) delete next[si.id];
+        }
+      }
+      return next;
+    });
+    setSubItemNameDrafts((d) => {
       const next = { ...d };
       for (const cr of course.criteria) {
         if (changedIds.has(cr.id)) {
@@ -854,7 +864,6 @@ export function CourseCard({
     rawValue: string,
   ) => {
     setCriterionDraftValue(criterion.id, field, rawValue);
-    commitCriterionValue(criterion, field, rawValue);
   };
 
   const handleCriterionInputBlur = (
@@ -902,6 +911,17 @@ export function CourseCard({
     });
   };
 
+  const commitSubItemName = (criterionId: string, subItemId: string) => {
+    const draft = subItemNameDrafts[subItemId];
+    if (draft === undefined) return;
+    updateSubItem(criterionId, subItemId, { name: draft });
+    setSubItemNameDrafts((prev) => {
+      const next = { ...prev };
+      delete next[subItemId];
+      return next;
+    });
+  };
+
   const handleEnterCommit = (
     event: React.KeyboardEvent<HTMLInputElement>,
     onCommit?: () => void,
@@ -911,7 +931,9 @@ export function CourseCard({
     onCommit?.();
     const target = event.currentTarget;
     window.getSelection()?.removeAllRanges();
-    target.blur();
+    // rAF lets React flush the draft-clear state update before blur fires,
+    // preventing the onBlur handler from seeing stale draft state and double-committing.
+    requestAnimationFrame(() => target.blur());
   };
 
   // Expand or collapse a criterion’s sub-item list
@@ -1574,6 +1596,18 @@ export function CourseCard({
                                 [criterion.id]: e.target.value,
                               }))
                             }
+                            onBlur={() => {
+                              const raw = whatIfScores[criterion.id];
+                              if (!raw) return;
+                              const parsed = parseScoreInput(raw, course.gradeScale);
+                              if (parsed === null) {
+                                setWhatIfScores((prev) => {
+                                  const next = { ...prev };
+                                  delete next[criterion.id];
+                                  return next;
+                                });
+                              }
+                            }}
                             placeholder={String(criterion.score || 0)}
                             className="border-primary/50 bg-primary/5"
                           />
@@ -1742,11 +1776,20 @@ export function CourseCard({
                               Name
                             </Label>
                             <Input
-                              value={subItem.name}
+                              value={subItemNameDrafts[subItem.id] ?? subItem.name}
                               onChange={(e) =>
-                                updateSubItem(criterion.id, subItem.id, {
-                                  name: e.target.value,
-                                })
+                                setSubItemNameDrafts((prev) => ({
+                                  ...prev,
+                                  [subItem.id]: e.target.value,
+                                }))
+                              }
+                              onBlur={() =>
+                                commitSubItemName(criterion.id, subItem.id)
+                              }
+                              onKeyDown={(e) =>
+                                handleEnterCommit(e, () =>
+                                  commitSubItemName(criterion.id, subItem.id),
+                                )
                               }
                               className="h-9 border-primary/20"
                               placeholder="e.g., Homework 1"
