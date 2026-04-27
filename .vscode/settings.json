@@ -1,3 +1,28 @@
 {
-    "python-envs.pythonProjects": []
+    "python-envs.pythonProjects": [],
+    "python.defaultInterpreterPath": "${workspaceFolder}/backend/venv/bin/python",
+    "python.analysis.extraPaths": ["${workspaceFolder}/backend"],
+    "js/ts.tsdk.path": "${workspaceFolder}/node_modules/typescript/lib",
+    "editor.formatOnSave": true,
+    "[python]": {
+        "editor.defaultFormatter": "ms-python.black-formatter"
+    },
+    "[typescript]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "[typescriptreact]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "files.exclude": {
+        "backend/venv": true,
+        "backend/__pycache__": true,
+        "backend/**/__pycache__": true,
+        ".next": true,
+        "node_modules": true
+    },
+    "search.exclude": {
+        "backend/venv": true,
+        ".next": true,
+        "node_modules": true
+    }
 }

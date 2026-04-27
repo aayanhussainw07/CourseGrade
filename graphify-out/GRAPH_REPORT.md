@@ -1,7 +1,7 @@
-# Graph Report - .  (2026-04-26)
+# Graph Report - /Users/aayanhussain/Documents/projects/CourseGrade  (2026-04-26)
 
 ## Corpus Check
-- 74 files · ~52,887 words
+- 64 files · ~75,765 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
@@ -10,65 +10,65 @@
 - Token cost: 0 input · 0 output
 
 ## Community Hubs (Navigation)
-- [[_COMMUNITY_Backend Data Models & Routes|Backend Data Models & Routes]]
-- [[_COMMUNITY_Course Card Component|Course Card Component]]
-- [[_COMMUNITY_Course Sidebar & GPA Summary|Course Sidebar & GPA Summary]]
-- [[_COMMUNITY_Backend API Documentation|Backend API Documentation]]
-- [[_COMMUNITY_Criterion Row UI|Criterion Row UI]]
-- [[_COMMUNITY_Grade Utilities & Page Utils|Grade Utilities & Page Utils]]
-- [[_COMMUNITY_Flask App Configuration|Flask App Configuration]]
-- [[_COMMUNITY_Grade Scale Editor|Grade Scale Editor]]
-- [[_COMMUNITY_UI Sheet Component|UI Sheet Component]]
-- [[_COMMUNITY_Course Settings Persistence|Course Settings Persistence]]
-- [[_COMMUNITY_Syllabus Import Dialog|Syllabus Import Dialog]]
-- [[_COMMUNITY_App Settings|App Settings]]
-- [[_COMMUNITY_CSV ImportExport|CSV Import/Export]]
-- [[_COMMUNITY_API Client Layer|API Client Layer]]
-- [[_COMMUNITY_Syllabus AI Route|Syllabus AI Route]]
-- [[_COMMUNITY_Dashboard Panel Charts|Dashboard Panel Charts]]
-- [[_COMMUNITY_UI Card Component|UI Card Component]]
-- [[_COMMUNITY_React Hooks (Data & UndoRedo)|React Hooks (Data & Undo/Redo)]]
-- [[_COMMUNITY_Storage Utilities|Storage Utilities]]
-- [[_COMMUNITY_Type Definitions|Type Definitions]]
-- [[_COMMUNITY_Next.js App Pages|Next.js App Pages]]
-- [[_COMMUNITY_Backend Env Loader|Backend Env Loader]]
-- [[_COMMUNITY_Marketing Page|Marketing Page]]
-- [[_COMMUNITY_Grade Distribution Chart|Grade Distribution Chart]]
-- [[_COMMUNITY_Rolling Number Animation|Rolling Number Animation]]
-- [[_COMMUNITY_Sitemap|Sitemap]]
-- [[_COMMUNITY_Root Layout|Root Layout]]
-- [[_COMMUNITY_Home Page|Home Page]]
-- [[_COMMUNITY_App Shell Layout|App Shell Layout]]
-- [[_COMMUNITY_GPA Timeline Chart|GPA Timeline Chart]]
-- [[_COMMUNITY_Delete Confirmation Dialog|Delete Confirmation Dialog]]
-- [[_COMMUNITY_User Info Bar|User Info Bar]]
-- [[_COMMUNITY_Auth Provider|Auth Provider]]
-- [[_COMMUNITY_UI Switch Component|UI Switch Component]]
-- [[_COMMUNITY_UI Badge Component|UI Badge Component]]
-- [[_COMMUNITY_UI Input Component|UI Input Component]]
-- [[_COMMUNITY_Course Context|Course Context]]
-- [[_COMMUNITY_Course Color Picker|Course Color Picker]]
-- [[_COMMUNITY_Intersection Observer Hook|Intersection Observer Hook]]
-- [[_COMMUNITY_Share URL Hook|Share URL Hook]]
-- [[_COMMUNITY_Utility Functions|Utility Functions]]
-- [[_COMMUNITY_Placeholder Brand Assets|Placeholder Brand Assets]]
-- [[_COMMUNITY_PostCSS Config|PostCSS Config]]
-- [[_COMMUNITY_Next.js Config|Next.js Config]]
-- [[_COMMUNITY_NextAuth Types|NextAuth Types]]
-- [[_COMMUNITY_Next.js Env Types|Next.js Env Types]]
-- [[_COMMUNITY_Marketing Data|Marketing Data]]
-- [[_COMMUNITY_Auth Route|Auth Route]]
-- [[_COMMUNITY_Share Page|Share Page]]
-- [[_COMMUNITY_WSGI Entry Point|WSGI Entry Point]]
-- [[_COMMUNITY_Semester Panel|Semester Panel]]
-- [[_COMMUNITY_UI Label Component|UI Label Component]]
-- [[_COMMUNITY_UI Dialog Component|UI Dialog Component]]
-- [[_COMMUNITY_UI Button Component|UI Button Component]]
-- [[_COMMUNITY_App Constants|App Constants]]
-- [[_COMMUNITY_Auth Utilities|Auth Utilities]]
-- [[_COMMUNITY_Flask Dependency|Flask Dependency]]
-- [[_COMMUNITY_User Placeholder Image|User Placeholder Image]]
-- [[_COMMUNITY_SVG Placeholder Image|SVG Placeholder Image]]
+- [[_COMMUNITY_Community 0|Community 0]]
+- [[_COMMUNITY_Community 1|Community 1]]
+- [[_COMMUNITY_Community 2|Community 2]]
+- [[_COMMUNITY_Community 3|Community 3]]
+- [[_COMMUNITY_Community 4|Community 4]]
+- [[_COMMUNITY_Community 5|Community 5]]
+- [[_COMMUNITY_Community 6|Community 6]]
+- [[_COMMUNITY_Community 7|Community 7]]
+- [[_COMMUNITY_Community 8|Community 8]]
+- [[_COMMUNITY_Community 9|Community 9]]
+- [[_COMMUNITY_Community 10|Community 10]]
+- [[_COMMUNITY_Community 11|Community 11]]
+- [[_COMMUNITY_Community 12|Community 12]]
+- [[_COMMUNITY_Community 13|Community 13]]
+- [[_COMMUNITY_Community 14|Community 14]]
+- [[_COMMUNITY_Community 15|Community 15]]
+- [[_COMMUNITY_Community 16|Community 16]]
+- [[_COMMUNITY_Community 17|Community 17]]
+- [[_COMMUNITY_Community 18|Community 18]]
+- [[_COMMUNITY_Community 19|Community 19]]
+- [[_COMMUNITY_Community 20|Community 20]]
+- [[_COMMUNITY_Community 21|Community 21]]
+- [[_COMMUNITY_Community 22|Community 22]]
+- [[_COMMUNITY_Community 23|Community 23]]
+- [[_COMMUNITY_Community 24|Community 24]]
+- [[_COMMUNITY_Community 25|Community 25]]
+- [[_COMMUNITY_Community 26|Community 26]]
+- [[_COMMUNITY_Community 27|Community 27]]
+- [[_COMMUNITY_Community 28|Community 28]]
+- [[_COMMUNITY_Community 29|Community 29]]
+- [[_COMMUNITY_Community 30|Community 30]]
+- [[_COMMUNITY_Community 31|Community 31]]
+- [[_COMMUNITY_Community 32|Community 32]]
+- [[_COMMUNITY_Community 33|Community 33]]
+- [[_COMMUNITY_Community 34|Community 34]]
+- [[_COMMUNITY_Community 35|Community 35]]
+- [[_COMMUNITY_Community 36|Community 36]]
+- [[_COMMUNITY_Community 37|Community 37]]
+- [[_COMMUNITY_Community 38|Community 38]]
+- [[_COMMUNITY_Community 39|Community 39]]
+- [[_COMMUNITY_Community 40|Community 40]]
+- [[_COMMUNITY_Community 41|Community 41]]
+- [[_COMMUNITY_Community 42|Community 42]]
+- [[_COMMUNITY_Community 43|Community 43]]
+- [[_COMMUNITY_Community 44|Community 44]]
+- [[_COMMUNITY_Community 45|Community 45]]
+- [[_COMMUNITY_Community 46|Community 46]]
+- [[_COMMUNITY_Community 47|Community 47]]
+- [[_COMMUNITY_Community 48|Community 48]]
+- [[_COMMUNITY_Community 49|Community 49]]
+- [[_COMMUNITY_Community 50|Community 50]]
+- [[_COMMUNITY_Community 51|Community 51]]
+- [[_COMMUNITY_Community 52|Community 52]]
+- [[_COMMUNITY_Community 53|Community 53]]
+- [[_COMMUNITY_Community 54|Community 54]]
+- [[_COMMUNITY_Community 55|Community 55]]
+- [[_COMMUNITY_Community 56|Community 56]]
+- [[_COMMUNITY_Community 57|Community 57]]
+- [[_COMMUNITY_Community 58|Community 58]]
 
 ## God Nodes (most connected - your core abstractions)
 1. `courses_collection()` - 10 edges
@@ -83,10 +83,10 @@
 10. `commitField()` - 7 edges
 
 ## Surprising Connections (you probably didn't know these)
-- `CourseGrade App Icon (3D Red Triangle Logo)` --conceptually_related_to--> `CourseGrade App`  [INFERRED]
-  public/coursegrade.png → README.md
-- `CourseGrade Alternative Logo` --conceptually_related_to--> `CourseGrade App`  [INFERRED]
-  images/coursegrade.png → README.md
+- `CourseGrade App` --conceptually_related_to--> `CourseGrade App Icon (3D Red Triangle Logo)`  [INFERRED]
+  README.md → public/coursegrade.png
+- `CourseGrade App` --conceptually_related_to--> `CourseGrade Alternative Logo`  [INFERRED]
+  README.md → images/coursegrade.png
 - `Grade Tracking Feature` --semantically_similar_to--> `Assignments API Endpoint`  [INFERRED] [semantically similar]
   README.md → backend/README.md
 - `Grade Visualization (Graphs/Charts)` --semantically_similar_to--> `Grade Scales API Endpoint`  [INFERRED] [semantically similar]
@@ -101,328 +101,328 @@
 
 ## Communities
 
-### Community 0 - "Backend Data Models & Routes"
+### Community 0 - "Community 0"
 Cohesion: 0.18
 Nodes (30): Assignment, Course, GradeScale, Semester, TimestampMixin, assignment_detail(), _assignment_for_user(), assignments_collection() (+22 more)
 
-### Community 1 - "Course Card Component"
+### Community 1 - "Community 1"
 Cohesion: 0.09
 Nodes (18): addSubItem(), commitCourseName(), commitCredits(), commitPercentBoost(), convertToSubCriterion(), deleteSubItem(), duplicateSubItem(), formatCreditsDraft() (+10 more)
 
-### Community 2 - "Course Sidebar & GPA Summary"
+### Community 2 - "Community 2"
 Cohesion: 0.11
 Nodes (10): openDeleteDialog(), GpaSummary(), calculateCourseGrade(), calculateGPA(), getLetterGrade(), getMonochromeCardColor(), isCourseDefault(), letterGradeToGPA() (+2 more)
 
-### Community 3 - "Backend API Documentation"
+### Community 3 - "Community 3"
 Cohesion: 0.11
 Nodes (23): Assignments API Endpoint, AUTO_CREATE_TABLES Environment Option, Courses API Endpoint, Flask + Supabase Postgres Backend, Flask CORS Configuration, Flask Migrate (DB Migrations), Grade Scales API Endpoint, Gunicorn Production Server (+15 more)
 
-### Community 4 - "Criterion Row UI"
+### Community 4 - "Community 4"
 Cohesion: 0.17
 Nodes (15): updateSubItem(), clearDraft(), commitField(), commitSubItemName(), commitSubItemScore(), commitSubItemWeight(), getDraft(), getInputValue() (+7 more)
 
-### Community 5 - "Grade Utilities & Page Utils"
+### Community 5 - "Community 5"
 Cohesion: 0.13
 Nodes (7): getLetterGradeColor(), dashboardMessageStorageKey(), getGpaColor(), gpaToLetterGrade(), normalizeStorageScope(), readStoredDashboardMessage(), writeStoredDashboardMessage()
 
-### Community 6 - "Flask App Configuration"
+### Community 6 - "Community 6"
 Cohesion: 0.16
 Nodes (9): create_app(), Config, get_cors_origins(), get_database_url(), _normalize_database_url(), _postgres_driver_available(), Migrate, Fallback shim so app startup does not fail without flask-migrate. (+1 more)
 
-### Community 7 - "Grade Scale Editor"
+### Community 7 - "Community 7"
 Cohesion: 0.29
 Nodes (8): clampPercentage(), commitChanges(), getDisplayValue(), getEditingKey(), normalizeLetter(), normalizeMinimum(), sanitizePassFailSettings(), updateGrade()
 
-### Community 8 - "UI Sheet Component"
+### Community 8 - "Community 8"
 Cohesion: 0.2
 Nodes (0): 
 
-### Community 9 - "Course Settings Persistence"
+### Community 9 - "Community 9"
 Cohesion: 0.44
 Nodes (8): applyStoredSettingsToSemesters(), cloneOptionalGradeScale(), cloneSubItems(), persistCourseSettings(), readStoredCourseSettings(), removeCourseSettings(), writeStoredCourseSettings(), cloneGradeScale()
 
-### Community 10 - "Syllabus Import Dialog"
+### Community 10 - "Community 10"
 Cohesion: 0.32
 Nodes (3): handleDrop(), handleFileInput(), selectFile()
 
-### Community 11 - "App Settings"
+### Community 11 - "Community 11"
 Cohesion: 0.32
 Nodes (4): loadAppSettings(), saveAppSettings(), commitCredits(), update()
 
-### Community 12 - "CSV Import/Export"
+### Community 12 - "Community 12"
 Cohesion: 0.43
 Nodes (7): createPortableEnvelope(), parseCourseCsv(), parsePortableEnvelope(), parseSemesterCsv(), sanitizeCriteria(), serializeCourseCsv(), serializeSemesterCsv()
 
-### Community 13 - "API Client Layer"
+### Community 13 - "Community 13"
 Cohesion: 0.29
 Nodes (3): apiFetch(), ApiUnavailableError, formatErrorPayload()
 
-### Community 14 - "Syllabus AI Route"
+### Community 14 - "Community 14"
 Cohesion: 0.83
 Nodes (3): getWindowKey(), POST(), validateGeminiResponse()
 
-### Community 15 - "Dashboard Panel Charts"
+### Community 15 - "Community 15"
 Cohesion: 0.67
 Nodes (2): arc(), slicePath()
 
-### Community 16 - "UI Card Component"
+### Community 16 - "Community 16"
 Cohesion: 0.5
 Nodes (0): 
 
-### Community 17 - "React Hooks (Data & Undo/Redo)"
+### Community 17 - "Community 17"
 Cohesion: 0.5
 Nodes (2): useSemesterData(), useUndoRedo()
 
-### Community 18 - "Storage Utilities"
+### Community 18 - "Community 18"
 Cohesion: 0.5
 Nodes (0): 
 
-### Community 19 - "Type Definitions"
+### Community 19 - "Community 19"
 Cohesion: 0.67
 Nodes (2): apiToFrontendCourse(), normalizePercentage()
 
-### Community 20 - "Next.js App Pages"
+### Community 20 - "Community 20"
 Cohesion: 0.67
 Nodes (1): Page()
 
-### Community 21 - "Backend Env Loader"
+### Community 21 - "Community 21"
 Cohesion: 0.67
 Nodes (2): load_backend_env(), Lightweight dotenv loader for direct `python app.py` runs.     Does not override
 
-### Community 22 - "Marketing Page"
+### Community 22 - "Community 22"
 Cohesion: 0.67
 Nodes (0): 
 
-### Community 23 - "Grade Distribution Chart"
+### Community 23 - "Community 23"
 Cohesion: 1.0
 Nodes (2): arc(), slicePath()
 
-### Community 24 - "Rolling Number Animation"
+### Community 24 - "Community 24"
 Cohesion: 0.67
 Nodes (0): 
 
-### Community 25 - "Sitemap"
+### Community 25 - "Community 25"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 26 - "Root Layout"
+### Community 26 - "Community 26"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 27 - "Home Page"
+### Community 27 - "Community 27"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 28 - "App Shell Layout"
+### Community 28 - "Community 28"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 29 - "GPA Timeline Chart"
+### Community 29 - "Community 29"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 30 - "Delete Confirmation Dialog"
+### Community 30 - "Community 30"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 31 - "User Info Bar"
+### Community 31 - "Community 31"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 32 - "Auth Provider"
+### Community 32 - "Community 32"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 33 - "UI Switch Component"
+### Community 33 - "Community 33"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 34 - "UI Badge Component"
+### Community 34 - "Community 34"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 35 - "UI Input Component"
+### Community 35 - "Community 35"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 36 - "Course Context"
+### Community 36 - "Community 36"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 37 - "Course Color Picker"
+### Community 37 - "Community 37"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 38 - "Intersection Observer Hook"
+### Community 38 - "Community 38"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 39 - "Share URL Hook"
+### Community 39 - "Community 39"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 40 - "Utility Functions"
+### Community 40 - "Community 40"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 41 - "Placeholder Brand Assets"
+### Community 41 - "Community 41"
 Cohesion: 1.0
 Nodes (2): Placeholder Logo PNG, Placeholder Logo SVG
 
-### Community 42 - "PostCSS Config"
+### Community 42 - "Community 42"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 43 - "Next.js Config"
+### Community 43 - "Community 43"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 44 - "NextAuth Types"
+### Community 44 - "Community 44"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 45 - "Next.js Env Types"
+### Community 45 - "Community 45"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 46 - "Marketing Data"
+### Community 46 - "Community 46"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 47 - "Auth Route"
+### Community 47 - "Community 47"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 48 - "Share Page"
+### Community 48 - "Community 48"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 49 - "WSGI Entry Point"
+### Community 49 - "Community 49"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 50 - "Semester Panel"
+### Community 50 - "Community 50"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 51 - "UI Label Component"
+### Community 51 - "Community 51"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 52 - "UI Dialog Component"
+### Community 52 - "Community 52"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 53 - "UI Button Component"
+### Community 53 - "Community 53"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 54 - "App Constants"
+### Community 54 - "Community 54"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 55 - "Auth Utilities"
+### Community 55 - "Community 55"
 Cohesion: 1.0
 Nodes (0): 
 
-### Community 56 - "Flask Dependency"
+### Community 56 - "Community 56"
 Cohesion: 1.0
 Nodes (1): Flask >=3.0.0,<4.0.0
 
-### Community 57 - "User Placeholder Image"
+### Community 57 - "Community 57"
 Cohesion: 1.0
 Nodes (1): Placeholder User Avatar
 
-### Community 58 - "SVG Placeholder Image"
+### Community 58 - "Community 58"
 Cohesion: 1.0
 Nodes (1): Placeholder Image SVG
 
 ## Knowledge Gaps
 - **14 isolated node(s):** `Config`, `Fallback shim so app startup does not fail without flask-migrate.`, `Lightweight dotenv loader for direct `python app.py` runs.     Does not override`, `Flask >=3.0.0,<4.0.0`, `Flask-SQLAlchemy >=3.1.1` (+9 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **Thin community `Sitemap`** (2 nodes): `sitemap.ts`, `sitemap()`
+- **Thin community `Community 25`** (2 nodes): `sitemap.ts`, `sitemap()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Root Layout`** (2 nodes): `layout.tsx`, `RootLayout()`
+- **Thin community `Community 26`** (2 nodes): `layout.tsx`, `RootLayout()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Home Page`** (2 nodes): `page.tsx`, `Home()`
+- **Thin community `Community 27`** (2 nodes): `page.tsx`, `Home()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `App Shell Layout`** (2 nodes): `layout.tsx`, `onResize()`
+- **Thin community `Community 28`** (2 nodes): `layout.tsx`, `onResize()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `GPA Timeline Chart`** (2 nodes): `gpa-timeline-chart.tsx`, `catmullRom()`
+- **Thin community `Community 29`** (2 nodes): `gpa-timeline-chart.tsx`, `catmullRom()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Delete Confirmation Dialog`** (2 nodes): `delete-confirmation-dialog.tsx`, `DeleteConfirmationDialog()`
+- **Thin community `Community 30`** (2 nodes): `delete-confirmation-dialog.tsx`, `DeleteConfirmationDialog()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `User Info Bar`** (2 nodes): `user-info-bar.tsx`, `UserInfoBar()`
+- **Thin community `Community 31`** (2 nodes): `user-info-bar.tsx`, `UserInfoBar()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Auth Provider`** (2 nodes): `AuthProvider()`, `auth-provider.tsx`
+- **Thin community `Community 32`** (2 nodes): `AuthProvider()`, `auth-provider.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `UI Switch Component`** (2 nodes): `switch.tsx`, `Switch()`
+- **Thin community `Community 33`** (2 nodes): `switch.tsx`, `Switch()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `UI Badge Component`** (2 nodes): `Badge()`, `badge.tsx`
+- **Thin community `Community 34`** (2 nodes): `Badge()`, `badge.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `UI Input Component`** (2 nodes): `input.tsx`, `Input()`
+- **Thin community `Community 35`** (2 nodes): `input.tsx`, `Input()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Course Context`** (2 nodes): `CourseContext.tsx`, `useCourseContext()`
+- **Thin community `Community 36`** (2 nodes): `CourseContext.tsx`, `useCourseContext()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Course Color Picker`** (2 nodes): `CourseColorPicker.tsx`, `handleClick()`
+- **Thin community `Community 37`** (2 nodes): `CourseColorPicker.tsx`, `handleClick()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Intersection Observer Hook`** (2 nodes): `use-in-view.ts`, `useInView()`
+- **Thin community `Community 38`** (2 nodes): `use-in-view.ts`, `useInView()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Share URL Hook`** (2 nodes): `useShareUrl.ts`, `useShareUrl()`
+- **Thin community `Community 39`** (2 nodes): `useShareUrl.ts`, `useShareUrl()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Utility Functions`** (2 nodes): `utils.ts`, `cn()`
+- **Thin community `Community 40`** (2 nodes): `utils.ts`, `cn()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Placeholder Brand Assets`** (2 nodes): `Placeholder Logo PNG`, `Placeholder Logo SVG`
+- **Thin community `Community 41`** (2 nodes): `Placeholder Logo PNG`, `Placeholder Logo SVG`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `PostCSS Config`** (1 nodes): `postcss.config.mjs`
+- **Thin community `Community 42`** (1 nodes): `postcss.config.mjs`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Next.js Config`** (1 nodes): `next.config.mjs`
+- **Thin community `Community 43`** (1 nodes): `next.config.mjs`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `NextAuth Types`** (1 nodes): `next-auth.d.ts`
+- **Thin community `Community 44`** (1 nodes): `next-auth.d.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Next.js Env Types`** (1 nodes): `next-env.d.ts`
+- **Thin community `Community 45`** (1 nodes): `next-env.d.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Marketing Data`** (1 nodes): `page-marketing-data.ts`
+- **Thin community `Community 46`** (1 nodes): `page-marketing-data.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Auth Route`** (1 nodes): `route.ts`
+- **Thin community `Community 47`** (1 nodes): `route.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Share Page`** (1 nodes): `page.tsx`
+- **Thin community `Community 48`** (1 nodes): `page.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `WSGI Entry Point`** (1 nodes): `wsgi.py`
+- **Thin community `Community 49`** (1 nodes): `wsgi.py`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Semester Panel`** (1 nodes): `semester-panel.tsx`
+- **Thin community `Community 50`** (1 nodes): `semester-panel.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `UI Label Component`** (1 nodes): `label.tsx`
+- **Thin community `Community 51`** (1 nodes): `label.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `UI Dialog Component`** (1 nodes): `dialog.tsx`
+- **Thin community `Community 52`** (1 nodes): `dialog.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `UI Button Component`** (1 nodes): `button.tsx`
+- **Thin community `Community 53`** (1 nodes): `button.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `App Constants`** (1 nodes): `constants.ts`
+- **Thin community `Community 54`** (1 nodes): `constants.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Auth Utilities`** (1 nodes): `auth.ts`
+- **Thin community `Community 55`** (1 nodes): `auth.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Flask Dependency`** (1 nodes): `Flask >=3.0.0,<4.0.0`
+- **Thin community `Community 56`** (1 nodes): `Flask >=3.0.0,<4.0.0`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `User Placeholder Image`** (1 nodes): `Placeholder User Avatar`
+- **Thin community `Community 57`** (1 nodes): `Placeholder User Avatar`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `SVG Placeholder Image`** (1 nodes): `Placeholder Image SVG`
+- **Thin community `Community 58`** (1 nodes): `Placeholder Image SVG`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `getLetterGradeColor()` connect `Grade Utilities & Page Utils` to `Course Sidebar & GPA Summary`?**
+- **Why does `getLetterGradeColor()` connect `Community 5` to `Community 2`?**
   _High betweenness centrality (0.012) - this node is a cross-community bridge._
-- **Why does `GradeScale` connect `Backend Data Models & Routes` to `Flask App Configuration`?**
+- **Why does `GradeScale` connect `Community 0` to `Community 6`?**
   _High betweenness centrality (0.009) - this node is a cross-community bridge._
 - **Are the 2 inferred relationships involving `courses_collection()` (e.g. with `Course` and `Assignment`) actually correct?**
   _`courses_collection()` has 2 INFERRED edges - model-reasoned connections that need verification._
 - **What connects `Config`, `Fallback shim so app startup does not fail without flask-migrate.`, `Lightweight dotenv loader for direct `python app.py` runs.     Does not override` to the rest of the system?**
   _14 weakly-connected nodes found - possible documentation gaps or missing edges._
-- **Should `Course Card Component` be split into smaller, more focused modules?**
+- **Should `Community 1` be split into smaller, more focused modules?**
   _Cohesion score 0.09 - nodes in this community are weakly interconnected._
-- **Should `Course Sidebar & GPA Summary` be split into smaller, more focused modules?**
+- **Should `Community 2` be split into smaller, more focused modules?**
   _Cohesion score 0.11 - nodes in this community are weakly interconnected._
-- **Should `Backend API Documentation` be split into smaller, more focused modules?**
+- **Should `Community 3` be split into smaller, more focused modules?**
   _Cohesion score 0.11 - nodes in this community are weakly interconnected._

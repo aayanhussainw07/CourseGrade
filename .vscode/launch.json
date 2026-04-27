@@ -2,12 +2,17 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Django Backend",
-      "type": "python",
+      "name": "Flask Backend",
+      "type": "debugpy",
       "request": "launch",
-      "program": "${workspaceFolder}/backend/manage.py",
-      "args": ["runserver"],
-      "django": true,
+      "module": "flask",
+      "args": ["run", "--no-debugger"],
+      "env": {
+        "FLASK_APP": "app.py",
+        "FLASK_DEBUG": "1"
+      },
+      "cwd": "${workspaceFolder}/backend",
+      "jinja": true,
       "justMyCode": true,
       "console": "integratedTerminal"
     },
@@ -23,8 +28,8 @@
   ],
   "compounds": [
     {
-      "name": "Full Stack (Django + React)",
-      "configurations": ["Django Backend", "Next.js Frontend"],
+      "name": "Full Stack (Flask + Next.js)",
+      "configurations": ["Flask Backend", "Next.js Frontend"],
       "stopAll": true,
       "presentation": {
         "hidden": false,

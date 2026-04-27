@@ -553,9 +553,9 @@
       "file_type": "rationale",
       "source_file": "backend/extensions.py",
       "source_location": "L8",
-      "id": "extensions_rationale_8",
       "community": 6,
-      "norm_label": "fallback shim so app startup does not fail without flask-migrate."
+      "norm_label": "fallback shim so app startup does not fail without flask-migrate.",
+      "id": "extensions_rationale_8"
     },
     {
       "label": "app.py",
@@ -598,9 +598,9 @@
       "file_type": "rationale",
       "source_file": "backend/env_loader.py",
       "source_location": "L8",
-      "id": "env_loader_rationale_8",
       "community": 21,
-      "norm_label": "lightweight dotenv loader for direct `python app.py` runs.     does not override"
+      "norm_label": "lightweight dotenv loader for direct `python app.py` runs.     does not override",
+      "id": "env_loader_rationale_8"
     },
     {
       "label": "migrate.py",
@@ -2672,9 +2672,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "readme_coursegrade_app",
       "community": 3,
-      "norm_label": "coursegrade app"
+      "norm_label": "coursegrade app",
+      "id": "readme_coursegrade_app"
     },
     {
       "label": "Grade Tracking Feature",
@@ -2685,9 +2685,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "readme_grade_tracking",
       "community": 3,
-      "norm_label": "grade tracking feature"
+      "norm_label": "grade tracking feature",
+      "id": "readme_grade_tracking"
     },
     {
       "label": "Grade Visualization (Graphs/Charts)",
@@ -2698,9 +2698,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "readme_grade_visualization",
       "community": 3,
-      "norm_label": "grade visualization (graphs/charts)"
+      "norm_label": "grade visualization (graphs/charts)",
+      "id": "readme_grade_visualization"
     },
     {
       "label": "Personal Motivation for Visible Grade Tracking",
@@ -2711,9 +2711,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "readme_personal_motivation",
       "community": 3,
-      "norm_label": "personal motivation for visible grade tracking"
+      "norm_label": "personal motivation for visible grade tracking",
+      "id": "readme_personal_motivation"
     },
     {
       "label": "Flask + Supabase Postgres Backend",
@@ -2724,9 +2724,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "backend_readme_flask_backend",
       "community": 3,
-      "norm_label": "flask + supabase postgres backend"
+      "norm_label": "flask + supabase postgres backend",
+      "id": "backend_readme_flask_backend"
     },
     {
       "label": "REST API Contract",
@@ -2737,9 +2737,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "backend_readme_rest_api",
       "community": 3,
-      "norm_label": "rest api contract"
+      "norm_label": "rest api contract",
+      "id": "backend_readme_rest_api"
     },
     {
       "label": "Semesters API Endpoint",
@@ -2750,9 +2750,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "backend_readme_semesters_endpoint",
       "community": 3,
-      "norm_label": "semesters api endpoint"
+      "norm_label": "semesters api endpoint",
+      "id": "backend_readme_semesters_endpoint"
     },
     {
       "label": "Courses API Endpoint",
@@ -2763,9 +2763,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "backend_readme_courses_endpoint",
       "community": 3,
-      "norm_label": "courses api endpoint"
+      "norm_label": "courses api endpoint",
+      "id": "backend_readme_courses_endpoint"
     },
     {
       "label": "Assignments API Endpoint",
@@ -2776,9 +2776,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "backend_readme_assignments_endpoint",
       "community": 3,
-      "norm_label": "assignments api endpoint"
+      "norm_label": "assignments api endpoint",
+      "id": "backend_readme_assignments_endpoint"
     },
     {
       "label": "Grade Scales API Endpoint",
@@ -2789,9 +2789,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "backend_readme_grade_scales_endpoint",
       "community": 3,
-      "norm_label": "grade scales api endpoint"
+      "norm_label": "grade scales api endpoint",
+      "id": "backend_readme_grade_scales_endpoint"
     },
     {
       "label": "Supabase Postgres Database",
@@ -2802,9 +2802,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "backend_readme_supabase_postgres",
       "community": 3,
-      "norm_label": "supabase postgres database"
+      "norm_label": "supabase postgres database",
+      "id": "backend_readme_supabase_postgres"
     },
     {
       "label": "Flask CORS Configuration",
@@ -2815,9 +2815,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "backend_readme_flask_cors",
       "community": 3,
-      "norm_label": "flask cors configuration"
+      "norm_label": "flask cors configuration",
+      "id": "backend_readme_flask_cors"
     },
     {
       "label": "Gunicorn Production Server",
@@ -2828,9 +2828,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "backend_readme_gunicorn",
       "community": 3,
-      "norm_label": "gunicorn production server"
+      "norm_label": "gunicorn production server",
+      "id": "backend_readme_gunicorn"
     },
     {
       "label": "Flask Migrate (DB Migrations)",
@@ -2841,9 +2841,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "backend_readme_flask_migrate",
       "community": 3,
-      "norm_label": "flask migrate (db migrations)"
+      "norm_label": "flask migrate (db migrations)",
+      "id": "backend_readme_flask_migrate"
     },
     {
       "label": "AUTO_CREATE_TABLES Environment Option",
@@ -2854,9 +2854,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "backend_readme_auto_create_tables",
       "community": 3,
-      "norm_label": "auto_create_tables environment option"
+      "norm_label": "auto_create_tables environment option",
+      "id": "backend_readme_auto_create_tables"
     },
     {
       "label": "Flask >=3.0.0,<4.0.0",
@@ -2867,9 +2867,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "requirements_flask",
       "community": 56,
-      "norm_label": "flask >=3.0.0,<4.0.0"
+      "norm_label": "flask >=3.0.0,<4.0.0",
+      "id": "requirements_flask"
     },
     {
       "label": "Flask-SQLAlchemy >=3.1.1",
@@ -2880,9 +2880,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "requirements_flask_sqlalchemy",
       "community": 3,
-      "norm_label": "flask-sqlalchemy >=3.1.1"
+      "norm_label": "flask-sqlalchemy >=3.1.1",
+      "id": "requirements_flask_sqlalchemy"
     },
     {
       "label": "Flask-Migrate >=4.0.7",
@@ -2893,9 +2893,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "requirements_flask_migrate",
       "community": 3,
-      "norm_label": "flask-migrate >=4.0.7"
+      "norm_label": "flask-migrate >=4.0.7",
+      "id": "requirements_flask_migrate"
     },
     {
       "label": "Flask-Cors >=5.0.0",
@@ -2906,9 +2906,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "requirements_flask_cors",
       "community": 3,
-      "norm_label": "flask-cors >=5.0.0"
+      "norm_label": "flask-cors >=5.0.0",
+      "id": "requirements_flask_cors"
     },
     {
       "label": "gunicorn 21.2.0",
@@ -2919,9 +2919,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "requirements_gunicorn",
       "community": 3,
-      "norm_label": "gunicorn 21.2.0"
+      "norm_label": "gunicorn 21.2.0",
+      "id": "requirements_gunicorn"
     },
     {
       "label": "psycopg2-binary >=2.9.9",
@@ -2932,9 +2932,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "requirements_psycopg2",
       "community": 3,
-      "norm_label": "psycopg2-binary >=2.9.9"
+      "norm_label": "psycopg2-binary >=2.9.9",
+      "id": "requirements_psycopg2"
     },
     {
       "label": "python-dotenv >=1.0.1",
@@ -2945,9 +2945,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "requirements_python_dotenv",
       "community": 3,
-      "norm_label": "python-dotenv >=1.0.1"
+      "norm_label": "python-dotenv >=1.0.1",
+      "id": "requirements_python_dotenv"
     },
     {
       "label": "CourseGrade App Icon (3D Red Triangle Logo)",
@@ -2958,9 +2958,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "public_coursegrade_logo",
       "community": 3,
-      "norm_label": "coursegrade app icon (3d red triangle logo)"
+      "norm_label": "coursegrade app icon (3d red triangle logo)",
+      "id": "public_coursegrade_logo"
     },
     {
       "label": "CourseGrade Alternative Logo",
@@ -2971,9 +2971,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "images_coursegrade_logo_alt",
       "community": 3,
-      "norm_label": "coursegrade alternative logo"
+      "norm_label": "coursegrade alternative logo",
+      "id": "images_coursegrade_logo_alt"
     },
     {
       "label": "Placeholder Logo SVG",
@@ -2984,9 +2984,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "public_placeholder_logo_svg",
       "community": 41,
-      "norm_label": "placeholder logo svg"
+      "norm_label": "placeholder logo svg",
+      "id": "public_placeholder_logo_svg"
     },
     {
       "label": "Placeholder Logo PNG",
@@ -2997,9 +2997,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "public_placeholder_logo_png",
       "community": 41,
-      "norm_label": "placeholder logo png"
+      "norm_label": "placeholder logo png",
+      "id": "public_placeholder_logo_png"
     },
     {
       "label": "Placeholder User Avatar",
@@ -3010,9 +3010,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "public_placeholder_user",
       "community": 57,
-      "norm_label": "placeholder user avatar"
+      "norm_label": "placeholder user avatar",
+      "id": "public_placeholder_user"
     },
     {
       "label": "Placeholder Image SVG",
@@ -3023,9 +3023,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "public_placeholder_svg",
       "community": 58,
-      "norm_label": "placeholder image svg"
+      "norm_label": "placeholder image svg",
+      "id": "public_placeholder_svg"
     }
   ],
   "links": [
@@ -3516,8 +3516,8 @@
       "source_file": "backend/app.py",
       "source_location": "L23",
       "weight": 1.0,
-      "_src": "app_create_app",
-      "_tgt": "config_get_cors_origins",
+      "_src": "config_get_cors_origins",
+      "_tgt": "app_create_app",
       "source": "config_get_cors_origins",
       "target": "app_create_app"
     },
@@ -3624,8 +3624,8 @@
       "source_file": "backend/routes.py",
       "source_location": "L271",
       "weight": 1.0,
-      "_src": "routes_semesters_collection",
-      "_tgt": "models_semester",
+      "_src": "models_semester",
+      "_tgt": "routes_semesters_collection",
       "source": "models_semester",
       "target": "routes_semesters_collection"
     },
@@ -3636,8 +3636,8 @@
       "source_file": "backend/routes.py",
       "source_location": "L338",
       "weight": 1.0,
-      "_src": "routes_semester_duplicate",
-      "_tgt": "models_semester",
+      "_src": "models_semester",
+      "_tgt": "routes_semester_duplicate",
       "source": "models_semester",
       "target": "routes_semester_duplicate"
     },
@@ -3648,8 +3648,8 @@
       "source_file": "backend/routes.py",
       "source_location": "L349",
       "weight": 1.0,
-      "_src": "routes_semester_duplicate",
-      "_tgt": "models_course",
+      "_src": "models_course",
+      "_tgt": "routes_semester_duplicate",
       "source": "models_course",
       "target": "routes_semester_duplicate"
     },
@@ -3660,8 +3660,8 @@
       "source_file": "backend/routes.py",
       "source_location": "L432",
       "weight": 1.0,
-      "_src": "routes_courses_collection",
-      "_tgt": "models_course",
+      "_src": "models_course",
+      "_tgt": "routes_courses_collection",
       "source": "models_course",
       "target": "routes_courses_collection"
     },
@@ -3672,8 +3672,8 @@
       "source_file": "backend/routes.py",
       "source_location": "L362",
       "weight": 1.0,
-      "_src": "routes_semester_duplicate",
-      "_tgt": "models_assignment",
+      "_src": "models_assignment",
+      "_tgt": "routes_semester_duplicate",
       "source": "models_assignment",
       "target": "routes_semester_duplicate"
     },
@@ -3684,8 +3684,8 @@
       "source_file": "backend/routes.py",
       "source_location": "L443",
       "weight": 1.0,
-      "_src": "routes_courses_collection",
-      "_tgt": "models_assignment",
+      "_src": "models_assignment",
+      "_tgt": "routes_courses_collection",
       "source": "models_assignment",
       "target": "routes_courses_collection"
     },
@@ -3696,8 +3696,8 @@
       "source_file": "backend/routes.py",
       "source_location": "L554",
       "weight": 1.0,
-      "_src": "routes_assignments_collection",
-      "_tgt": "models_assignment",
+      "_src": "models_assignment",
+      "_tgt": "routes_assignments_collection",
       "source": "models_assignment",
       "target": "routes_assignments_collection"
     },
@@ -3708,8 +3708,8 @@
       "source_file": "backend/migrate.py",
       "source_location": "L18",
       "weight": 1.0,
-      "_src": "migrate_run_migrations",
-      "_tgt": "models_gradescale",
+      "_src": "models_gradescale",
+      "_tgt": "migrate_run_migrations",
       "source": "models_gradescale",
       "target": "migrate_run_migrations"
     },
@@ -3720,8 +3720,8 @@
       "source_file": "backend/routes.py",
       "source_location": "L643",
       "weight": 1.0,
-      "_src": "routes_grade_scales_collection",
-      "_tgt": "models_gradescale",
+      "_src": "models_gradescale",
+      "_tgt": "routes_grade_scales_collection",
       "source": "models_gradescale",
       "target": "routes_grade_scales_collection"
     },
@@ -3732,8 +3732,8 @@
       "source_file": "backend/routes.py",
       "source_location": "L714",
       "weight": 1.0,
-      "_src": "routes_grade_scales_reset_default",
-      "_tgt": "models_gradescale",
+      "_src": "models_gradescale",
+      "_tgt": "routes_grade_scales_reset_default",
       "source": "models_gradescale",
       "target": "routes_grade_scales_reset_default"
     },
@@ -3780,8 +3780,8 @@
       "source_file": "backend/app.py",
       "source_location": "L20",
       "weight": 1.0,
-      "_src": "app_create_app",
-      "_tgt": "extensions_migrate_init_app",
+      "_src": "extensions_migrate_init_app",
+      "_tgt": "app_create_app",
       "source": "extensions_migrate_init_app",
       "target": "app_create_app"
     },
@@ -3804,8 +3804,8 @@
       "source_file": "backend/migrate.py",
       "source_location": "L12",
       "weight": 1.0,
-      "_src": "migrate_run_migrations",
-      "_tgt": "app_create_app",
+      "_src": "app_create_app",
+      "_tgt": "migrate_run_migrations",
       "source": "app_create_app",
       "target": "migrate_run_migrations"
     },
@@ -5304,8 +5304,8 @@
       "source_file": "components/course/CriterionRow.tsx",
       "source_location": "L183",
       "weight": 1.0,
-      "_src": "criterionrow_commitname",
-      "_tgt": "course_card_updatecriterion",
+      "_src": "course_card_updatecriterion",
+      "_tgt": "criterionrow_commitname",
       "source": "course_card_updatecriterion",
       "target": "criterionrow_commitname"
     },
@@ -5316,8 +5316,8 @@
       "source_file": "components/course/CriterionRow.tsx",
       "source_location": "L203",
       "weight": 1.0,
-      "_src": "criterionrow_commitfield",
-      "_tgt": "course_card_updatecriterion",
+      "_src": "course_card_updatecriterion",
+      "_tgt": "criterionrow_commitfield",
       "source": "course_card_updatecriterion",
       "target": "criterionrow_commitfield"
     },
@@ -5340,8 +5340,8 @@
       "source_file": "components/course/CriterionRow.tsx",
       "source_location": "L228",
       "weight": 1.0,
-      "_src": "criterionrow_commitsubitemscore",
-      "_tgt": "course_card_updatesubitem",
+      "_src": "course_card_updatesubitem",
+      "_tgt": "criterionrow_commitsubitemscore",
       "source": "course_card_updatesubitem",
       "target": "criterionrow_commitsubitemscore"
     },
@@ -5352,8 +5352,8 @@
       "source_file": "components/course/CriterionRow.tsx",
       "source_location": "L235",
       "weight": 1.0,
-      "_src": "criterionrow_commitsubitemname",
-      "_tgt": "course_card_updatesubitem",
+      "_src": "course_card_updatesubitem",
+      "_tgt": "criterionrow_commitsubitemname",
       "source": "course_card_updatesubitem",
       "target": "criterionrow_commitsubitemname"
     },
@@ -5364,8 +5364,8 @@
       "source_file": "components/course/CriterionRow.tsx",
       "source_location": "L247",
       "weight": 1.0,
-      "_src": "criterionrow_commitsubitemweight",
-      "_tgt": "course_card_updatesubitem",
+      "_src": "course_card_updatesubitem",
+      "_tgt": "criterionrow_commitsubitemweight",
       "source": "course_card_updatesubitem",
       "target": "criterionrow_commitsubitemweight"
     },
@@ -6816,8 +6816,8 @@
       "source_file": "lib/course-settings.ts",
       "source_location": "L25",
       "weight": 1.0,
-      "_src": "course_settings_cloneoptionalgradescale",
-      "_tgt": "grade_utils_clonegradescale",
+      "_src": "grade_utils_clonegradescale",
+      "_tgt": "course_settings_cloneoptionalgradescale",
       "source": "grade_utils_clonegradescale",
       "target": "course_settings_cloneoptionalgradescale"
     },
@@ -6828,8 +6828,8 @@
       "source_file": "lib/course-settings.ts",
       "source_location": "L52",
       "weight": 1.0,
-      "_src": "course_settings_persistcoursesettings",
-      "_tgt": "grade_utils_clonegradescale",
+      "_src": "grade_utils_clonegradescale",
+      "_tgt": "course_settings_persistcoursesettings",
       "source": "grade_utils_clonegradescale",
       "target": "course_settings_persistcoursesettings"
     },
@@ -7572,8 +7572,8 @@
       "source_file": "README.md",
       "source_location": "line 3",
       "weight": 1.0,
-      "_src": "readme_personal_motivation",
-      "_tgt": "readme_coursegrade_app",
+      "_src": "readme_coursegrade_app",
+      "_tgt": "readme_personal_motivation",
       "source": "readme_coursegrade_app",
       "target": "readme_personal_motivation"
     },
@@ -7596,8 +7596,8 @@
       "source_file": "public/coursegrade.png",
       "source_location": null,
       "weight": 1.0,
-      "_src": "public_coursegrade_logo",
-      "_tgt": "readme_coursegrade_app",
+      "_src": "readme_coursegrade_app",
+      "_tgt": "public_coursegrade_logo",
       "source": "readme_coursegrade_app",
       "target": "public_coursegrade_logo"
     },
@@ -7608,8 +7608,8 @@
       "source_file": "images/coursegrade.png",
       "source_location": null,
       "weight": 1.0,
-      "_src": "images_coursegrade_logo_alt",
-      "_tgt": "readme_coursegrade_app",
+      "_src": "readme_coursegrade_app",
+      "_tgt": "images_coursegrade_logo_alt",
       "source": "readme_coursegrade_app",
       "target": "images_coursegrade_logo_alt"
     },
@@ -7632,8 +7632,8 @@
       "source_file": "README.md",
       "source_location": "line 3",
       "weight": 1.0,
-      "_src": "readme_personal_motivation",
-      "_tgt": "readme_grade_visualization",
+      "_src": "readme_grade_visualization",
+      "_tgt": "readme_personal_motivation",
       "source": "readme_grade_visualization",
       "target": "readme_personal_motivation"
     },
@@ -7812,8 +7812,8 @@
       "source_file": "backend/requirements.txt",
       "source_location": "line 2",
       "weight": 1.0,
-      "_src": "requirements_flask_sqlalchemy",
-      "_tgt": "backend_readme_supabase_postgres",
+      "_src": "backend_readme_supabase_postgres",
+      "_tgt": "requirements_flask_sqlalchemy",
       "source": "backend_readme_supabase_postgres",
       "target": "requirements_flask_sqlalchemy"
     },
@@ -7860,8 +7860,8 @@
       "source_file": "backend/README.md",
       "source_location": "line 31",
       "weight": 1.0,
-      "_src": "requirements_python_dotenv",
-      "_tgt": "backend_readme_auto_create_tables",
+      "_src": "backend_readme_auto_create_tables",
+      "_tgt": "requirements_python_dotenv",
       "source": "backend_readme_auto_create_tables",
       "target": "requirements_python_dotenv"
     },
