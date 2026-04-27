@@ -49,10 +49,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [syllabusImportOpen, setSyllabusImportOpen] = useState(false);
   const [isEditingSemesterName, setIsEditingSemesterName] = useState(false);
   const [semesterNameDraft, setSemesterNameDraft] = useState("");
-  const [highlightedCourseId, setHighlightedCourseId] = useState<string | null>(null);
+  const [highlightedCourseId, setHighlightedCourseId] = useState<string | null>(
+    null,
+  );
   const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [draggingMainCourseId, setDraggingMainCourseId] = useState<string | null>(null);
-  const [dragOverMainCourseId, setDragOverMainCourseId] = useState<string | null>(null);
+  const [draggingMainCourseId, setDraggingMainCourseId] = useState<
+    string | null
+  >(null);
+  const [dragOverMainCourseId, setDragOverMainCourseId] = useState<
+    string | null
+  >(null);
   const courseRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
   const dashboardFileInputRef = useRef<HTMLInputElement | null>(null);
   const [dashboardMessage, setDashboardMessage] = useState("");
@@ -107,7 +113,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     exportDashboardBackup,
   } = useSemesterData({ appSettings });
 
-  const { shareUrl, shareCopied, generateShareUrl, closeShareUrl, copyShareUrl } = useShareUrl({
+  const {
+    shareUrl,
+    shareCopied,
+    generateShareUrl,
+    closeShareUrl,
+    copyShareUrl,
+  } = useShareUrl({
     semesters,
     activeSemesterId,
   });
@@ -141,7 +153,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   // ── Responsive sidebar ────────────────────────────────────────────────────
   useEffect(() => {
-    const onResize = () => { if (window.innerWidth >= 1024) setSidebarOpen(false); };
+    const onResize = () => {
+      if (window.innerWidth >= 1024) setSidebarOpen(false);
+    };
     onResize();
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
@@ -203,16 +217,27 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   if (serverOffline) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-background px-4 text-center">
-        <Image src="/coursegrade.png" alt="CourseGrade" width={64} height={64} className="h-16 w-16" />
+        <Image
+          src="/coursegrade.png"
+          alt="CourseGrade"
+          width={64}
+          height={64}
+          className="h-16 w-16"
+        />
         <div>
           <h1 className="text-3xl font-bold text-foreground">Server Offline</h1>
           <p className="mt-2 text-muted-foreground">
-            We can't reach the grading server right now. Please try again shortly.
+            We can't reach the grading server right now. Please try again
+            shortly.
           </p>
         </div>
         <div className="flex flex-wrap justify-center gap-4">
-          <Button size="lg" onClick={() => loadSemesters()}>Retry</Button>
-          <Button variant="ghost" size="lg" onClick={() => signOut()}>Sign out</Button>
+          <Button size="lg" onClick={() => loadSemesters()}>
+            Retry
+          </Button>
+          <Button variant="ghost" size="lg" onClick={() => signOut()}>
+            Sign out
+          </Button>
         </div>
       </div>
     );
@@ -242,11 +267,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         {activeSemesterId && (
           <Button
             onClick={() => setSyllabusImportOpen(true)}
-            className="flex items-center gap-2 border border-white/10 bg-foreground px-3 py-2 text-sm text-white hover:bg-foreground/80 shadow-none"
-            style={{
-              backgroundImage:
-                "repeating-linear-gradient(0deg, rgba(255,255,255,0.04) 0px, rgba(255,255,255,0.04) 1px, transparent 1px, transparent 40px), repeating-linear-gradient(90deg, rgba(255,255,255,0.04) 0px, rgba(255,255,255,0.04) 1px, transparent 1px, transparent 40px)",
-            }}
+            className="flex items-center gap-2 border border-white/10 px-3 py-2 text-sm text-white hover:bg-primary/75 shadow-none"
           >
             <Sparkles className="h-4 w-4" />
             Import Syllabus
@@ -255,11 +276,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <Button
           size="icon"
           onClick={() => setSettingsOpen(true)}
-          className="border border-white/10 bg-foreground text-white hover:bg-foreground/80 h-9 w-9 shadow-none"
-          style={{
-            backgroundImage:
-              "repeating-linear-gradient(0deg, rgba(255,255,255,0.04) 0px, rgba(255,255,255,0.04) 1px, transparent 1px, transparent 40px), repeating-linear-gradient(90deg, rgba(255,255,255,0.04) 0px, rgba(255,255,255,0.04) 1px, transparent 1px, transparent 40px)",
-          }}
+          className="border border-white/10 text-white hover:bg-primary/75 h-9 w-9 shadow-none"
         >
           <Settings className="h-4 w-4" />
         </Button>
@@ -287,7 +304,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 setActiveSemesterId(id);
                 router.push("/semesters/" + id);
               }}
-              onCourseClick={(id) => { setSidebarOpen(false); scrollToCourse(id); }}
+              onCourseClick={(id) => {
+                setSidebarOpen(false);
+                scrollToCourse(id);
+              }}
               onAddSemester={addSemester}
               onDeleteSemester={deleteSemester}
               skipSemesterDeleteConfirm={appSettings.skipSemesterDeleteConfirm}
@@ -342,7 +362,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
       <SettingsDialog
         open={settingsOpen}
-        onClose={() => { setSettingsOpen(false); setAppSettings(loadAppSettings()); }}
+        onClose={() => {
+          setSettingsOpen(false);
+          setAppSettings(loadAppSettings());
+        }}
         onClearAllData={clearAllData}
         userEmail={session?.user?.email ?? undefined}
         userId={session?.user?.id ?? session?.user?.email ?? undefined}
@@ -361,7 +384,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             {/* Quote widget */}
             <div className="w-full rounded-lg border border-primary/35 bg-card/85 shadow-under-white-soft overflow-hidden flex">
               <div className="relative flex shrink-0 items-center justify-center bg-primary border-r border-primary/20 px-5 py-4 overflow-hidden">
-                <p className="relative font-etna text-2xl text-white leading-none">quote.</p>
+                <p className="relative font-etna text-2xl text-white leading-none">
+                  quote.
+                </p>
               </div>
               <div className="flex-1 px-5 py-4">
                 {dashboardMessage && !isEditingQuote ? (
@@ -391,19 +416,26 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                       className="w-full resize-none rounded-md border border-primary/25 bg-background/90 px-3 py-1.5 text-sm text-foreground outline-none transition focus:border-primary/45"
                     />
                     <div className="mt-2 flex items-center gap-2">
-                      <Button size="sm" onClick={saveDashboardMessage}>Save</Button>
+                      <Button size="sm" onClick={saveDashboardMessage}>
+                        Save
+                      </Button>
                       <Button
                         size="sm"
                         variant="outline"
                         onClick={clearDashboardMessage}
                         disabled={
-                          dashboardMessage.length === 0 && dashboardMessageDraft.trim().length === 0
+                          dashboardMessage.length === 0 &&
+                          dashboardMessageDraft.trim().length === 0
                         }
                       >
                         Clear
                       </Button>
                       {dashboardMessage && (
-                        <Button size="sm" variant="ghost" onClick={() => setIsEditingQuote(false)}>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setIsEditingQuote(false)}
+                        >
                           Cancel
                         </Button>
                       )}
@@ -419,8 +451,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   <Layers className="h-8 w-8 text-primary/60" />
                 </div>
                 <div>
-                  <p className="text-base font-semibold text-foreground">No semesters yet</p>
-                  <p className="mt-1 text-sm text-muted-foreground">Let's get started!</p>
+                  <p className="text-base font-semibold text-foreground">
+                    No semesters yet
+                  </p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Let's get started!
+                  </p>
                 </div>
                 <Button onClick={addSemester} size="lg" className="gap-2">
                   <Plus className="h-5 w-5" />
@@ -429,24 +465,62 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               </div>
             ) : (
               <>
-                <div className="grid gap-4" style={{ gridTemplateColumns: "1fr 2fr 1fr" }}>
+                <div
+                  className="grid gap-4"
+                  style={{ gridTemplateColumns: "1fr 2fr 1fr" }}
+                >
                   {[
-                    { label: "Total Credits", content: <p className="mt-2 text-5xl font-bold text-white">{totalCredits}</p> },
-                    { label: "Overall GPA", content: <div className="mt-1 flex items-center justify-between pr-8"><p className="flex items-baseline gap-2 text-4xl font-bold text-white"><TrendingUp className="h-5 w-5 text-white/60" />{overallGpa.toFixed(2)}</p><span className="text-7xl font-black text-white/80">{overallGpaLetter}</span></div> },
-                    { label: "Semesters Tracked", content: <p className="mt-2 text-5xl font-bold text-white">{totalSemesters}</p> },
+                    {
+                      label: "Total Credits",
+                      content: (
+                        <p className="mt-2 text-5xl font-bold text-white">
+                          {totalCredits}
+                        </p>
+                      ),
+                    },
+                    {
+                      label: "Overall GPA",
+                      content: (
+                        <div className="mt-1 flex items-center justify-between pr-8">
+                          <p className="flex items-baseline gap-2 text-4xl font-bold text-white">
+                            <TrendingUp className="h-5 w-5 text-white/60" />
+                            {overallGpa.toFixed(2)}
+                          </p>
+                          <span className="text-7xl font-black text-white/80">
+                            {overallGpaLetter}
+                          </span>
+                        </div>
+                      ),
+                    },
+                    {
+                      label: "Semesters Tracked",
+                      content: (
+                        <p className="mt-2 text-5xl font-bold text-white">
+                          {totalSemesters}
+                        </p>
+                      ),
+                    },
                   ].map(({ label, content }) => (
                     <div
                       key={label}
                       className="relative overflow-hidden rounded-lg bg-primary p-4 text-left"
-                      style={{ backgroundImage: "repeating-linear-gradient(0deg, rgba(255,255,255,0.06) 0px, rgba(255,255,255,0.06) 1px, transparent 1px, transparent 20px), repeating-linear-gradient(90deg, rgba(255,255,255,0.06) 0px, rgba(255,255,255,0.06) 1px, transparent 1px, transparent 20px)" }}
+                      style={{
+                        backgroundImage:
+                          "repeating-linear-gradient(0deg, rgba(255,255,255,0.06) 0px, rgba(255,255,255,0.06) 1px, transparent 1px, transparent 20px), repeating-linear-gradient(90deg, rgba(255,255,255,0.06) 0px, rgba(255,255,255,0.06) 1px, transparent 1px, transparent 20px)",
+                      }}
                     >
-                      <p className="text-sm font-medium text-white/60 uppercase tracking-widest">{label}</p>
+                      <p className="text-sm font-medium text-white/60 uppercase tracking-widest">
+                        {label}
+                      </p>
                       {content}
                     </div>
                   ))}
                 </div>
 
-                <DashboardPanel timelineData={timelineData} courses={allCourses} />
+                <DashboardPanel
+                  timelineData={timelineData}
+                  courses={allCourses}
+                />
 
                 <div className="grid p-4 pb-0 gap-4 lg:grid">
                   {semesterSummaries.map((summary, i) => {
@@ -455,16 +529,26 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                       <div
                         key={summary.id}
                         className="relative overflow-hidden p-5 text-left"
-                        style={{ backgroundColor: "color-mix(in srgb, var(--primary) 75%, black)" }}
+                        style={{
+                          backgroundColor:
+                            "color-mix(in srgb, var(--primary) 75%, black)",
+                        }}
                       >
                         <div
                           className="flex items-center justify-between"
                           style={{ transform: `skewX(${-skew}deg)` }}
                         >
-                          <p className="text-xl font-bold text-white uppercase tracking-wide">{summary.name}</p>
-                          <span className="text-2xl font-black text-white">{summary.gpa.toFixed(2)} GPA</span>
+                          <p className="text-xl font-bold text-white uppercase tracking-wide">
+                            {summary.name}
+                          </p>
+                          <span className="text-2xl font-black text-white">
+                            {summary.gpa.toFixed(2)} GPA
+                          </span>
                         </div>
-                        <p className="mt-1 text-sm text-white/60" style={{ transform: `skewX(${-skew}deg)` }}>
+                        <p
+                          className="mt-1 text-sm text-white/60"
+                          style={{ transform: `skewX(${-skew}deg)` }}
+                        >
                           Credits: {summary.credits}
                         </p>
                       </div>
@@ -510,7 +594,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <>
             {/* Dark header */}
             <div
-              className="-mx-4 -mt-8 px-4 pt-8 pb-0"
+              className="-mx-4 -mt-8 pb-1 px-4 pt-8 pb-0"
               style={{
                 background: "#2d0008",
                 backgroundImage:
@@ -526,8 +610,15 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                       value={semesterNameDraft}
                       onChange={(e) => setSemesterNameDraft(e.target.value)}
                       onKeyDown={(e) => {
-                        if (e.key === "Enter" && semesterNameDraft.trim() && activeSemesterId) {
-                          editSemester(activeSemesterId, semesterNameDraft.trim());
+                        if (
+                          e.key === "Enter" &&
+                          semesterNameDraft.trim() &&
+                          activeSemesterId
+                        ) {
+                          editSemester(
+                            activeSemesterId,
+                            semesterNameDraft.trim(),
+                          );
                           setIsEditingSemesterName(false);
                         } else if (e.key === "Escape") {
                           setIsEditingSemesterName(false);
@@ -539,7 +630,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                       size="sm"
                       onClick={() => {
                         if (semesterNameDraft.trim() && activeSemesterId) {
-                          editSemester(activeSemesterId, semesterNameDraft.trim());
+                          editSemester(
+                            activeSemesterId,
+                            semesterNameDraft.trim(),
+                          );
                         }
                         setIsEditingSemesterName(false);
                       }}
@@ -608,7 +702,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   <div className="relative">
                     <Button
                       size="icon"
-                      onClick={() => (shareUrl ? closeShareUrl() : generateShareUrl())}
+                      onClick={() =>
+                        shareUrl ? closeShareUrl() : generateShareUrl()
+                      }
                       className="h-8 w-8 bg-primary/80 text-white hover:bg-primary border-0 shadow-none"
                       title="Share"
                     >
@@ -631,7 +727,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                             className="h-7 shrink-0 gap-1 px-2 text-xs"
                             onClick={copyShareUrl}
                           >
-                            {shareCopied ? <Check className="h-3 w-3" /> : <Share2 className="h-3 w-3" />}
+                            {shareCopied ? (
+                              <Check className="h-3 w-3" />
+                            ) : (
+                              <Share2 className="h-3 w-3" />
+                            )}
                             {shareCopied ? "Copied!" : "Copy"}
                           </Button>
                         </div>
@@ -649,85 +749,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               )}
             </div>
 
-            {/* Course cards */}
-            {activeSemesterId && (
-              <AnimatePresence mode="popLayout">
-                <div className="space-y-6 mt-8">
-                  {courses.map((course, index) => (
-                    <motion.div
-                      key={`${course.id}-${index}`}
-                      ref={(el) => { courseRefs.current[course.id] = el; }}
-                      initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                      animate={{ opacity: 1, scale: 1, y: 0 }}
-                      exit={{
-                        opacity: 0,
-                        scale: 0.85,
-                        y: -20,
-                        transition: { duration: 0.25, ease: "easeInOut" },
-                      }}
-                      transition={{ duration: 0.3, ease: "easeOut" }}
-                    >
-                      <div
-                        draggable
-                        onDragStart={(e) => {
-                          setDraggingMainCourseId(course.id);
-                          e.dataTransfer.effectAllowed = "move";
-                        }}
-                        onDragOver={(e) => {
-                          if (!draggingMainCourseId || draggingMainCourseId === course.id) return;
-                          e.preventDefault();
-                          e.dataTransfer.dropEffect = "move";
-                          setDragOverMainCourseId(course.id);
-                        }}
-                        onDragLeave={(e) => {
-                          if (!e.currentTarget.contains(e.relatedTarget as Node)) {
-                            setDragOverMainCourseId(null);
-                          }
-                        }}
-                        onDrop={(e) => {
-                          e.preventDefault();
-                          if (!draggingMainCourseId || draggingMainCourseId === course.id || !activeSemesterId) return;
-                          const courseIds = courses.map((c) => c.id);
-                          const fromIndex = courseIds.indexOf(draggingMainCourseId);
-                          const toIndex = courseIds.indexOf(course.id);
-                          if (fromIndex !== -1 && toIndex !== -1) {
-                            const updated = [...courseIds];
-                            const [moved] = updated.splice(fromIndex, 1);
-                            updated.splice(toIndex, 0, moved);
-                            handleReorderCourses(activeSemesterId, updated);
-                          }
-                          setDraggingMainCourseId(null);
-                          setDragOverMainCourseId(null);
-                        }}
-                        onDragEnd={() => {
-                          setDraggingMainCourseId(null);
-                          setDragOverMainCourseId(null);
-                        }}
-                        style={{
-                          opacity: draggingMainCourseId === course.id ? 0.4 : 1,
-                          outline:
-                            dragOverMainCourseId === course.id
-                              ? "2px solid var(--primary)"
-                              : undefined,
-                          borderRadius: dragOverMainCourseId === course.id ? "12px" : undefined,
-                          cursor: draggingMainCourseId ? "grabbing" : "grab",
-                        }}
-                      >
-                        <CourseCard
-                          course={course}
-                          highlighted={highlightedCourseId === course.id}
-                          onUpdate={(courseId, nextCourse) => updateCourse(courseId, nextCourse)}
-                          onDelete={deleteCourse}
-                          onExportCourse={exportCourseToJson}
-                          onDuplicate={() => duplicateCourse(course.id)}
-                        />
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
-              </AnimatePresence>
-            )}
-
             {/* Add / Import / Export */}
             {activeSemesterId && (
               <>
@@ -742,7 +763,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     e.target.value = "";
                   }}
                 />
-                <div className="mt-8 flex flex-wrap justify-center gap-3">
+                <div className="mt-4 flex flex-wrap justify-center gap-3">
                   <Button
                     onClick={addCourse}
                     size="lg"
@@ -753,7 +774,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     Add Course
                   </Button>
                   <Button
-                    onClick={() => document.getElementById("course-import-trigger")?.click()}
+                    onClick={() =>
+                      document.getElementById("course-import-trigger")?.click()
+                    }
                     size="lg"
                     variant="outline"
                     className="gap-2 border-secondary/40 bg-transparent hover:bg-primary hover:text-white hover:border-primary"
@@ -774,10 +797,109 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               </>
             )}
 
+            {/* Course cards */}
+            {activeSemesterId && (
+              <AnimatePresence mode="popLayout">
+                <div className="space-y-6 mt-8">
+                  {courses.map((course, index) => (
+                    <motion.div
+                      key={`${course.id}-${index}`}
+                      ref={(el) => {
+                        courseRefs.current[course.id] = el;
+                      }}
+                      initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      exit={{
+                        opacity: 0,
+                        scale: 0.85,
+                        y: -20,
+                        transition: { duration: 0.25, ease: "easeInOut" },
+                      }}
+                      transition={{ duration: 0.3, ease: "easeOut" }}
+                    >
+                      <div
+                        draggable
+                        onDragStart={(e) => {
+                          setDraggingMainCourseId(course.id);
+                          e.dataTransfer.effectAllowed = "move";
+                        }}
+                        onDragOver={(e) => {
+                          if (
+                            !draggingMainCourseId ||
+                            draggingMainCourseId === course.id
+                          )
+                            return;
+                          e.preventDefault();
+                          e.dataTransfer.dropEffect = "move";
+                          setDragOverMainCourseId(course.id);
+                        }}
+                        onDragLeave={(e) => {
+                          if (
+                            !e.currentTarget.contains(e.relatedTarget as Node)
+                          ) {
+                            setDragOverMainCourseId(null);
+                          }
+                        }}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          if (
+                            !draggingMainCourseId ||
+                            draggingMainCourseId === course.id ||
+                            !activeSemesterId
+                          )
+                            return;
+                          const courseIds = courses.map((c) => c.id);
+                          const fromIndex =
+                            courseIds.indexOf(draggingMainCourseId);
+                          const toIndex = courseIds.indexOf(course.id);
+                          if (fromIndex !== -1 && toIndex !== -1) {
+                            const updated = [...courseIds];
+                            const [moved] = updated.splice(fromIndex, 1);
+                            updated.splice(toIndex, 0, moved);
+                            handleReorderCourses(activeSemesterId, updated);
+                          }
+                          setDraggingMainCourseId(null);
+                          setDragOverMainCourseId(null);
+                        }}
+                        onDragEnd={() => {
+                          setDraggingMainCourseId(null);
+                          setDragOverMainCourseId(null);
+                        }}
+                        style={{
+                          opacity: draggingMainCourseId === course.id ? 0.4 : 1,
+                          outline:
+                            dragOverMainCourseId === course.id
+                              ? "2px solid var(--primary)"
+                              : undefined,
+                          borderRadius:
+                            dragOverMainCourseId === course.id
+                              ? "12px"
+                              : undefined,
+                          cursor: draggingMainCourseId ? "grabbing" : "grab",
+                        }}
+                      >
+                        <CourseCard
+                          course={course}
+                          highlighted={highlightedCourseId === course.id}
+                          onUpdate={(courseId, nextCourse) =>
+                            updateCourse(courseId, nextCourse)
+                          }
+                          onDelete={deleteCourse}
+                          onExportCourse={exportCourseToJson}
+                          onDuplicate={() => duplicateCourse(course.id)}
+                        />
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              </AnimatePresence>
+            )}
+
             {activeSemesterId && courses.length === 0 && (
               <div className="mt-12 text-center">
                 <p className="text-muted-foreground">
-                  No courses in this semester. Click "Add Course" to get started!
+                  No courses in this semester. Click "Add Course" to get
+                  started!
                 </p>
               </div>
             )}
@@ -790,7 +912,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           open={syllabusImportOpen}
           onOpenChange={setSyllabusImportOpen}
           semesterId={activeSemesterId}
-          semesterName={semesters.find((s) => s.id === activeSemesterId)?.name ?? "Semester"}
+          semesterName={
+            semesters.find((s) => s.id === activeSemesterId)?.name ?? "Semester"
+          }
           onImport={importCourseFromSyllabus}
         />
       )}

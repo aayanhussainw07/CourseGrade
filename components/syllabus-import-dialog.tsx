@@ -57,7 +57,12 @@ export function SyllabusImportDialog({
   const [editedName, setEditedName] = useState("");
   const [editedCredits, setEditedCredits] = useState(3);
   const [editedAssignments, setEditedAssignments] = useState<
-    Array<{ clientId: string; name: string; weight: number; drop_lowest: number }>
+    Array<{
+      clientId: string;
+      name: string;
+      weight: number;
+      drop_lowest: number;
+    }>
   >([]);
   const [isCreating, setIsCreating] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -133,7 +138,12 @@ export function SyllabusImportDialog({
       setExtracted(result.extracted);
       setEditedName(result.extracted.courseName);
       setEditedCredits(result.extracted.credits);
-      setEditedAssignments(result.extracted.assignments.map((a) => ({ ...a, clientId: crypto.randomUUID() })));
+      setEditedAssignments(
+        result.extracted.assignments.map((a) => ({
+          ...a,
+          clientId: crypto.randomUUID(),
+        })),
+      );
       setImportsRemaining(result.importsRemaining);
       setPhase("preview");
     } catch (err: unknown) {
@@ -192,7 +202,7 @@ export function SyllabusImportDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-fit">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-base font-bold uppercase tracking-wide text-primary">
             <Sparkles className="h-4 w-4" />
@@ -402,14 +412,19 @@ export function SyllabusImportDialog({
                   </label>
                   <div className="space-y-1 rounded-md border border-border/50 bg-muted/20 p-2">
                     {editedAssignments.map((a) => (
-                      <div key={a.clientId} className="group flex items-center gap-2">
+                      <div
+                        key={a.clientId}
+                        className="group flex items-center gap-2"
+                      >
                         <input
                           type="text"
                           value={a.name}
                           onChange={(e) =>
                             setEditedAssignments((prev) =>
                               prev.map((x) =>
-                                x.clientId === a.clientId ? { ...x, name: e.target.value } : x,
+                                x.clientId === a.clientId
+                                  ? { ...x, name: e.target.value }
+                                  : x,
                               ),
                             )
                           }

@@ -439,7 +439,7 @@ export function CourseSidebar({
                         <Button
                           variant="ghost"
                           className={cn(
-                            "flex-1 min-w-0 overflow-hidden px-5 py-3.5 text-left justify-start text-white hover:text-white",
+                            "flex-1 min-w-0 overflow-hidden px-2 py-6 text-left justify-start text-white hover:text-white",
                             semesterDragEnabled &&
                               "cursor-grab active:cursor-grabbing",
                             isActive

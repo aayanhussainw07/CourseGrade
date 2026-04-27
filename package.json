@@ -1,7 +1,9 @@
 {
-  "name": "dev",
-  "version": "0.1.0",
+  "name": "coursegrade",
   "private": true,
+  "description": "Grading application.",
+  "license": "ISC",
+  "version": "0.1.0",
   "scripts": {
     "build": "next build",
     "dev": "next dev --turbopack",
@@ -38,7 +40,6 @@
     "tw-animate-css": "1.3.3",
     "typescript": "^5"
   },
-  "description": "��#\u0000 \u0000C\u0000o\u0000u\u0000r\u0000s\u0000e\u0000G\u0000r\u0000a\u0000d\u0000e\u0000\r\u0000 \u0000",
   "main": "index.js",
   "directories": {
     "lib": "lib"
@@ -48,7 +49,6 @@
     "url": "git+https://github.com/aayanhussainw07/CourseGrade.git"
   },
   "author": "",
-  "license": "ISC",
   "bugs": {
     "url": "https://github.com/aayanhussainw07/CourseGrade/issues"
   },

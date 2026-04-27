@@ -13,13 +13,14 @@ import {
   Copy,
   X,
 } from "lucide-react";
-import type { Criterion, SubItem, GradeScale } from "@/lib/types";
+import type { Criterion, SubItem } from "@/lib/types";
 import {
   parseDraftNumber,
   parseScoreInput,
   parseFractionOrNumber,
   formatNumberValue,
 } from "@/lib/score-input";
+import { useCourseContext } from "@/components/course/CourseContext";
 
 type NumericField = "weight" | "score" | "dropLowest" | "extraCredit";
 
@@ -37,67 +38,41 @@ function handleEnterCommit(
   requestAnimationFrame(() => target.blur());
 }
 
-interface CriterionRowProps {
-  criterion: Criterion;
-  gradeScale: GradeScale[];
-  isDragging: boolean;
-  isSubDropTarget: boolean;
-  isExpanded: boolean;
-  whatIfMode: boolean;
-  whatIfScore: string | undefined;
-  draggingSubItemId: string | null;
-  onUpdate: (updates: Partial<Criterion>) => void;
-  onDelete: () => void;
-  onDuplicate: () => void;
-  onToggleExpanded: () => void;
-  onWhatIfChange: (value: string) => void;
-  onWhatIfBlur: () => void;
-  onAddSubItem: () => void;
-  onUpdateSubItem: (subItemId: string, updates: Partial<SubItem>) => void;
-  onDeleteSubItem: (subItemId: string) => void;
-  onDuplicateSubItem: (subItemId: string) => void;
-  onDragStart: (e: React.DragEvent<HTMLDivElement>) => void;
-  onDragOver: (e: React.DragEvent<HTMLDivElement>) => void;
-  onDragEnter: (e: React.DragEvent<HTMLDivElement>) => void;
-  onDragLeave: (e: React.DragEvent<HTMLDivElement>) => void;
-  onDrop: (e: React.DragEvent<HTMLDivElement>) => void;
-  onDragEnd: () => void;
-  onSubItemDragStart: (e: React.DragEvent<HTMLDivElement>, subItemId: string) => void;
-  onSubItemDragOver: (e: React.DragEvent<HTMLDivElement>) => void;
-  onSubItemDrop: (e: React.DragEvent<HTMLDivElement>, targetSubItemId: string) => void;
-  onSubItemDragEnd: () => void;
-}
+export function CriterionRow({ criterion }: { criterion: Criterion }) {
+  const {
+    gradeScale,
+    whatIfMode,
+    whatIfScores,
+    expandedCriteria,
+    draggingCriterionId,
+    subDropTargetId,
+    draggingSubItemId,
+    setWhatIfScores,
+    updateCriterion,
+    deleteCriterion,
+    duplicateCriterion,
+    toggleExpanded,
+    addSubItem,
+    updateSubItem,
+    deleteSubItem,
+    duplicateSubItem,
+    handleDragStart,
+    handleDragOver,
+    handleDragEnter,
+    handleDragLeave,
+    handleDropOnCriterion,
+    handleDragEnd,
+    handleSubItemDragStart,
+    handleSubItemDropOnSibling,
+    handleSubItemDragEnd,
+  } = useCourseContext();
 
-export function CriterionRow({
-  criterion,
-  gradeScale,
-  isDragging,
-  isSubDropTarget,
-  isExpanded,
-  whatIfMode,
-  whatIfScore,
-  draggingSubItemId,
-  onUpdate,
-  onDelete,
-  onDuplicate,
-  onToggleExpanded,
-  onWhatIfChange,
-  onWhatIfBlur,
-  onAddSubItem,
-  onUpdateSubItem,
-  onDeleteSubItem,
-  onDuplicateSubItem,
-  onDragStart,
-  onDragOver,
-  onDragEnter,
-  onDragLeave,
-  onDrop,
-  onDragEnd,
-  onSubItemDragStart,
-  onSubItemDragOver,
-  onSubItemDrop,
-  onSubItemDragEnd,
-}: CriterionRowProps) {
+  const criterionKey = criterion.clientId ?? criterion.id;
+  const isDragging = draggingCriterionId === criterion.id;
+  const isSubDropTarget = subDropTargetId === criterion.id;
+  const isExpanded = expandedCriteria.has(criterionKey);
+  const whatIfScore = whatIfScores[criterion.id];
+
   // Local draft state — undefined means "no active edit, show persisted value"
   const [nameDraft, setNameDraft] = useState<string | undefined>(undefined);
   const [weightDraft, setWeightDraft] = useState<string | undefined>(undefined);
@@ -205,7 +180,7 @@ export function CriterionRow({
     setNameDraft(undefined);
     const nextName = trimmed.length > 0 ? trimmed : "";
     if (nextName === criterion.name) return;
-    onUpdate({ name: nextName });
+    updateCriterion(criterion.id, { name: nextName });
   };
 
   const commitField = (field: NumericField) => {
@@ -225,10 +200,10 @@ export function CriterionRow({
 
     if (field === "dropLowest") {
       const maxDroppable = Math.max(0, (criterion.subItems?.length ?? 0) - 1);
-      onUpdate({ dropLowest: Math.min(maxDroppable, Math.floor(normalized)) });
+      updateCriterion(criterion.id, { dropLowest: Math.min(maxDroppable, Math.floor(normalized)) });
       return;
     }
-    onUpdate({ [field]: normalized });
+    updateCriterion(criterion.id, { [field]: normalized });
   };
 
   // Sub-item helpers
@@ -250,14 +225,14 @@ export function CriterionRow({
     const draft = subItemScoreDrafts[subItemId];
     if (draft === undefined) return;
     const parsed = parseScoreInput(draft, gradeScale);
-    onUpdateSubItem(subItemId, { score: Math.max(0, parsed ?? 0) });
+    updateSubItem(criterion.id, subItemId, { score: Math.max(0, parsed ?? 0) });
     setSubItemScoreDrafts((prev) => { const next = { ...prev }; delete next[subItemId]; return next; });
   };
 
   const commitSubItemName = (subItemId: string) => {
     const draft = subItemNameDrafts[subItemId];
     if (draft === undefined) return;
-    onUpdateSubItem(subItemId, { name: draft });
+    updateSubItem(criterion.id, subItemId, { name: draft });
     setSubItemNameDrafts((prev) => { const next = { ...prev }; delete next[subItemId]; return next; });
   };
 
@@ -269,7 +244,7 @@ export function CriterionRow({
       parsed !== null
         ? Math.max(0, Math.min(100, Number.parseFloat(parsed.toFixed(2))))
         : 0;
-    onUpdateSubItem(subItem.id, { weight: value || undefined });
+    updateSubItem(criterion.id, subItem.id, { weight: value || undefined });
     setSubItemWeightDrafts((prev) => { const next = { ...prev }; delete next[subItem.id]; return next; });
   };
 
@@ -285,12 +260,12 @@ export function CriterionRow({
               : "border-primary/20 bg-muted/30"
         }`}
         draggable
-        onDragStart={onDragStart}
-        onDragOver={onDragOver}
-        onDragEnter={onDragEnter}
-        onDragLeave={onDragLeave}
-        onDrop={onDrop}
-        onDragEnd={onDragEnd}
+        onDragStart={(e) => handleDragStart(e, criterion.id)}
+        onDragOver={handleDragOver}
+        onDragEnter={(e) => handleDragEnter(e, criterion.id)}
+        onDragLeave={(e) => handleDragLeave(e, criterion.id)}
+        onDrop={(e) => handleDropOnCriterion(e, criterion.id)}
+        onDragEnd={handleDragEnd}
       >
         {/* Drag handle */}
         <div className="mt-6 flex shrink-0 cursor-grab items-center active:cursor-grabbing">
@@ -358,8 +333,21 @@ export function CriterionRow({
                 type="text"
                 inputMode="decimal"
                 value={whatIfScore ?? ""}
-                onChange={(e) => onWhatIfChange(e.target.value)}
-                onBlur={onWhatIfBlur}
+                onChange={(e) =>
+                  setWhatIfScores((prev) => ({ ...prev, [criterion.id]: e.target.value }))
+                }
+                onBlur={() => {
+                  const raw = whatIfScores[criterion.id];
+                  if (!raw) return;
+                  const parsed = parseScoreInput(raw, gradeScale);
+                  if (parsed === null) {
+                    setWhatIfScores((prev) => {
+                      const next = { ...prev };
+                      delete next[criterion.id];
+                      return next;
+                    });
+                  }
+                }}
                 placeholder={String(criterion.score || 0)}
                 className="border-primary/50 bg-primary/5"
               />
@@ -409,7 +397,7 @@ export function CriterionRow({
             <Button
               variant="ghost"
               size="icon"
-              onClick={onAddSubItem}
+              onClick={() => addSubItem(criterion.id)}
               className="text-primary hover:bg-primary/10"
               title="Add sub-item"
             >
@@ -419,7 +407,7 @@ export function CriterionRow({
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={onToggleExpanded}
+                onClick={() => toggleExpanded(criterionKey)}
                 className="text-muted-foreground hover:bg-muted"
               >
                 {isExpanded ? (
@@ -432,7 +420,7 @@ export function CriterionRow({
             <Button
               variant="ghost"
               size="icon"
-              onClick={onDuplicate}
+              onClick={() => duplicateCriterion(criterion.id)}
               className="text-muted-foreground hover:bg-muted hover:text-foreground"
               title="Duplicate criterion"
             >
@@ -441,7 +429,7 @@ export function CriterionRow({
             <Button
               variant="ghost"
               size="icon"
-              onClick={onDelete}
+              onClick={() => deleteCriterion(criterion.id)}
               className="text-destructive hover:bg-destructive/10"
             >
               <X className="h-4 w-4" />
@@ -457,10 +445,10 @@ export function CriterionRow({
             <div
               key={subItem.id}
               draggable
-              onDragStart={(e) => onSubItemDragStart(e, subItem.id)}
-              onDragOver={onSubItemDragOver}
-              onDrop={(e) => onSubItemDrop(e, subItem.id)}
-              onDragEnd={onSubItemDragEnd}
+              onDragStart={(e) => handleSubItemDragStart(e, criterion.id, subItem.id)}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={(e) => handleSubItemDropOnSibling(e, criterion.id, subItem.id)}
+              onDragEnd={handleSubItemDragEnd}
               className={`grid grid-cols-1 gap-2 rounded-md border bg-card p-3 sm:grid-cols-[auto_2fr_1fr_1fr_auto] transition-opacity ${
                 draggingSubItemId === subItem.id
                   ? "opacity-40 border-dashed border-red-500/80"
@@ -518,7 +506,7 @@ export function CriterionRow({
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={() => onDuplicateSubItem(subItem.id)}
+                  onClick={() => duplicateSubItem(criterion.id, subItem.id)}
                   className="h-9 w-9 text-muted-foreground hover:bg-muted hover:text-foreground"
                   title="Duplicate sub-item"
                 >
@@ -527,7 +515,7 @@ export function CriterionRow({
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={() => onDeleteSubItem(subItem.id)}
+                  onClick={() => deleteSubItem(criterion.id, subItem.id)}
                   className="h-9 w-9 text-destructive hover:bg-destructive/10"
                 >
                   <X className="h-3 w-3" />

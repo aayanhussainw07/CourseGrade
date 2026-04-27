@@ -40,6 +40,7 @@ import { DEFAULT_GRADE_SCALE } from "@/lib/types";
 import { parseScoreInput } from "@/lib/score-input";
 import { CriterionRow } from "@/components/course/CriterionRow";
 import { CourseColorPicker } from "@/components/course/CourseColorPicker";
+import { CourseContext } from "@/components/course/CourseContext";
 
 const buildPassFailScale = (settings: {
   passLabel?: string;
@@ -854,63 +855,40 @@ export function CourseCard({
                   )}
                 </div>
 
-                {courseCriteria.map((criterion) => {
-                  const criterionKey = criterion.clientId ?? criterion.id;
-                  return (
-                    <CriterionRow
-                      key={criterionKey}
-                      criterion={criterion}
-                      gradeScale={course.gradeScale}
-                      isDragging={draggingCriterionId === criterion.id}
-                      isSubDropTarget={subDropTargetId === criterion.id}
-                      isExpanded={expandedCriteria.has(criterionKey)}
-                      whatIfMode={whatIfMode}
-                      whatIfScore={whatIfScores[criterion.id]}
-                      draggingSubItemId={draggingSubItemId}
-                      onUpdate={(updates) => updateCriterion(criterion.id, updates)}
-                      onDelete={() => deleteCriterion(criterion.id)}
-                      onDuplicate={() => duplicateCriterion(criterion.id)}
-                      onToggleExpanded={() => toggleExpanded(criterionKey)}
-                      onWhatIfChange={(v) =>
-                        setWhatIfScores((prev) => ({ ...prev, [criterion.id]: v }))
-                      }
-                      onWhatIfBlur={() => {
-                        const raw = whatIfScores[criterion.id];
-                        if (!raw) return;
-                        const parsed = parseScoreInput(raw, course.gradeScale);
-                        if (parsed === null) {
-                          setWhatIfScores((prev) => {
-                            const next = { ...prev };
-                            delete next[criterion.id];
-                            return next;
-                          });
-                        }
-                      }}
-                      onAddSubItem={() => addSubItem(criterion.id)}
-                      onUpdateSubItem={(subItemId, updates) =>
-                        updateSubItem(criterion.id, subItemId, updates)
-                      }
-                      onDeleteSubItem={(subItemId) => deleteSubItem(criterion.id, subItemId)}
-                      onDuplicateSubItem={(subItemId) =>
-                        duplicateSubItem(criterion.id, subItemId)
-                      }
-                      onDragStart={(e) => handleDragStart(e, criterion.id)}
-                      onDragOver={handleDragOver}
-                      onDragEnter={(e) => handleDragEnter(e, criterion.id)}
-                      onDragLeave={(e) => handleDragLeave(e, criterion.id)}
-                      onDrop={(e) => handleDropOnCriterion(e, criterion.id)}
-                      onDragEnd={handleDragEnd}
-                      onSubItemDragStart={(e, subItemId) =>
-                        handleSubItemDragStart(e, criterion.id, subItemId)
-                      }
-                      onSubItemDragOver={(e) => e.preventDefault()}
-                      onSubItemDrop={(e, targetSubItemId) =>
-                        handleSubItemDropOnSibling(e, criterion.id, targetSubItemId)
-                      }
-                      onSubItemDragEnd={handleSubItemDragEnd}
-                    />
-                  );
-                })}
+                <CourseContext.Provider
+                  value={{
+                    gradeScale: course.gradeScale,
+                    whatIfMode,
+                    whatIfScores,
+                    expandedCriteria,
+                    draggingCriterionId,
+                    subDropTargetId,
+                    draggingSubItemId,
+                    setWhatIfScores,
+                    updateCriterion,
+                    deleteCriterion,
+                    duplicateCriterion,
+                    toggleExpanded,
+                    addSubItem,
+                    updateSubItem,
+                    deleteSubItem,
+                    duplicateSubItem,
+                    handleDragStart,
+                    handleDragOver,
+                    handleDragEnter,
+                    handleDragLeave,
+                    handleDropOnCriterion,
+                    handleDragEnd,
+                    handleSubItemDragStart,
+                    handleSubItemDropOnSibling,
+                    handleSubItemDragEnd,
+                  }}
+                >
+                  {courseCriteria.map((criterion) => {
+                    const criterionKey = criterion.clientId ?? criterion.id;
+                    return <CriterionRow key={criterionKey} criterion={criterion} />;
+                  })}
+                </CourseContext.Provider>
 
                 {courseCriteria.length > 0 && (
                   <div
