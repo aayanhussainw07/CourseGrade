@@ -2,7 +2,6 @@
 
 import type React from "react";
 import { useEffect, useState, useRef, useMemo, useCallback } from "react";
-import { AnimatePresence, motion } from "framer-motion";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -828,128 +827,121 @@ export function CourseCard({
         </div>
       </CardHeader>
 
-      <AnimatePresence initial={false} mode="wait">
-        {!course.collapsed ? (
-          <motion.div
-            key="expanded"
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
-            style={{ overflow: "hidden" }}
-          >
-            <CardContent className="pt-6">
-              <div className="space-y-4" onDragOver={handleDragOver} onDrop={handleDropAtEnd}>
-                <div className="flex items-center justify-between">
-                  <h3 className="font-semibold text-primary">Distribution</h3>
-                  {courseCriteria.length > 0 && (
-                    <span
-                      className={`text-xs font-semibold ${
-                        totalWeight === 100
-                          ? "text-primary"
-                          : "rounded-full border border-amber-300 bg-amber-100 px-2 py-0.5 text-amber-700"
-                      }`}
-                    >
-                      {totalWeight}%{totalWeight !== 100 && " ≠ 100"}
-                    </span>
-                  )}
-                </div>
-
-                <CourseContext.Provider
-                  value={{
-                    gradeScale: course.gradeScale,
-                    whatIfMode,
-                    whatIfScores,
-                    expandedCriteria,
-                    draggingCriterionId,
-                    subDropTargetId,
-                    draggingSubItemId,
-                    setWhatIfScores,
-                    updateCriterion,
-                    deleteCriterion,
-                    duplicateCriterion,
-                    toggleExpanded,
-                    addSubItem,
-                    updateSubItem,
-                    deleteSubItem,
-                    duplicateSubItem,
-                    handleDragStart,
-                    handleDragOver,
-                    handleDragEnter,
-                    handleDragLeave,
-                    handleDropOnCriterion,
-                    handleDragEnd,
-                    handleSubItemDragStart,
-                    handleSubItemDropOnSibling,
-                    handleSubItemDragEnd,
-                  }}
-                >
-                  {courseCriteria.map((criterion) => {
-                    const criterionKey = criterion.clientId ?? criterion.id;
-                    return <CriterionRow key={criterionKey} criterion={criterion} />;
-                  })}
-                </CourseContext.Provider>
-
+      <div
+        className="grid transition-[grid-template-rows] duration-[220ms] ease-[cubic-bezier(0.4,0,0.2,1)]"
+        style={{ gridTemplateRows: !course.collapsed ? "1fr" : "0fr" }}
+      >
+        <div className="overflow-hidden">
+          <CardContent className="pt-6">
+            <div className="space-y-4" onDragOver={handleDragOver} onDrop={handleDropAtEnd}>
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold text-primary">Distribution</h3>
                 {courseCriteria.length > 0 && (
-                  <div
-                    className="h-4 rounded border-2 border-dashed border-transparent"
-                    onDragOver={handleDragOver}
-                    onDrop={handleDropAtEnd}
-                  />
+                  <span
+                    className={`text-xs font-semibold ${
+                      totalWeight === 100
+                        ? "text-primary"
+                        : "rounded-full border border-amber-300 bg-amber-100 px-2 py-0.5 text-amber-700"
+                    }`}
+                  >
+                    {totalWeight}%{totalWeight !== 100 && " ≠ 100"}
+                  </span>
                 )}
-
-                {courseCriteria.length === 0 && (
-                  <div className="rounded-lg border-2 border-dashed border-primary/20 py-8 text-center text-muted-foreground">
-                    <p className="text-sm">No criteria yet — add one below to start tracking your grade.</p>
-                  </div>
-                )}
-
-                <Button
-                  onClick={addCriterion}
-                  variant="outline"
-                  size="sm"
-                  className="w-full gap-2 border-2 border-dashed border-primary/30 bg-transparent"
-                >
-                  <Plus className="h-4 w-4" />
-                  Add Criterion
-                </Button>
               </div>
 
-              <div className="mt-6 rounded-lg border border-primary/30 bg-primary/5/60 p-6">
-                {gradeSummary(false)}
-                {whatIfMode && (
-                  <div className="mt-4 border-t border-primary/20 pt-4">
-                    <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-widest text-primary/70">
-                      <FlaskConical className="h-3 w-3" />
-                      What-If
+              <CourseContext.Provider
+                value={{
+                  gradeScale: course.gradeScale,
+                  whatIfMode,
+                  whatIfScores,
+                  expandedCriteria,
+                  draggingCriterionId,
+                  subDropTargetId,
+                  draggingSubItemId,
+                  setWhatIfScores,
+                  updateCriterion,
+                  deleteCriterion,
+                  duplicateCriterion,
+                  toggleExpanded,
+                  addSubItem,
+                  updateSubItem,
+                  deleteSubItem,
+                  duplicateSubItem,
+                  handleDragStart,
+                  handleDragOver,
+                  handleDragEnter,
+                  handleDragLeave,
+                  handleDropOnCriterion,
+                  handleDragEnd,
+                  handleSubItemDragStart,
+                  handleSubItemDropOnSibling,
+                  handleSubItemDragEnd,
+                }}
+              >
+                {courseCriteria.map((criterion) => {
+                  const criterionKey = criterion.clientId ?? criterion.id;
+                  return <CriterionRow key={criterionKey} criterion={criterion} />;
+                })}
+              </CourseContext.Provider>
+
+              {courseCriteria.length > 0 && (
+                <div
+                  className="h-4 rounded border-2 border-dashed border-transparent"
+                  onDragOver={handleDragOver}
+                  onDrop={handleDropAtEnd}
+                />
+              )}
+
+              {courseCriteria.length === 0 && (
+                <div className="rounded-lg border-2 border-dashed border-primary/20 py-8 text-center text-muted-foreground">
+                  <p className="text-sm">No criteria yet — add one below to start tracking your grade.</p>
+                </div>
+              )}
+
+              <Button
+                onClick={addCriterion}
+                variant="outline"
+                size="sm"
+                className="w-full gap-2 border-2 border-dashed border-primary/30 bg-transparent"
+              >
+                <Plus className="h-4 w-4" />
+                Add Criterion
+              </Button>
+            </div>
+
+            <div className="mt-6 rounded-lg border border-primary/30 bg-primary/5/60 p-6">
+              {gradeSummary(false)}
+              {whatIfMode && (
+                <div className="mt-4 border-t border-primary/20 pt-4">
+                  <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-widest text-primary/70">
+                    <FlaskConical className="h-3 w-3" />
+                    What-If
+                  </p>
+                  <div className="flex items-center justify-between">
+                    <p className="text-3xl font-bold text-primary/80">
+                      <RollingNumber value={whatIfNumericGrade} decimals={2} />%
                     </p>
-                    <div className="flex items-center justify-between">
-                      <p className="text-3xl font-bold text-primary/80">
-                        <RollingNumber value={whatIfNumericGrade} decimals={2} />%
-                      </p>
-                      <p className="text-4xl font-bold" style={{ color: whatIfGradeColor }}>
-                        {whatIfLetterGrade}
-                      </p>
-                    </div>
+                    <p className="text-4xl font-bold" style={{ color: whatIfGradeColor }}>
+                      {whatIfLetterGrade}
+                    </p>
                   </div>
-                )}
-              </div>
-            </CardContent>
-          </motion.div>
-        ) : (
-          <motion.div
-            key="collapsed"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.15 }}
-          >
-            <CardContent className="pt-4 pb-6">
-              {gradeSummary(true)}
-            </CardContent>
-          </motion.div>
-        )}
-      </AnimatePresence>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </div>
+      </div>
+
+      <div
+        className="grid transition-[grid-template-rows] duration-150"
+        style={{ gridTemplateRows: course.collapsed ? "1fr" : "0fr" }}
+      >
+        <div className="overflow-hidden">
+          <CardContent className="pt-4 pb-6">
+            {gradeSummary(true)}
+          </CardContent>
+        </div>
+      </div>
     </Card>
   );
 }

@@ -1,8 +1,8 @@
 "use client";
 
 import { signIn } from "next-auth/react";
-import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
+import { useInView } from "@/hooks/use-in-view";
 
 const GoogleIcon = () => (
   <svg
@@ -36,12 +36,9 @@ const BlockHeading = ({
 );
 
 export function MarketingPage() {
-  const scrollToFeatures = () => {
-    if (typeof document === "undefined") return;
-    document
-      .getElementById("feature-grid")
-      ?.scrollIntoView({ behavior: "smooth", block: "start" });
-  };
+  const { ref: featuresRef, inView: featuresInView } = useInView(0.3);
+  const { ref: chartsRef, inView: chartsInView } = useInView(0.2);
+  const { ref: ctaRef, inView: ctaInView } = useInView(0.3);
 
   return (
     <div className="min-h-screen bg-background text-foreground overflow-x-hidden">
@@ -56,21 +53,9 @@ export function MarketingPage() {
         />
         <div className="relative mx-auto max-w-7xl px-6 py-20 lg:px-12">
           <div className="flex flex-col items-center text-center max-w-3xl mx-auto gap-10">
-            <motion.div
-              initial={{ opacity: 0, y: 40 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7 }}
-              className="w-full space-y-6"
-            >
+            <div className="animate-fade-up w-full space-y-6">
               <div className="flex items-center justify-center gap-3">
-                <motion.div
-                  animate={{ rotate: [-4, 4, -3] }}
-                  transition={{
-                    repeat: Infinity,
-                    duration: 6,
-                    ease: "easeInOut",
-                  }}
-                >
+                <div className="animate-logo-wiggle">
                   <Image
                     src="/coursegrade.png"
                     alt="CourseGrade"
@@ -78,7 +63,7 @@ export function MarketingPage() {
                     height={48}
                     className="h-12 w-12"
                   />
-                </motion.div>
+                </div>
                 <span className="font-etna text-3xl text-white">
                   coursegrade.
                 </span>
@@ -112,7 +97,7 @@ export function MarketingPage() {
                   Sign In!
                 </Button>
               </div>
-            </motion.div>
+            </div>
           </div>
         </div>
 
@@ -126,23 +111,18 @@ export function MarketingPage() {
       {/* FEATURES */}
       <section id="feature-grid" className="bg-background py-20">
         <div className="mx-auto max-w-[1400px] px-2 lg:px-4">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, amount: 0.3 }}
-            transition={{ duration: 0.6 }}
-            className="mb-12 px-4"
+          <div
+            ref={featuresRef}
+            className={`mb-12 px-4 ${featuresInView ? "animate-fade-up" : "opacity-0"}`}
           >
             <BlockHeading className="text-2xl">Built for students</BlockHeading>
-          </motion.div>
+          </div>
           <div className="grid gap-10 md:grid-cols-3 px-4">
             {marketingFeatures.map((feature, i) => (
-              <motion.div
+              <div
                 key={feature.title}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: i * 0.1 }}
+                className={featuresInView ? "animate-fade-up-sm" : "opacity-0"}
+                style={{ animationDelay: featuresInView ? `${i * 0.1}s` : undefined }}
               >
                 <h3 className="text-xl font-bold uppercase tracking-wide mb-4">
                   {feature.title}
@@ -150,7 +130,7 @@ export function MarketingPage() {
                 <p className="text-sm text-muted-foreground">
                   {feature.description}
                 </p>
-              </motion.div>
+              </div>
             ))}
           </div>
         </div>
@@ -159,17 +139,14 @@ export function MarketingPage() {
       {/* CHARTS */}
       <section className="bg-background pb-16">
         <div className="mx-auto max-w-[1400px] px-2 lg:px-4">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, amount: 0.2 }}
-            transition={{ duration: 0.6 }}
-            className="mb-10 flex justify-end px-4"
+          <div
+            ref={chartsRef}
+            className={`mb-10 flex justify-end px-4 ${chartsInView ? "animate-fade-up" : "opacity-0"}`}
           >
             <BlockHeading className="text-2xl">
               See your progress at a glance
             </BlockHeading>
-          </motion.div>
+          </div>
           <DashboardPanel timelineData={marketingTimelineData} courses={marketingCourses} bare />
         </div>
       </section>
@@ -188,12 +165,9 @@ export function MarketingPage() {
           style={{ clipPath: "polygon(0 0, 100% 0, 0 100%)" }}
         />
         <div className="relative mx-auto max-w-4xl px-6 pt-10 text-center">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
-            className="space-y-8"
+          <div
+            ref={ctaRef}
+            className={`space-y-8 ${ctaInView ? "animate-fade-up" : "opacity-0"}`}
           >
             <div className="space-y-3">
               <div>
@@ -218,24 +192,18 @@ export function MarketingPage() {
               <GoogleIcon />
               Sign In!
             </Button>
-          </motion.div>
+          </div>
 
           <div className="mt-16 flex flex-col items-center gap-1.5 pt-6">
             <p className="text-xs text-white/40">Made with ♥ by @aayanh7</p>
-            <motion.a
+            <a
               href="https://www.buymeacoffee.com/aayanh7"
               target="_blank"
               rel="noreferrer"
-              className="text-xs text-white/30 hover:text-white/60 transition-colors"
-              animate={{ y: [0, -4, 0] }}
-              transition={{
-                repeat: Infinity,
-                duration: 2.4,
-                ease: "easeInOut",
-              }}
+              className="text-xs text-white/30 hover:text-white/60 transition-colors animate-coffee-bounce inline-block"
             >
               ☕ buy me a coffee (if you want!)
-            </motion.a>
+            </a>
           </div>
         </div>
       </section>

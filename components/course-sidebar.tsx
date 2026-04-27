@@ -23,7 +23,6 @@ import {
   Copy,
 } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
-import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 
 interface CourseSidebarProps {
@@ -690,16 +689,14 @@ export function CourseSidebar({
 
         <div className="flex flex-col items-center gap-1.5 py-4">
           <p className="text-xs text-white/40">Made with ♥ by @aayanh7</p>
-          <motion.a
+          <a
             href="https://www.buymeacoffee.com/aayanh7"
             target="_blank"
             rel="noreferrer"
-            className="text-xs text-white/35 hover:text-white/50 transition-colors"
-            animate={{ y: [0, -4, 0] }}
-            transition={{ repeat: Infinity, duration: 2.4, ease: "easeInOut" }}
+            className="text-xs text-white/35 hover:text-white/50 transition-colors animate-coffee-bounce inline-block"
           >
             ☕ buy me a coffee (if you want!)
-          </motion.a>
+          </a>
         </div>
       </div>
 

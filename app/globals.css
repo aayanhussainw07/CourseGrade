@@ -169,6 +169,49 @@
   }
 }
 
+@keyframes pulse-scale {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.06); }
+}
+
+@keyframes coffee-bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(40px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fade-up-sm {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes logo-wiggle {
+  0%, 100% { transform: rotate(-4deg); }
+  50% { transform: rotate(4deg); }
+}
+
+@layer utilities {
+  .animate-pulse-scale {
+    animation: pulse-scale 0.3s ease-out;
+  }
+  .animate-coffee-bounce {
+    animation: coffee-bounce 2.4s ease-in-out infinite;
+  }
+  .animate-fade-up {
+    animation: fade-up 0.7s ease-out forwards;
+  }
+  .animate-fade-up-sm {
+    animation: fade-up-sm 0.5s ease-out forwards;
+  }
+  .animate-logo-wiggle {
+    animation: logo-wiggle 6s ease-in-out infinite;
+  }
+}
+
 @media print {
   /* Hide all nav/toolbar/sidebar elements */
   nav,
