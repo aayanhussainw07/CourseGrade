@@ -1,1 +1,0 @@
-{"nodes": [{"id": "backend_wsgi_py", "label": "wsgi.py", "file_type": "code", "source_file": "backend/wsgi.py", "source_location": "L1"}], "edges": [{"source": "backend_wsgi_py", "target": "app", "relation": "imports_from", "confidence": "EXTRACTED", "source_file": "backend/wsgi.py", "source_location": "L1", "weight": 1.0}], "raw_calls": []}

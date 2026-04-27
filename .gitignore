@@ -7,9 +7,6 @@
 /.next/
 /out/
 
-# production
-/build
-
 # environment variables & secrets
 .env
 .env.local
@@ -22,9 +19,15 @@ backend/.env.local
 *.key
 *.pem
 
-# python virtual envs
+# python
 venv/
 .venv/
+**/__pycache__/
+**/*.pyc
+**/.pytest_cache/
+
+# macOS
+.DS_Store
 
 # debug
 npm-debug.log*
@@ -38,3 +41,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# graphify
+graphify-out/
