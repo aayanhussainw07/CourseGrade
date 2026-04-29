@@ -71,7 +71,7 @@ export function SemesterPanel({ courses }: SemesterPanelProps) {
   const TEXT_COLOR = "rgba(255,255,255,0.92)"
 
   return (
-    <div className="flex min-h-0">
+    <div className="flex min-h-0 flex-col sm:flex-row">
 
           {/* ── Left: stats + course list ── */}
           <div className="flex flex-1 flex-col min-w-0 p-5">
@@ -134,12 +134,12 @@ export function SemesterPanel({ courses }: SemesterPanelProps) {
 
           {/* ── Divider ── */}
           {chartData.length > 0 && (
-            <div className="w-px self-stretch" style={{ background: DIVIDER }} />
+            <div className="h-px w-full sm:h-auto sm:w-px sm:self-stretch" style={{ background: DIVIDER }} />
           )}
 
           {/* ── Right: chart ── */}
           {chartData.length > 0 && (
-            <div className="flex w-[220px] shrink-0 flex-col p-4">
+            <div className="flex w-full min-w-0 flex-col p-4 sm:w-[220px] sm:shrink-0">
               <div className="flex items-center justify-between mb-2">
                 <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: LABEL_COLOR }}>Distribution</p>
                 <div className="relative z-20 flex gap-0.5">
@@ -164,7 +164,7 @@ export function SemesterPanel({ courses }: SemesterPanelProps) {
                 </div>
               </div>
 
-              <div className="mt-auto">
+              <div className="mt-2 sm:mt-auto">
                 {chartType === "bar" ? (
                   <BarView data={chartData} maxCount={maxCount} labelColor={LABEL_COLOR} textColor={TEXT_COLOR} />
                 ) : (
@@ -180,12 +180,17 @@ export function SemesterPanel({ courses }: SemesterPanelProps) {
 const BAR_MAX_PX = 100
 
 function BarView({ data, maxCount, labelColor, textColor }: { data: ChartEntry[]; maxCount: number; labelColor: string; textColor: string }) {
+  const useCompactBars = data.length <= 3
+
   return (
-    <div className="flex w-full items-end gap-1" style={{ height: `${BAR_MAX_PX + 38}px` }}>
+    <div
+      className={`flex w-full items-end gap-1 ${useCompactBars ? "justify-center" : ""}`}
+      style={{ height: `${BAR_MAX_PX + 38}px` }}
+    >
       {data.map(({ letter, count, color, pct }) => {
         const barH = Math.max(14, (count / maxCount) * BAR_MAX_PX)
         return (
-          <div key={letter} className="flex flex-1 flex-col items-center gap-0.5">
+          <div key={letter} className={`flex flex-col items-center gap-0.5 ${useCompactBars ? "w-11 flex-none" : "flex-1"}`}>
             <span className="text-[9px] font-medium" style={{ color: labelColor }}>{pct}%</span>
             <div
               className="w-full rounded-t-md transition-all duration-500 flex items-start justify-center pt-1"
