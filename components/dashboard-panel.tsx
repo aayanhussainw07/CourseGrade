@@ -1,7 +1,7 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import { Card, CardContent } from "@/components/ui/card"
+import { CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { BarChart3, PieChart } from "lucide-react"
 import { calculateCourseGrade, getLetterGrade } from "@/lib/grade-utils"
@@ -127,7 +127,7 @@ export function DashboardPanel({ timelineData, courses, bare = false }: Dashboar
   const showDist = distData.length > 0
 
   const inner = (
-    <div className="flex min-h-0">
+    <div className="flex min-h-0 flex-col lg:flex-row">
 
           {/* ── Left: GPA timeline ── */}
           <div className="flex flex-1 flex-col min-w-0 p-5 basis-1/2">
@@ -167,9 +167,12 @@ export function DashboardPanel({ timelineData, courses, bare = false }: Dashboar
 
                 {timeline.points.map((pt, i) => {
                   const isHov = hovered === i
+                  const isFirst = i === 0
+                  const pointLabelX = isFirst ? pt.x + 18 : pt.x
+                  const pointLabelAnchor = isFirst ? "start" : "middle"
                   return (
                     <g key={i} onMouseEnter={() => setHovered(i)} onMouseLeave={() => setHovered(null)} style={{ cursor: "default" }}>
-                      <text x={pt.x} y={pt.y - 16} textAnchor="middle" fontSize="14" fontWeight="700" fill={pt.color}>
+                      <text x={pointLabelX} y={pt.y - 16} textAnchor={pointLabelAnchor} fontSize="14" fontWeight="700" fill={pt.color}>
                         {pt.gpa.toFixed(2)}
                       </text>
                       {isHov && <circle cx={pt.x} cy={pt.y} r={14} fill={pt.color} opacity="0.15" />}
@@ -195,7 +198,7 @@ export function DashboardPanel({ timelineData, courses, bare = false }: Dashboar
           </div>
 
           {/* ── Divider ── */}
-          {showDist && <div className="w-px bg-border/40 self-stretch" />}
+          {showDist && <div className="h-px bg-primary/20 lg:h-auto lg:w-px lg:self-stretch" />}
 
           {/* ── Right: grade distribution ── */}
           {showDist && (
@@ -229,9 +232,11 @@ export function DashboardPanel({ timelineData, courses, bare = false }: Dashboar
   if (bare) return inner
 
   return (
-    <Card className="border-2 border-primary shadow-under-white-strong overflow-hidden">
+    <div className="relative flex flex-col gap-6 overflow-hidden rounded-md border-2 border-primary/30 bg-[#fff8f1] py-0">
+      <div className="absolute -top-2 left-8 z-10 h-5 w-20 rotate-[-2deg] bg-primary/15" />
+      <div className="absolute -top-2 right-12 z-10 h-5 w-20 rotate-[3deg] bg-primary/15" />
       <CardContent className="p-0">{inner}</CardContent>
-    </Card>
+    </div>
   )
 }
 
@@ -295,6 +300,7 @@ function DonutView({ data, total }: { data: ChartEntry[]; total: number }) {
   }
 
   const labelR = (outerR + innerR) / 2
+  const singleSlice = slices.length === 1 ? slices[0] : null
 
   return (
     <div className="flex flex-col items-center justify-center flex-1">
@@ -306,10 +312,14 @@ function DonutView({ data, total }: { data: ChartEntry[]; total: number }) {
           if (s.fraction >= 1) {
             return (
               <g key={s.letter}>
-                <circle cx={cx} cy={cy} r={outerR} fill={s.color} />
-                <circle cx={cx} cy={cy} r={innerR} fill="var(--card)" />
-                <text x={cx} y={cy - 4} textAnchor="middle" fontSize="13" fontWeight="700" fill="#fff">{s.letter}</text>
-                <text x={cx} y={cy + 12} textAnchor="middle" fontSize="10" fill="#fff" opacity="0.85">{s.pct}%</text>
+                <circle
+                  cx={cx}
+                  cy={cy}
+                  r={(outerR + innerR) / 2}
+                  fill="none"
+                  stroke={s.color}
+                  strokeWidth={outerR - innerR}
+                />
               </g>
             )
           }
@@ -325,8 +335,18 @@ function DonutView({ data, total }: { data: ChartEntry[]; total: number }) {
             </g>
           )
         })}
-        <text x={cx} y={cy - 6} textAnchor="middle" fontSize="22" fontWeight="700" fill="var(--foreground)">{total}</text>
-        <text x={cx} y={cy + 11} textAnchor="middle" fontSize="8" letterSpacing="1.5" fill="var(--muted-foreground)">COURSES</text>
+        {singleSlice ? (
+          <>
+            <text x={cx} y={cy - 12} textAnchor="middle" fontSize="22" fontWeight="800" fill="var(--foreground)">{singleSlice.letter}</text>
+            <text x={cx} y={cy + 5} textAnchor="middle" fontSize="10" fontWeight="700" fill="var(--muted-foreground)">{singleSlice.pct}%</text>
+            <text x={cx} y={cy + 20} textAnchor="middle" fontSize="8" letterSpacing="1.2" fill="var(--muted-foreground)">{total} {total === 1 ? "COURSE" : "COURSES"}</text>
+          </>
+        ) : (
+          <>
+            <text x={cx} y={cy - 6} textAnchor="middle" fontSize="22" fontWeight="700" fill="var(--foreground)">{total}</text>
+            <text x={cx} y={cy + 11} textAnchor="middle" fontSize="8" letterSpacing="1.5" fill="var(--muted-foreground)">COURSES</text>
+          </>
+        )}
       </svg>
     </div>
   )

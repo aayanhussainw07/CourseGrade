@@ -89,7 +89,7 @@ export default function SharePage() {
     })),
     gradeScale: c.gradeScale ?? DEFAULT_GRADE_SCALE,
     collapsed: false,
-    cardColor: null,
+    headerColor: null,
   }));
   const gpa = calculateGPA(coursesForGpa);
 

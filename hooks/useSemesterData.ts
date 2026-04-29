@@ -37,6 +37,7 @@ import {
 } from "@/app/page-utils";
 import { useUndoRedo } from "./useUndoRedo";
 import type { AppSettings } from "@/lib/app-settings";
+import { getRandomHeaderColor } from "@/lib/header-colors";
 import {
   SAVE_ERROR_DURATION_MS,
   SAVE_SUCCESS_DURATION_MS,
@@ -308,7 +309,7 @@ export function useSemesterData({ appSettings }: { appSettings: AppSettings }) {
         passLabel: courseData.passLabel ?? baseCourse.passLabel ?? "P",
         failLabel: courseData.failLabel ?? baseCourse.failLabel ?? "F",
         passThreshold: numericOr(courseData.passThreshold, baseCourse.passThreshold ?? 60),
-        cardColor: courseData.cardColor ?? baseCourse.cardColor ?? null,
+        headerColor: courseData.headerColor ?? baseCourse.headerColor ?? null,
         percentBoost: Math.max(
           0,
           Math.min(100, numericOr(courseData.percentBoost, baseCourse.percentBoost ?? 0)),
@@ -416,6 +417,16 @@ export function useSemesterData({ appSettings }: { appSettings: AppSettings }) {
         appSettings.defaultCredits,
       );
       newCourse.gradeScale = appSettings.defaultGradeScale.map((g) => ({ ...g }));
+      newCourse.isPassFail = appSettings.defaultIsPassFail;
+      newCourse.passLabel = appSettings.defaultPassLabel;
+      newCourse.failLabel = appSettings.defaultFailLabel;
+      newCourse.passThreshold = appSettings.defaultPassThreshold;
+      newCourse.gradeScaleSnapshot = appSettings.defaultIsPassFail
+        ? appSettings.defaultGradeScaleSnapshot?.map((g) => ({ ...g }))
+        : undefined;
+      newCourse.headerColor = getRandomHeaderColor();
+      newCourse.collapsed = true;
+      persistCourseSettings(newCourse);
       setSemesters((prev) =>
         prev.map((s) =>
           s.id === activeSemesterId ? { ...s, courses: [...s.courses, newCourse] } : s,
@@ -428,7 +439,17 @@ export function useSemesterData({ appSettings }: { appSettings: AppSettings }) {
       else console.error("[v0] Failed to create course:", error);
       return null;
     }
-  }, [activeSemesterId, courses.length, appSettings.defaultCredits, appSettings.defaultGradeScale]);
+  }, [
+    activeSemesterId,
+    courses.length,
+    appSettings.defaultCredits,
+    appSettings.defaultFailLabel,
+    appSettings.defaultGradeScale,
+    appSettings.defaultGradeScaleSnapshot,
+    appSettings.defaultIsPassFail,
+    appSettings.defaultPassLabel,
+    appSettings.defaultPassThreshold,
+  ]);
 
   const updateCourse = useCallback(
     async (id: string, updatedCourse: Course) => {

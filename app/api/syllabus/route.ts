@@ -33,7 +33,7 @@ Output this exact schema:
 
 Rules:
 - courseName: use only the short course code + number if present (e.g. "GERST 1220", "PSYCH 1101", "CS 101"). If no course code exists, use a clean short title in Title Case. Never include the full course title after the code. Default: "Imported Course"
-- credits: integer 1-6, default 3 if not stated
+- credits: non-negative number, decimals allowed for partial-credit courses, default 3 if not stated
 - isPassFail: true only if explicitly stated as pass/fail grading
 - assignments: each grading category with its percentage weight (0-100). Weights should sum to approximately 100
 - assignment names: use clean Title Case (e.g. "Midterm Exam", "Final Project", "Weekly Homework"). Keep them short and professional
@@ -74,7 +74,7 @@ function validateGeminiResponse(raw: unknown): SyllabusExtracted {
 
   const credits =
     typeof obj.credits === "number" && Number.isFinite(obj.credits)
-      ? Math.max(1, Math.min(6, Math.round(obj.credits)))
+      ? Math.max(0, Number.parseFloat(obj.credits.toFixed(2)))
       : fallback.credits;
 
   const isPassFail = obj.isPassFail === true;

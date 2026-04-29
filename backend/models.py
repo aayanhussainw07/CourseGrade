@@ -37,7 +37,7 @@ class Course(TimestampMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     semester_id = db.Column(db.Integer, db.ForeignKey("semesters.id", ondelete="CASCADE"), nullable=False, index=True)
     name = db.Column(db.String(200), nullable=False, default="New Course")
-    credits = db.Column(db.Integer, nullable=False, default=3)
+    credits = db.Column(db.Float, nullable=False, default=3)
     is_pass_fail = db.Column(db.Boolean, nullable=False, default=False)
     percent_boost = db.Column(db.Float, nullable=False, default=0)
 
@@ -74,6 +74,28 @@ class Assignment(TimestampMixin, db.Model):
     )
 
     course = db.relationship("Course", back_populates="assignments", lazy="joined")
+
+
+class UserSettings(TimestampMixin, db.Model):
+    __tablename__ = "user_settings"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.String(255), nullable=False, unique=True, index=True)
+    settings_json = db.Column(db.Text, nullable=False, default="{}")
+
+
+class Feedback(TimestampMixin, db.Model):
+    __tablename__ = "feedback"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.String(255), nullable=False, index=True)
+    rating = db.Column(db.Integer, nullable=False)
+    comment = db.Column(db.Text, nullable=False, default="")
+    completed = db.Column(db.Boolean, nullable=False, default=False, server_default="false")
+
+    __table_args__ = (
+        CheckConstraint("rating >= 1 AND rating <= 5", name="feedback_rating_range"),
+    )
 
 
 class GradeScale(db.Model):

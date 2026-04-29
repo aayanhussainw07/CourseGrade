@@ -86,7 +86,7 @@ export const courseToPortable = (course: Course): CoursePortableData => ({
   passLabel: course.passLabel ?? "P",
   failLabel: course.failLabel ?? "F",
   passThreshold: course.passThreshold ?? 60,
-  cardColor: course.cardColor ?? null,
+  headerColor: course.headerColor ?? null,
   gradeScale:
     Array.isArray(course.gradeScale) && course.gradeScale.length > 0
       ? course.gradeScale

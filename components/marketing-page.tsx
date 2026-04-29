@@ -1,8 +1,15 @@
 "use client";
 
 import { signIn } from "next-auth/react";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
+import { DashboardPanel } from "@/components/dashboard-panel";
 import { useInView } from "@/hooks/use-in-view";
+import {
+  marketingCourses,
+  marketingFeatures,
+  marketingTimelineData,
+} from "@/app/page-marketing-data";
 
 const GoogleIcon = () => (
   <svg
@@ -13,13 +20,19 @@ const GoogleIcon = () => (
     <path d="M21.35 11.1h-9.17v2.73h6.51c-.33 3.81-3.5 5.44-6.5 5.44C8.36 19.27 5 16.25 5 12c0-4.1 3.2-7.27 7.2-7.27 3.09 0 4.9 1.97 4.9 1.97L19 4.72S16.56 2 12.1 2C6.42 2 2.03 6.8 2.03 12c0 5.05 4.13 10 10.22 10 5.35 0 9.25-3.67 9.25-9.09 0-1.15-.15-1.81-.15-1.81z" />
   </svg>
 );
-import { DashboardPanel } from "@/components/dashboard-panel";
-import Image from "next/image";
-import {
-  marketingCourses,
-  marketingFeatures,
-  marketingTimelineData,
-} from "@/app/page-marketing-data";
+
+const paperRotations = [
+  "-rotate-[0.6deg]",
+  "rotate-[0.45deg]",
+  "-rotate-[0.35deg]",
+];
+
+const Tape = ({ className = "" }: { className?: string }) => (
+  <span
+    aria-hidden="true"
+    className={`pointer-events-none absolute h-5 w-24 bg-primary/20 ${className}`}
+  />
+);
 
 const BlockHeading = ({
   children,
@@ -29,8 +42,9 @@ const BlockHeading = ({
   className?: string;
 }) => (
   <span
-    className={`inline-block font-bold uppercase tracking-widest bg-primary text-white px-6 py-2 [box-shadow:5px_5px_0_rgba(77,31,26,0.55),10px_10px_0_rgba(77,31,26,0.25)] ${className}`}
+    className={`relative inline-flex items-center justify-center rounded-sm border-2 border-primary/30 bg-[#fff8f1] px-6 py-2 font-futura-bold font-black uppercase tracking-widest text-foreground shadow-none ${className}`}
   >
+    <Tape className="-top-3 left-1/2 -translate-x-1/2 rotate-[-2deg]" />
     {children}
   </span>
 );
@@ -51,10 +65,13 @@ export function MarketingPage() {
               "repeating-linear-gradient(0deg, white 0px, white 1px, transparent 1px, transparent 40px), repeating-linear-gradient(90deg, white 0px, white 1px, transparent 1px, transparent 40px)",
           }}
         />
+        <div className="absolute left-10 top-10 hidden h-24 w-24 rotate-[-9deg] rounded-sm border border-white/10 bg-white/5 md:block" />
+        <div className="absolute bottom-16 right-12 hidden h-28 w-36 rotate-[7deg] rounded-sm border border-white/10 bg-primary/10 lg:block" />
         <div className="relative mx-auto max-w-7xl px-6 py-20 lg:px-12">
           <div className="flex flex-col items-center text-center max-w-3xl mx-auto gap-10">
             <div className="animate-fade-up w-full space-y-6">
-              <div className="flex items-center justify-center gap-3">
+              <div className="relative mx-auto flex w-fit items-center justify-center gap-3 rounded-sm border border-white/15 bg-white/[0.06] px-5 py-3">
+                <Tape className="-top-3 left-4 w-20 rotate-[-4deg] bg-white/15" />
                 <div className="animate-logo-wiggle">
                   <Image
                     src="/coursegrade.png"
@@ -71,12 +88,12 @@ export function MarketingPage() {
 
               <div className="space-y-3">
                 <div>
-                  <BlockHeading className="text-3xl sm:text-5xl leading-none">
+                  <BlockHeading className="text-3xl leading-none sm:text-5xl">
                     Failing your prelims?
                   </BlockHeading>
                 </div>
                 <div className="pl-4">
-                  <BlockHeading className="text-3xl sm:text-5xl leading-none">
+                  <BlockHeading className="rotate-[0.8deg] text-3xl leading-none sm:text-5xl">
                     Track how to fix them!
                   </BlockHeading>
                 </div>
@@ -90,7 +107,7 @@ export function MarketingPage() {
               <div className="flex flex-wrap justify-center gap-3 pt-2">
                 <Button
                   size="lg"
-                  className="gap-2 bg-primary text-white px-8 hover:bg-primary/90 [box-shadow:4px_4px_0_rgba(77,31,26,0.6)] hover:translate-y-px hover:[box-shadow:2px_2px_0_rgba(77,31,26,0.6)] transition-all"
+                  className="gap-2 rounded-md border border-white/20 bg-primary px-8 text-white shadow-none transition-all hover:-translate-y-0.5 hover:bg-primary/90 hover:shadow-none"
                   onClick={() => signIn("google")}
                 >
                   <GoogleIcon />
@@ -103,13 +120,13 @@ export function MarketingPage() {
 
         {/* Diagonal cut */}
         <div
-          className="h-12 bg-background"
+          className="relative h-14 bg-background"
           style={{ clipPath: "polygon(0 100%, 100% 0, 100% 100%)" }}
         />
       </section>
 
       {/* FEATURES */}
-      <section id="feature-grid" className="bg-background py-20">
+      <section id="feature-grid" className="relative bg-background py-20">
         <div className="mx-auto max-w-[1400px] px-2 lg:px-4">
           <div
             ref={featuresRef}
@@ -117,21 +134,36 @@ export function MarketingPage() {
           >
             <BlockHeading className="text-2xl">Built for students</BlockHeading>
           </div>
-          <div className="grid gap-10 md:grid-cols-3 px-4">
-            {marketingFeatures.map((feature, i) => (
-              <div
-                key={feature.title}
-                className={featuresInView ? "animate-fade-up-sm" : "opacity-0"}
-                style={{ animationDelay: featuresInView ? `${i * 0.1}s` : undefined }}
-              >
-                <h3 className="text-xl font-bold uppercase tracking-wide mb-4">
-                  {feature.title}
-                </h3>
-                <p className="text-sm text-muted-foreground">
-                  {feature.description}
-                </p>
-              </div>
-            ))}
+          <div className="grid gap-6 px-4 md:grid-cols-3">
+            {marketingFeatures.map((feature, i) => {
+              const Icon = feature.icon;
+              const rotation = paperRotations[i % paperRotations.length];
+
+              return (
+                <div
+                  key={feature.title}
+                  className={`${featuresInView ? "animate-fade-up-sm" : "opacity-0"} relative min-h-56 rounded-lg border-2 border-primary/20 bg-[#fff8f1] p-7 shadow-none transition-transform hover:-translate-y-1 ${rotation}`}
+                  style={{
+                    animationDelay: featuresInView ? `${i * 0.1}s` : undefined,
+                  }}
+                >
+                  <Tape className="-top-3 left-1/2 -translate-x-1/2 rotate-[2deg]" />
+                  <div className="mb-6 flex h-12 w-12 items-center justify-center rounded-sm border border-primary/25 bg-primary/10 text-primary">
+                    <Icon className="h-5 w-5" />
+                  </div>
+                  <h3 className="mb-4 font-futura-bold text-xl font-black uppercase tracking-wide">
+                    {feature.title}
+                  </h3>
+                  <p className="text-sm leading-6 text-muted-foreground">
+                    {feature.description}
+                  </p>
+                  <span
+                    aria-hidden="true"
+                    className="absolute right-0 top-0 h-10 w-10 rounded-bl-lg border-b border-l border-primary/15 bg-primary/5"
+                  />
+                </div>
+              );
+            })}
           </div>
         </div>
       </section>
@@ -147,7 +179,19 @@ export function MarketingPage() {
               See your progress at a glance
             </BlockHeading>
           </div>
-          <DashboardPanel timelineData={marketingTimelineData} courses={marketingCourses} bare />
+          <div className="relative mx-4 rounded-xl border-2 border-primary/20 bg-[#fff8f1] p-3 shadow-none sm:p-5">
+            <Tape className="-top-3 left-10 rotate-[-2deg]" />
+            <Tape className="-top-3 right-10 rotate-[3deg]" />
+            <span
+              aria-hidden="true"
+              className="absolute right-0 top-0 h-12 w-12 rounded-bl-xl border-b border-l border-primary/15 bg-primary/5"
+            />
+            <DashboardPanel
+              timelineData={marketingTimelineData}
+              courses={marketingCourses}
+              bare
+            />
+          </div>
         </div>
       </section>
 
@@ -167,8 +211,9 @@ export function MarketingPage() {
         <div className="relative mx-auto max-w-4xl px-6 pt-10 text-center">
           <div
             ref={ctaRef}
-            className={`space-y-8 ${ctaInView ? "animate-fade-up" : "opacity-0"}`}
+            className={`${ctaInView ? "animate-fade-up" : "opacity-0"} relative mx-auto max-w-2xl rounded-xl border-2 border-primary/25 bg-[#fff8f1] px-6 py-10 text-foreground shadow-none sm:px-10`}
           >
+            <Tape className="-top-3 left-1/2 -translate-x-1/2 rotate-[-2deg]" />
             <div className="space-y-3">
               <div>
                 <BlockHeading className="text-3xl sm:text-4xl">
@@ -181,17 +226,9 @@ export function MarketingPage() {
                 </BlockHeading>
               </div>
             </div>
-            <p className="text-white/60 max-w-md mx-auto">
+            <p className="mx-auto mt-8 max-w-md text-muted-foreground">
               Start actually knowing your GPA. It's free. No excuses.
             </p>
-            <Button
-              size="lg"
-              className="gap-2 bg-primary text-white px-10 hover:bg-primary/90 [box-shadow:4px_4px_0_rgba(77,31,26,0.7)] hover:translate-y-px hover:[box-shadow:2px_2px_0_rgba(77,31,26,0.7)] transition-all"
-              onClick={() => signIn("google")}
-            >
-              <GoogleIcon />
-              Sign In!
-            </Button>
           </div>
 
           <div className="mt-16 flex flex-col items-center gap-1.5 pt-6">

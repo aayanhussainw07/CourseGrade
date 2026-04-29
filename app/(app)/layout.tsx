@@ -9,17 +9,12 @@ import { Button } from "@/components/ui/button";
 import {
   Plus,
   Menu,
-  Upload,
   Sparkles,
-  Download,
   TrendingUp,
   Layers,
   Pencil,
-  Printer,
   ChevronsUp,
   ChevronsDown,
-  Share2,
-  Check,
   Settings,
 } from "lucide-react";
 import Image from "next/image";
@@ -30,14 +25,14 @@ import { useRouter } from "next/navigation";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { SyllabusImportDialog } from "@/components/syllabus-import-dialog";
 import { SettingsDialog } from "@/components/settings-dialog";
-import { loadAppSettings, type AppSettings } from "@/lib/app-settings";
+import { loadAppSettings, loadAppSettingsFromServer, type AppSettings } from "@/lib/app-settings";
 import { HIGHLIGHT_DURATION_MS, SCROLL_DELAY_MS } from "@/lib/constants";
 import {
   readStoredDashboardMessage,
   writeStoredDashboardMessage,
 } from "@/app/page-utils";
 import { useSemesterData } from "@/hooks/useSemesterData";
-import { useShareUrl } from "@/hooks/useShareUrl";
+import { FeedbackPanel } from "@/components/feedback-panel";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -60,7 +55,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     string | null
   >(null);
   const courseRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
-  const dashboardFileInputRef = useRef<HTMLInputElement | null>(null);
   const [dashboardMessage, setDashboardMessage] = useState("");
   const [dashboardMessageDraft, setDashboardMessageDraft] = useState("");
   const [isEditingQuote, setIsEditingQuote] = useState(false);
@@ -105,24 +99,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     editCourse,
     handleReorderSemesters,
     handleReorderCourses,
-    importSemesterFromJson,
-    importCourseFromJson,
-    importDashboardBackup,
-    exportSemesterToJson,
-    exportCourseToJson,
-    exportDashboardBackup,
   } = useSemesterData({ appSettings });
-
-  const {
-    shareUrl,
-    shareCopied,
-    generateShareUrl,
-    closeShareUrl,
-    copyShareUrl,
-  } = useShareUrl({
-    semesters,
-    activeSemesterId,
-  });
 
   // ── Dashboard message ─────────────────────────────────────────────────────
   const dashboardMessageScopeId = useMemo(
@@ -150,6 +127,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     setDashboardMessageDraft("");
     setIsEditingQuote(false);
   }, [dashboardMessageScopeId]);
+
+  // ── Load settings from server on auth ──────────────────────────────────────
+  useEffect(() => {
+    if (status === "authenticated") {
+      loadAppSettingsFromServer().then(setAppSettings);
+    }
+  }, [status]);
 
   // ── Responsive sidebar ────────────────────────────────────────────────────
   useEffect(() => {
@@ -262,21 +246,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-background">
+      <FeedbackPanel />
       {/* Top-right actions */}
       <div className="fixed right-4 top-4 z-50 flex items-center gap-2">
-        {activeSemesterId && (
-          <Button
-            onClick={() => setSyllabusImportOpen(true)}
-            className="flex items-center gap-2 border border-white/10 px-3 py-2 text-sm text-white hover:bg-primary/75 shadow-none"
-          >
-            <Sparkles className="h-4 w-4" />
-            Import Syllabus
-          </Button>
-        )}
         <Button
+          variant="ghost"
           size="icon"
           onClick={() => setSettingsOpen(true)}
-          className="border border-white/10 text-white hover:bg-primary/75 h-9 w-9 shadow-none"
+          className="border border-white/10 bg-primary text-white hover:bg-primary/75 h-9 w-9"
         >
           <Settings className="h-4 w-4" />
         </Button>
@@ -314,7 +291,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               onEditSemester={editSemester}
               onDeleteCourse={deleteCourse}
               onEditCourse={editCourse}
-              onImportSemester={importSemesterFromJson}
               onReorderSemesters={handleReorderSemesters}
               onReorderCourses={handleReorderCourses}
               dashboardSummary={totalSemesters ? dashboardSummary : undefined}
@@ -342,10 +318,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         onCourseClick={scrollToCourse}
         onAddSemester={addSemester}
         onDeleteSemester={deleteSemester}
+        skipSemesterDeleteConfirm={appSettings.skipSemesterDeleteConfirm}
         onEditSemester={editSemester}
         onDeleteCourse={deleteCourse}
         onEditCourse={editCourse}
-        onImportSemester={importSemesterFromJson}
         onReorderSemesters={handleReorderSemesters}
         onReorderCourses={handleReorderCourses}
         onDuplicateSemester={duplicateSemester}
@@ -376,219 +352,210 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         style={{ paddingRight: "1rem" }}
       >
         {isDashboardView ? (
-          <div className="space-y-6">
-            <p className="w-fit mx-auto text-2xl font-bold uppercase tracking-widest bg-primary text-white px-8 py-2 [box-shadow:5px_5px_0_rgba(77,31,26,0.55),10px_10px_0_rgba(77,31,26,0.25)]">
-              Dashboard
-            </p>
+          <div className="-mx-4 -mt-8">
+            <section
+              className="px-4 pb-8 pt-8"
+              style={{
+                background: "#2d0008",
+                backgroundImage:
+                  "repeating-linear-gradient(0deg, rgba(255,255,255,0.04) 0px, rgba(255,255,255,0.04) 1px, transparent 1px, transparent 40px), repeating-linear-gradient(90deg, rgba(255,255,255,0.04) 0px, rgba(255,255,255,0.04) 1px, transparent 1px, transparent 40px)",
+              }}
+            >
+              <h1 className="font-futura-bold mx-auto w-fit text-4xl uppercase text-white sm:text-5xl">
+                Dashboard
+              </h1>
 
-            {/* Quote widget */}
-            <div className="w-full rounded-lg border border-primary/35 bg-card/85 shadow-under-white-soft overflow-hidden flex">
-              <div className="relative flex shrink-0 items-center justify-center bg-primary border-r border-primary/20 px-5 py-4 overflow-hidden">
-                <p className="relative font-etna text-2xl text-white leading-none">
-                  quote.
-                </p>
-              </div>
-              <div className="flex-1 px-5 py-4">
-                {dashboardMessage && !isEditingQuote ? (
-                  <div className="group relative h-full flex items-center">
-                    <p className="text-lg italic text-foreground/90">
-                      {dashboardMessage.length > 100
-                        ? `"${dashboardMessage.slice(0, 100)}…"`
+              <div className="mx-auto mt-7 grid w-full max-w-[1500px] gap-5 lg:grid-cols-[minmax(320px,0.85fr)_minmax(0,1.65fr)] lg:items-stretch">
+                <div className="relative min-h-[210px] rotate-[-1deg] rounded-md border border-[#e0c678] bg-[#fff0a8] p-5 text-foreground shadow-[6px_8px_0_rgba(77,31,26,0.22)]">
+                  <div className="absolute -top-3 left-1/2 h-7 w-28 -translate-x-1/2 rotate-2 border border-white/35 bg-white/45 backdrop-blur-[1px]" />
+                  <div className="mb-4 flex items-center justify-between">
+                    <p className="font-etna text-3xl leading-none text-primary">
+                      QUOTE IT!
+                    </p>
+                    {dashboardMessage && !isEditingQuote && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-foreground/55 hover:bg-primary/10 hover:text-foreground"
+                        onClick={() => setIsEditingQuote(true)}
+                        title="Edit quote"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                  </div>
+
+                  {dashboardMessage && !isEditingQuote ? (
+                    <p className="text-lg italic leading-relaxed text-foreground/90">
+                      {dashboardMessage.length > 140
+                        ? `"${dashboardMessage.slice(0, 140)}..."`
                         : `"${dashboardMessage}"`}
                     </p>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="absolute right-0 top-0 h-7 w-7 opacity-0 transition-opacity group-hover:opacity-100"
-                      onClick={() => setIsEditingQuote(true)}
-                    >
-                      <Pencil className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-                ) : (
-                  <div>
-                    <textarea
-                      value={dashboardMessageDraft}
-                      onChange={(e) => setDashboardMessageDraft(e.target.value)}
-                      placeholder="Your motivational quote..."
-                      rows={2}
-                      maxLength={280}
-                      className="w-full resize-none rounded-md border border-primary/25 bg-background/90 px-3 py-1.5 text-sm text-foreground outline-none transition focus:border-primary/45"
-                    />
-                    <div className="mt-2 flex items-center gap-2">
-                      <Button size="sm" onClick={saveDashboardMessage}>
-                        Save
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={clearDashboardMessage}
-                        disabled={
-                          dashboardMessage.length === 0 &&
-                          dashboardMessageDraft.trim().length === 0
+                  ) : (
+                    <div className="space-y-3">
+                      <textarea
+                        value={dashboardMessageDraft}
+                        onChange={(e) =>
+                          setDashboardMessageDraft(e.target.value)
                         }
-                      >
-                        Clear
-                      </Button>
-                      {dashboardMessage && (
+                        placeholder="Your motivational quote..."
+                        rows={4}
+                        maxLength={280}
+                        className="w-full resize-none rounded-md border border-primary/25 bg-white/50 px-3 py-2 text-sm text-foreground outline-none transition placeholder:text-foreground/45 focus:border-primary/45"
+                      />
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Button size="sm" onClick={saveDashboardMessage}>
+                          Save
+                        </Button>
                         <Button
                           size="sm"
-                          variant="ghost"
-                          onClick={() => setIsEditingQuote(false)}
+                          variant="outline"
+                          onClick={clearDashboardMessage}
+                          disabled={
+                            dashboardMessage.length === 0 &&
+                            dashboardMessageDraft.trim().length === 0
+                          }
                         >
-                          Cancel
+                          Clear
                         </Button>
-                      )}
+                        {dashboardMessage && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => setIsEditingQuote(false)}
+                          >
+                            Cancel
+                          </Button>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                )}
-              </div>
-            </div>
+                  )}
+                </div>
 
-            {semesters.length === 0 ? (
-              <div className="flex flex-col items-center justify-center gap-5 rounded-xl border-2 border-dashed border-primary/20 bg-card/40 py-20 text-center">
-                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
-                  <Layers className="h-8 w-8 text-primary/60" />
-                </div>
-                <div>
-                  <p className="text-base font-semibold text-foreground">
-                    No semesters yet
-                  </p>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Let's get started!
-                  </p>
-                </div>
-                <Button onClick={addSemester} size="lg" className="gap-2">
-                  <Plus className="h-5 w-5" />
-                  Add Semester
-                </Button>
-              </div>
-            ) : (
-              <>
-                <div
-                  className="grid gap-4"
-                  style={{ gridTemplateColumns: "1fr 2fr 1fr" }}
-                >
+                <div className="grid gap-4 sm:grid-cols-3">
                   {[
                     {
-                      label: "Total Credits",
-                      content: (
-                        <p className="mt-2 text-5xl font-bold text-white">
-                          {totalCredits}
-                        </p>
-                      ),
-                    },
-                    {
                       label: "Overall GPA",
-                      content: (
-                        <div className="mt-1 flex items-center justify-between pr-8">
-                          <p className="flex items-baseline gap-2 text-4xl font-bold text-white">
-                            <TrendingUp className="h-5 w-5 text-white/60" />
-                            {overallGpa.toFixed(2)}
-                          </p>
-                          <span className="text-7xl font-black text-white/80">
-                            {overallGpaLetter}
-                          </span>
-                        </div>
-                      ),
+                      value: overallGpa.toFixed(2),
+                      detail: overallGpaLetter,
+                      rotate: "rotate-[1deg]",
+                      wide: "sm:col-span-1",
                     },
                     {
-                      label: "Semesters Tracked",
-                      content: (
-                        <p className="mt-2 text-5xl font-bold text-white">
-                          {totalSemesters}
-                        </p>
-                      ),
+                      label: "Total Credits",
+                      value: String(totalCredits),
+                      detail: "credits",
+                      rotate: "rotate-[-0.8deg]",
+                      wide: "sm:col-span-1",
                     },
-                  ].map(({ label, content }) => (
+                    {
+                      label: "Semesters",
+                      value: String(totalSemesters),
+                      detail: "tracked",
+                      rotate: "rotate-[0.6deg]",
+                      wide: "sm:col-span-1",
+                    },
+                  ].map(({ label, value, detail, rotate, wide }) => (
                     <div
                       key={label}
-                      className="relative overflow-hidden rounded-lg bg-primary p-4 text-left"
-                      style={{
-                        backgroundImage:
-                          "repeating-linear-gradient(0deg, rgba(255,255,255,0.06) 0px, rgba(255,255,255,0.06) 1px, transparent 1px, transparent 20px), repeating-linear-gradient(90deg, rgba(255,255,255,0.06) 0px, rgba(255,255,255,0.06) 1px, transparent 1px, transparent 20px)",
-                      }}
+                      className={`relative min-h-[170px] rounded-md border border-primary/25 bg-[#fff8f1] p-4 text-foreground shadow-[5px_6px_0_rgba(0,0,0,0.16)] ${rotate} ${wide}`}
                     >
-                      <p className="text-sm font-medium text-white/60 uppercase tracking-widest">
+                      <div className="absolute -top-2 left-5 h-5 w-16 rotate-[-3deg] bg-primary/20" />
+                      <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
                         {label}
                       </p>
-                      {content}
+                      <div className="mt-5 flex items-end justify-between gap-3">
+                        <p className="text-5xl font-black leading-none text-primary">
+                          {value}
+                        </p>
+                        <span className="text-lg font-bold uppercase text-foreground/55">
+                          {detail}
+                        </span>
+                      </div>
+                      {label === "Overall GPA" && (
+                        <TrendingUp className="absolute bottom-4 left-4 h-5 w-5 text-primary/45" />
+                      )}
                     </div>
                   ))}
                 </div>
+              </div>
+            </section>
 
-                <DashboardPanel
-                  timelineData={timelineData}
-                  courses={allCourses}
-                />
+            <section className="bg-background px-4 py-6">
+              <div className="mx-auto w-full max-w-[1500px] space-y-6">
+                {semesters.length === 0 ? (
+                  <div className="relative flex flex-col items-center justify-center gap-5 rounded-md border-2 border-dashed border-primary/25 bg-[#fff8f1] py-20 text-center shadow-[7px_8px_0_rgba(198,90,78,0.18)]">
+                    <div className="absolute -top-3 left-1/2 h-6 w-24 -translate-x-1/2 rotate-2 bg-primary/15" />
+                    <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
+                      <Layers className="h-8 w-8 text-primary/60" />
+                    </div>
+                    <div>
+                      <p className="text-base font-semibold text-foreground">
+                        No semesters yet
+                      </p>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        Let's get started!
+                      </p>
+                    </div>
+                    <Button onClick={addSemester} size="lg" className="gap-2">
+                      <Plus className="h-5 w-5" />
+                      Add Semester
+                    </Button>
+                  </div>
+                ) : (
+                  <>
+                    <DashboardPanel
+                      timelineData={timelineData}
+                      courses={allCourses}
+                    />
 
-                <div className="grid p-4 pb-0 gap-4 lg:grid">
-                  {semesterSummaries.map((summary, i) => {
-                    const skew = i % 2 === 0 ? -2 : 2;
-                    return (
-                      <div
-                        key={summary.id}
-                        className="relative overflow-hidden p-5 text-left"
-                        style={{
-                          backgroundColor:
-                            "color-mix(in srgb, var(--primary) 75%, black)",
-                        }}
-                      >
-                        <div
-                          className="flex items-center justify-between"
-                          style={{ transform: `skewX(${-skew}deg)` }}
-                        >
-                          <p className="text-xl font-bold text-white uppercase tracking-wide">
-                            {summary.name}
-                          </p>
-                          <span className="text-2xl font-black text-white">
-                            {summary.gpa.toFixed(2)} GPA
-                          </span>
-                        </div>
-                        <p
-                          className="mt-1 text-sm text-white/60"
-                          style={{ transform: `skewX(${-skew}deg)` }}
-                        >
-                          Credits: {summary.credits}
-                        </p>
+                    <div>
+                      <div className="mb-4 flex items-center justify-between">
+                        <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
+                          Semesters
+                        </h2>
                       </div>
-                    );
-                  })}
-                </div>
-
-                <div className="flex justify-end gap-2 mr-5 ml-5">
-                  <input
-                    ref={dashboardFileInputRef}
-                    type="file"
-                    accept="application/json,.json"
-                    className="hidden"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) importDashboardBackup(file);
-                      e.target.value = "";
-                    }}
-                  />
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="gap-2 border-secondary/40 bg-transparent hover:bg-primary hover:text-white hover:border-primary"
-                    onClick={() => dashboardFileInputRef.current?.click()}
-                  >
-                    <Upload className="h-3.5 w-3.5" />
-                    Import
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="gap-2 border-secondary/40 bg-transparent hover:bg-primary hover:text-white hover:border-primary"
-                    onClick={exportDashboardBackup}
-                  >
-                    <Download className="h-3.5 w-3.5" />
-                    Export
-                  </Button>
-                </div>
-              </>
-            )}
+                      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+                        {semesterSummaries.map((summary, i) => {
+                          const rotate =
+                            i % 3 === 0
+                              ? "rotate-[-0.8deg]"
+                              : i % 3 === 1
+                                ? "rotate-[0.7deg]"
+                                : "rotate-[-0.2deg]";
+                          return (
+                            <div
+                              key={summary.id}
+                              className={`relative rounded-md border border-primary/25 bg-[#fff8f1] p-5 text-left shadow-[5px_6px_0_rgba(198,90,78,0.18)] ${rotate}`}
+                            >
+                              <div className="absolute -top-2 right-8 h-5 w-16 rotate-3 bg-primary/15" />
+                              <div className="flex items-start justify-between gap-4">
+                                <div className="min-w-0">
+                                  <p className="truncate text-xl font-bold uppercase tracking-wide text-foreground">
+                                    {summary.name}
+                                  </p>
+                                  <p className="mt-2 text-sm font-semibold text-muted-foreground">
+                                    {summary.credits} credits
+                                  </p>
+                                </div>
+                                <div className="shrink-0 text-right">
+                                  <p className="text-3xl font-black text-primary">
+                                    {summary.gpa.toFixed(2)}
+                                  </p>
+                                  <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+                                    GPA
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            </section>
           </div>
         ) : (
           <>
@@ -652,7 +619,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 ) : (
                   <div className="flex items-center justify-center">
                     <div className="group relative">
-                      <p className="w-fit text-5xl font-bold uppercase tracking-widest text-white">
+                      <p className="font-futura-bold w-fit text-5xl uppercase text-white">
                         {activeSemester?.name ?? "Semester"}
                       </p>
                       <Button
@@ -672,75 +639,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 )}
               </div>
 
-              {/* Action buttons */}
-              {courses.length > 0 && (
-                <div className="mb-4 flex flex-wrap items-center justify-center gap-1.5 print:hidden">
-                  <Button
-                    size="icon"
-                    onClick={collapseAllCourses}
-                    className="h-8 w-8 bg-primary/80 text-white hover:bg-primary border-0 shadow-none"
-                    title="Collapse All"
-                  >
-                    <ChevronsUp className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    size="icon"
-                    onClick={expandAllCourses}
-                    className="h-8 w-8 bg-primary/80 text-white hover:bg-primary border-0 shadow-none"
-                    title="Expand All"
-                  >
-                    <ChevronsDown className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    size="icon"
-                    onClick={() => window.print()}
-                    className="h-8 w-8 bg-primary/80 text-white hover:bg-primary border-0 shadow-none"
-                    title="Print"
-                  >
-                    <Printer className="h-4 w-4" />
-                  </Button>
-                  <div className="relative">
-                    <Button
-                      size="icon"
-                      onClick={() =>
-                        shareUrl ? closeShareUrl() : generateShareUrl()
-                      }
-                      className="h-8 w-8 bg-primary/80 text-white hover:bg-primary border-0 shadow-none"
-                      title="Share"
-                    >
-                      <Share2 className="h-4 w-4" />
-                    </Button>
-                    {shareUrl && (
-                      <div className="absolute left-0 top-full z-50 mt-2 w-80 rounded-lg border border-border bg-card p-3 shadow-lg">
-                        <p className="mb-1.5 text-xs font-medium text-muted-foreground">
-                          Share link (read-only)
-                        </p>
-                        <div className="flex items-center gap-2">
-                          <input
-                            readOnly
-                            value={shareUrl}
-                            className="min-w-0 flex-1 rounded border border-border bg-background px-2 py-1 text-xs outline-none"
-                            onFocus={(e) => e.target.select()}
-                          />
-                          <Button
-                            size="sm"
-                            className="h-7 shrink-0 gap-1 px-2 text-xs"
-                            onClick={copyShareUrl}
-                          >
-                            {shareCopied ? (
-                              <Check className="h-3 w-3" />
-                            ) : (
-                              <Share2 className="h-3 w-3" />
-                            )}
-                            {shareCopied ? "Copied!" : "Copy"}
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
               {/* Semester summary */}
               {courses.length > 0 && (
                 <div className="pb-8 px-2">
@@ -749,49 +647,49 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               )}
             </div>
 
-            {/* Add / Import / Export */}
+            {/* Add / Import */}
             {activeSemesterId && (
               <>
-                <input
-                  id="course-import-trigger"
-                  type="file"
-                  accept="application/json,.json"
-                  className="hidden"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) importCourseFromJson(file, activeSemesterId);
-                    e.target.value = "";
-                  }}
-                />
-                <div className="mt-4 flex flex-wrap justify-center gap-3">
+                <div className="-mx-4 -mt-px flex flex-wrap items-center justify-center gap-3 bg-primary px-4 py-5 shadow-[inset_0_-1px_0_rgba(95,0,0,0.28)] print:hidden">
+                  {courses.length > 0 && (
+                    <>
+                      <Button
+                        onClick={collapseAllCourses}
+                        size="icon"
+                        variant="ghost"
+                        className="h-10 w-10 border border-white/70 bg-white text-[#7b0707] hover:bg-white/70 hover:text-[#7b0707]"
+                        title="Compress all courses"
+                      >
+                        <ChevronsUp className="h-5 w-5" />
+                      </Button>
+                      <Button
+                        onClick={expandAllCourses}
+                        size="icon"
+                        variant="ghost"
+                        className="h-10 w-10 border border-white/70 bg-white text-[#7b0707] hover:bg-white/70 hover:text-[#7b0707]"
+                        title="Expand all courses"
+                      >
+                        <ChevronsDown className="h-5 w-5" />
+                      </Button>
+                    </>
+                  )}
                   <Button
                     onClick={addCourse}
                     size="lg"
-                    variant="outline"
-                    className="gap-2 border-secondary/40 bg-transparent hover:bg-primary hover:text-white hover:border-primary"
+                    variant="ghost"
+                    className="gap-2 border border-white/70 bg-white text-[#7b0707] hover:bg-white/70 hover:text-[#7b0707]"
                   >
                     <Plus className="h-5 w-5" />
                     Add Course
                   </Button>
                   <Button
-                    onClick={() =>
-                      document.getElementById("course-import-trigger")?.click()
-                    }
+                    onClick={() => setSyllabusImportOpen(true)}
                     size="lg"
-                    variant="outline"
-                    className="gap-2 border-secondary/40 bg-transparent hover:bg-primary hover:text-white hover:border-primary"
+                    variant="ghost"
+                    className="gap-2 border border-white/70 bg-white text-[#7b0707] hover:bg-white/70 hover:text-[#7b0707]"
                   >
-                    <Upload className="h-5 w-5" />
-                    Import Course
-                  </Button>
-                  <Button
-                    onClick={() => exportSemesterToJson(activeSemesterId)}
-                    size="lg"
-                    variant="outline"
-                    className="gap-2 border-secondary/40 bg-transparent hover:bg-primary hover:text-white hover:border-primary"
-                  >
-                    <Download className="h-5 w-5" />
-                    Export Semester
+                    <Sparkles className="h-5 w-5" />
+                    Import Syllabus
                   </Button>
                 </div>
               </>
@@ -800,7 +698,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             {/* Course cards */}
             {activeSemesterId && (
               <AnimatePresence mode="popLayout">
-                <div className="space-y-6 mt-8">
+                <div className="space-y-4 mt-8">
                   {courses.map((course, index) => (
                     <motion.div
                       key={`${course.id}-${index}`}
@@ -885,7 +783,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                             updateCourse(courseId, nextCourse)
                           }
                           onDelete={deleteCourse}
-                          onExportCourse={exportCourseToJson}
                           onDuplicate={() => duplicateCourse(course.id)}
                         />
                       </div>

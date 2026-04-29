@@ -197,6 +197,7 @@ function DonutView({ data, total }: { data: ChartEntry[]; total: number }) {
   }
 
   const labelR = (outerR + innerR) / 2;
+  const singleSlice = slices.length === 1 ? slices[0] : null;
 
   return (
     <div className="flex flex-col items-center">
@@ -209,28 +210,14 @@ function DonutView({ data, total }: { data: ChartEntry[]; total: number }) {
           if (s.fraction >= 1) {
             return (
               <g key={s.letter}>
-                <circle cx={cx} cy={cy} r={outerR} fill={s.color} />
-                <circle cx={cx} cy={cy} r={innerR} fill="var(--card)" />
-                <text
-                  x={cx}
-                  y={cy - 4}
-                  textAnchor="middle"
-                  fontSize="13"
-                  fontWeight="700"
-                  fill="#fff"
-                >
-                  {s.letter}
-                </text>
-                <text
-                  x={cx}
-                  y={cy + 12}
-                  textAnchor="middle"
-                  fontSize="10"
-                  fill="#fff"
-                  opacity="0.85"
-                >
-                  {s.pct}%
-                </text>
+                <circle
+                  cx={cx}
+                  cy={cy}
+                  r={(outerR + innerR) / 2}
+                  fill="none"
+                  stroke={s.color}
+                  strokeWidth={outerR - innerR}
+                />
               </g>
             );
           }
@@ -271,26 +258,63 @@ function DonutView({ data, total }: { data: ChartEntry[]; total: number }) {
             </g>
           );
         })}
-        <text
-          x={cx}
-          y={cy - 7}
-          textAnchor="middle"
-          fontSize="22"
-          fontWeight="700"
-          fill="var(--foreground)"
-        >
-          {total}
-        </text>
-        <text
-          x={cx}
-          y={cy + 11}
-          textAnchor="middle"
-          fontSize="9"
-          letterSpacing="1.5"
-          fill="var(--muted-foreground)"
-        >
-          COURSES
-        </text>
+        {singleSlice ? (
+          <>
+            <text
+              x={cx}
+              y={cy - 12}
+              textAnchor="middle"
+              fontSize="22"
+              fontWeight="800"
+              fill="var(--foreground)"
+            >
+              {singleSlice.letter}
+            </text>
+            <text
+              x={cx}
+              y={cy + 5}
+              textAnchor="middle"
+              fontSize="10"
+              fontWeight="700"
+              fill="var(--muted-foreground)"
+            >
+              {singleSlice.pct}%
+            </text>
+            <text
+              x={cx}
+              y={cy + 20}
+              textAnchor="middle"
+              fontSize="8"
+              letterSpacing="1.2"
+              fill="var(--muted-foreground)"
+            >
+              {total} {total === 1 ? "COURSE" : "COURSES"}
+            </text>
+          </>
+        ) : (
+          <>
+            <text
+              x={cx}
+              y={cy - 7}
+              textAnchor="middle"
+              fontSize="22"
+              fontWeight="700"
+              fill="var(--foreground)"
+            >
+              {total}
+            </text>
+            <text
+              x={cx}
+              y={cy + 11}
+              textAnchor="middle"
+              fontSize="9"
+              letterSpacing="1.5"
+              fill="var(--muted-foreground)"
+            >
+              COURSES
+            </text>
+          </>
+        )}
       </svg>
     </div>
   );

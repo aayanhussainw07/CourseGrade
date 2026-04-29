@@ -7,6 +7,14 @@
   font-style: normal;
   font-display: swap;
 }
+
+@font-face {
+  font-family: "Futura Cyrillic";
+  src: url("/fonts/FuturaCyrillicHeavy.ttf") format("truetype");
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
 @import "tailwindcss";
 @import "tw-animate-css";
 
@@ -140,6 +148,12 @@
     font-family: "Etna", sans-serif;
     text-transform: none;
     letter-spacing: 0.01em;
+  }
+
+  .font-futura-bold {
+    font-family: "Futura Cyrillic", var(--font-sans);
+    font-weight: 900;
+    letter-spacing: 0;
   }
 
   .shadow-under-white-soft {

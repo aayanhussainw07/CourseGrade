@@ -133,10 +133,11 @@ export function GradeScaleEditor({
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-muted-foreground">
+      <p className="rounded-lg border border-primary/15 bg-white/45 px-4 py-3 text-sm text-muted-foreground">
         Define the minimum percentage required for each letter grade. Grades are automatically sorted by minimum score.
       </p>
-      <div className="space-y-3 rounded-lg border border-primary/20 bg-muted/40 p-4">
+      <div className="relative space-y-3 overflow-hidden rounded-lg border border-primary/25 bg-[#fff8f1]/70 p-4">
+        <div className="pointer-events-none absolute -top-2 right-8 h-5 w-16 rotate-2 bg-primary/12" />
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="space-y-1">
             <p className="text-sm font-semibold text-foreground">Pass/Fail Mode</p>
@@ -169,7 +170,7 @@ export function GradeScaleEditor({
                   })
                 }
                 placeholder="P"
-                className="border-primary/30"
+                className="border-2 border-primary/20 bg-[#fff8f1]"
               />
             </div>
             <div className="space-y-1">
@@ -183,7 +184,7 @@ export function GradeScaleEditor({
                   })
                 }
                 placeholder="F"
-                className="border-primary/30"
+                className="border-2 border-primary/20 bg-[#fff8f1]"
               />
             </div>
             <div className="space-y-1">
@@ -200,7 +201,7 @@ export function GradeScaleEditor({
                     threshold: clampPercentage(Number.isNaN(value) ? 0 : value),
                   })
                 }}
-                className="border-primary/30"
+                className="border-2 border-primary/20 bg-[#fff8f1]"
               />
             </div>
           </div>
@@ -208,7 +209,8 @@ export function GradeScaleEditor({
       </div>
 
       {isPassFail ? (
-        <div className="rounded-lg border border-primary/10 bg-card/70 px-4 py-3 text-sm text-muted-foreground">
+        <div className="relative overflow-hidden rounded-lg border border-primary/20 bg-white/45 px-4 py-3 text-sm text-muted-foreground">
+          <div className="pointer-events-none absolute -top-2 left-8 h-5 w-16 rotate-[-2deg] bg-primary/12" />
           Letter grades are hidden while pass/fail mode is enabled. The pass label, fail label, and threshold above
           control how scores are interpreted.
         </div>
@@ -220,8 +222,9 @@ export function GradeScaleEditor({
               return (
                 <div
                   key={`${grade.letter}-${grade.min}-${index}`}
-                  className="flex items-end gap-3 rounded-lg border-2 border-primary/20 bg-muted/30 p-3"
+                  className="relative flex items-end gap-3 overflow-hidden rounded-lg border-2 border-primary/20 bg-white/45 p-3"
                 >
+                  <div className="pointer-events-none absolute -top-2 left-8 h-4 w-14 rotate-[-2deg] bg-primary/10" />
                   <div className="flex-1">
                     <Label className="text-xs text-muted-foreground">Letter Grade</Label>
                     <Input
@@ -240,7 +243,7 @@ export function GradeScaleEditor({
                           e.currentTarget.blur()
                         }
                       }}
-                      className="border-primary/20"
+                      className="border-2 border-primary/20 bg-[#fff8f1]"
                       placeholder="e.g., A, B+, C-"
                     />
                   </div>
@@ -264,7 +267,7 @@ export function GradeScaleEditor({
                           e.currentTarget.blur()
                         }
                       }}
-                      className="border-primary/20"
+                      className="border-2 border-primary/20 bg-[#fff8f1]"
                     />
                   </div>
                   <Button
@@ -284,7 +287,7 @@ export function GradeScaleEditor({
             onClick={addGrade}
             variant="outline"
             size="sm"
-            className="w-full gap-2 border-2 border-dashed border-primary/30 bg-transparent"
+            className="w-full gap-2 border-2 border-dashed border-primary/30 bg-[#fff8f1]/70"
           >
             <Plus className="h-4 w-4" />
             Add Grade

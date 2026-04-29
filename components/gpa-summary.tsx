@@ -4,7 +4,6 @@ import {
   calculateGPA,
   getLetterGrade,
   getLetterGradeColor,
-  getMonochromeCardColor,
 } from "@/lib/grade-utils"
 import type { Course } from "@/lib/types"
 import { RollingNumber } from "@/components/rolling-number"
@@ -16,7 +15,9 @@ interface GpaSummaryProps {
 export function GpaSummary({ courses }: GpaSummaryProps) {
   const safeCourses = Array.isArray(courses) ? courses : []
   const gpa = calculateGPA(safeCourses)
-  const totalCredits = safeCourses.reduce((sum, c) => sum + c.credits, 0)
+  const totalCredits = Number.parseFloat(
+    safeCourses.reduce((sum, c) => sum + c.credits, 0).toFixed(2),
+  )
   return (
     <Card className="border-2 border-primary/35 shadow-under-white-strong">
       <CardHeader>
@@ -33,7 +34,7 @@ export function GpaSummary({ courses }: GpaSummaryProps) {
           <div className="text-center">
             <p className="text-sm font-medium text-muted-foreground">Total Credits</p>
             <p className="mt-2 text-5xl font-bold text-primary">
-              <RollingNumber value={totalCredits} decimals={1} />
+              <RollingNumber value={totalCredits} decimals={2} />
             </p>
           </div>
           <div className="text-center">
@@ -59,14 +60,12 @@ export function GpaSummary({ courses }: GpaSummaryProps) {
               const grade = calculateCourseGrade(course.criteria, course.percentBoost)
               const letter = getLetterGrade(grade, course.gradeScale)
               const gradeColor = getLetterGradeColor(letter)
-              const monochromeColor = getMonochromeCardColor(course.cardColor)
-              const backgroundStyle = monochromeColor ? { backgroundColor: monochromeColor } : undefined
               return (
                 <div
                   key={`${course.id}-${index}`}
-                  className="flex items-center justify-between rounded border border-primary/20 bg-card px-3 py-2 text-sm"
+                  className={`flex items-center justify-between rounded border border-primary/20 bg-card px-3 py-2 text-sm overflow-hidden ${course.headerColor ? "border-l-4" : ""}`}
                   dir={safeCourses.length > 4 ? "ltr" : undefined}
-                  style={backgroundStyle}
+                  style={course.headerColor ? { borderLeftColor: course.headerColor } : undefined}
                 >
                   <span className="min-w-0 truncate font-medium">{course.name}</span>
                   <div className="flex shrink-0 items-center gap-3">

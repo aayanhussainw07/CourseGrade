@@ -6,7 +6,9 @@ from flask import Blueprint, jsonify, request
 from sqlalchemy.exc import IntegrityError
 
 from extensions import db
-from models import Assignment, Course, GradeScale, Semester
+import json
+
+from models import Assignment, Course, Feedback, GradeScale, Semester, UserSettings
 
 api = Blueprint("api", __name__, url_prefix="/api")
 
@@ -402,7 +404,7 @@ def courses_collection():
     elif len(name) > 200:
         errors.setdefault("name", []).append("Ensure this field has no more than 200 characters.")
 
-    credits = _parse_int(payload.get("credits", 3), "credits", errors)
+    credits = _parse_float(payload.get("credits", 3), "credits", errors, min_value=0)
 
     is_pass_fail = _parse_bool(payload.get("is_pass_fail", False), "is_pass_fail", errors)
 
@@ -482,7 +484,7 @@ def course_detail(course_id: int):
             course.name = name
 
     if "credits" in payload:
-        credits = _parse_int(payload.get("credits"), "credits", errors)
+        credits = _parse_float(payload.get("credits"), "credits", errors, min_value=0)
         if "credits" not in errors:
             course.credits = credits
 
@@ -717,3 +719,106 @@ def grade_scales_reset_default():
 
     grade_scales = GradeScale.query.order_by(GradeScale.min_percentage.desc()).all()
     return jsonify([_serialize_grade_scale(scale) for scale in grade_scales]), 201
+
+
+# ── User Settings ───────────────────────────────────────────────────────────
+
+
+@api.route("/settings/", methods=["GET", "PUT"])
+def user_settings():
+    user_id = _request_user_id()
+
+    row = UserSettings.query.filter_by(user_id=user_id).first()
+
+    if request.method == "GET":
+        if row is None:
+            return jsonify({})
+        try:
+            return jsonify(json.loads(row.settings_json))
+        except (json.JSONDecodeError, TypeError):
+            return jsonify({})
+
+    # PUT — replace settings
+    payload = _json_payload()
+    settings_str = json.dumps(payload)
+    if len(settings_str) > 50_000:
+        return jsonify({"detail": "Settings payload too large."}), 400
+
+    if row is None:
+        row = UserSettings(user_id=user_id, settings_json=settings_str)
+        db.session.add(row)
+    else:
+        row.settings_json = settings_str
+
+    db.session.commit()
+    return jsonify(json.loads(row.settings_json))
+
+
+# ── Feedback ────────────────────────────────────────────────────────────────
+
+
+ADMIN_EMAILS = {"aayanhussainw07@gmail.com", "ah2425@gmail.com"}
+
+
+def _serialize_feedback(fb: Feedback) -> dict:
+    return {
+        "id": fb.id,
+        "user_id": fb.user_id,
+        "rating": fb.rating,
+        "comment": fb.comment,
+        "completed": fb.completed,
+        "created_at": _serialize_datetime(fb.created_at),
+    }
+
+
+def _feedback_admin_forbidden():
+    admin_email = request.headers.get("X-User-Email", "").strip().lower()
+    if admin_email not in ADMIN_EMAILS:
+        return jsonify({"detail": "Forbidden."}), 403
+    return None
+
+
+@api.route("/feedback/", methods=["GET", "POST"])
+def feedback_list():
+    user_id = _request_user_id()
+
+    if request.method == "POST":
+        payload = _json_payload()
+        rating = payload.get("rating")
+        if not isinstance(rating, int) or rating < 1 or rating > 5:
+            return jsonify({"detail": "rating must be an integer 1-5."}), 400
+        comment = payload.get("comment", "")
+        if not isinstance(comment, str):
+            comment = ""
+        fb = Feedback(user_id=user_id, rating=rating, comment=comment[:5000])
+        db.session.add(fb)
+        db.session.commit()
+        return jsonify(_serialize_feedback(fb)), 201
+
+    # GET — admin only
+    forbidden = _feedback_admin_forbidden()
+    if forbidden:
+        return forbidden
+
+    entries = Feedback.query.order_by(Feedback.completed.asc(), Feedback.created_at.desc()).all()
+    return jsonify([_serialize_feedback(fb) for fb in entries])
+
+
+@api.route("/feedback/<int:feedback_id>/", methods=["PATCH", "DELETE"])
+def feedback_detail(feedback_id: int):
+    forbidden = _feedback_admin_forbidden()
+    if forbidden:
+        return forbidden
+
+    fb = Feedback.query.get_or_404(feedback_id)
+
+    if request.method == "DELETE":
+        db.session.delete(fb)
+        db.session.commit()
+        return "", 204
+
+    payload = _json_payload()
+    if "completed" in payload:
+        fb.completed = bool(payload.get("completed"))
+    db.session.commit()
+    return jsonify(_serialize_feedback(fb))

@@ -227,6 +227,17 @@ export const assignmentApi = {
     }),
 }
 
+// User settings
+export const settingsApi = {
+  get: () => apiFetch<Record<string, unknown>>("/settings/"),
+
+  save: (data: Record<string, unknown>) =>
+    apiFetch<Record<string, unknown>>("/settings/", {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+}
+
 // Syllabus AI import
 export type SyllabusExtracted = {
   courseName: string

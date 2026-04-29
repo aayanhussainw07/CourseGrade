@@ -2,18 +2,16 @@
 
 import type React from "react";
 import { useEffect, useState, useRef, useMemo, useCallback } from "react";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import {
   Trash2,
   Plus,
   Settings,
   ChevronDown,
   ChevronUp,
-  Download,
   Copy,
   FlaskConical,
   Pencil,
@@ -23,7 +21,6 @@ import {
   cloneGradeScale,
   getLetterGrade,
   getLetterGradeColor,
-  getMonochromeCardColor,
 } from "@/lib/grade-utils";
 import type { Course, Criterion, SubItem, GradeScale } from "@/lib/types";
 import {
@@ -38,8 +35,30 @@ import { RollingNumber } from "@/components/rolling-number";
 import { DEFAULT_GRADE_SCALE } from "@/lib/types";
 import { parseScoreInput } from "@/lib/score-input";
 import { CriterionRow } from "@/components/course/CriterionRow";
-import { CourseColorPicker } from "@/components/course/CourseColorPicker";
+import { HeaderColorPicker } from "@/components/course/HeaderColorPicker";
 import { CourseContext } from "@/components/course/CourseContext";
+import type { DragIntent, DropIndicator } from "@/components/course/CourseContext";
+
+const COLLAPSED_PAPER_ROTATIONS = [
+  "rotate-[-0.35deg]",
+  "rotate-[0.2deg]",
+  "rotate-[-0.15deg]",
+  "rotate-[0.35deg]",
+];
+
+const getStableIndex = (value: string, modulo: number) => {
+  let total = 0;
+  for (let i = 0; i < value.length; i += 1) {
+    total += value.charCodeAt(i);
+  }
+  return total % modulo;
+};
+
+const paperShadow =
+  "shadow-[0_3px_0_rgba(198,90,78,0.20),0_10px_18px_rgba(77,31,26,0.08)]";
+
+const paperTapeClass =
+  "pointer-events-none absolute -top-2 h-5 w-20 bg-primary/15";
 
 const buildPassFailScale = (settings: {
   passLabel?: string;
@@ -62,7 +81,6 @@ interface CourseCardProps {
   highlighted?: boolean;
   onUpdate: (id: string, course: Course) => void | Promise<void>;
   onDelete: (id: string) => void;
-  onExportCourse?: (courseId: string) => void;
   onDuplicate?: () => void;
 }
 
@@ -71,17 +89,20 @@ export function CourseCard({
   highlighted = false,
   onUpdate,
   onDelete,
-  onExportCourse,
   onDuplicate,
 }: CourseCardProps) {
   const [isScaleOpen, setIsScaleOpen] = useState(false);
-  const [expandedCriteria, setExpandedCriteria] = useState<Set<string>>(new Set());
+  const [expandedCriteria, setExpandedCriteria] = useState<Set<string>>(
+    new Set(),
+  );
   const [nameDraft, setNameDraft] = useState(course.name);
   const formatCreditsDraft = (value: number | null | undefined) => {
     if (value === undefined || value === null || value === 0) return "";
     return value.toString();
   };
-  const [creditsDraft, setCreditsDraft] = useState(() => formatCreditsDraft(course.credits));
+  const [creditsDraft, setCreditsDraft] = useState(() =>
+    formatCreditsDraft(course.credits),
+  );
   const [creditsFocused, setCreditsFocused] = useState(false);
   const formatPercentBoostDraft = (value: number | null | undefined) => {
     if (value === undefined || value === null || value === 0) return "";
@@ -92,18 +113,26 @@ export function CourseCard({
   );
   const [percentBoostFocused, setPercentBoostFocused] = useState(false);
   const [draggingCriterionId, setDraggingCriterionId] = useState<string | null>(null);
-  const [subDropTargetId, setSubDropTargetId] = useState<string | null>(null);
-  const draggingIdRef = useRef<string | null>(null);
   const [draggingSubItemId, setDraggingSubItemId] = useState<string | null>(null);
   const [draggingSubItemParentId, setDraggingSubItemParentId] = useState<string | null>(null);
-  const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const dragOverIdRef = useRef<string | null>(null);
+  const [dropIndicator, setDropIndicator] = useState<DropIndicator | null>(null);
+  const draggingIdRef = useRef<string | null>(null);
+  const dragStartXRef = useRef<number>(0);
   const [whatIfMode, setWhatIfMode] = useState(false);
   const [whatIfScores, setWhatIfScores] = useState<Record<string, string>>({});
   const [directGradeEditing, setDirectGradeEditing] = useState(false);
   const [directGradeDraft, setDirectGradeDraft] = useState("");
   const interactiveDragSelector =
     "button, input, textarea, select, a[href], [contenteditable='true'], [role='button'], [draggable='false']";
+  const collapsedPaperRotation =
+    COLLAPSED_PAPER_ROTATIONS[
+      getStableIndex(course.id, COLLAPSED_PAPER_ROTATIONS.length)
+    ];
+  const paperShellClass = `${paperShadow} relative rounded-xl border-2 bg-[#fff8f1] text-card-foreground backdrop-blur-xl transition-all duration-300 ${
+    highlighted && !course.collapsed
+      ? "border-primary ring-2 ring-primary/40 ring-offset-2"
+      : "border-primary/25"
+  }`;
 
   useEffect(() => {
     setNameDraft(course.name);
@@ -133,7 +162,15 @@ export function CourseCard({
     [course.criteria],
   );
 
-  const { numericGrade, letterGrade, gradeColor, totalWeight, whatIfNumericGrade, whatIfLetterGrade, whatIfGradeColor } = useMemo(() => {
+  const {
+    numericGrade,
+    letterGrade,
+    gradeColor,
+    totalWeight,
+    whatIfNumericGrade,
+    whatIfLetterGrade,
+    whatIfGradeColor,
+  } = useMemo(() => {
     const numeric = calculateCourseGrade(courseCriteria, course.percentBoost);
     const letter = getLetterGrade(numeric, course.gradeScale);
     const whatIfCriteria = courseCriteria.map((c) => {
@@ -142,7 +179,10 @@ export function CourseCard({
       const parsed = parseScoreInput(raw, course.gradeScale);
       return parsed !== null ? { ...c, score: parsed } : c;
     });
-    const whatIfNumeric = calculateCourseGrade(whatIfCriteria, course.percentBoost);
+    const whatIfNumeric = calculateCourseGrade(
+      whatIfCriteria,
+      course.percentBoost,
+    );
     const whatIfLetter = getLetterGrade(whatIfNumeric, course.gradeScale);
     return {
       numericGrade: numeric,
@@ -175,7 +215,7 @@ export function CourseCard({
       setCreditsDraft(formatCreditsDraft(course.credits));
       return;
     }
-    const normalized = Math.round(parsed);
+    const normalized = Math.max(0, Number.parseFloat(parsed.toFixed(2)));
     setCreditsDraft(normalized.toString());
     if (normalized === course.credits) return;
     updateCourse({ credits: normalized });
@@ -193,16 +233,35 @@ export function CourseCard({
       setPercentBoostDraft(formatPercentBoostDraft(course.percentBoost));
       return;
     }
-    const normalized = Math.max(0, Math.min(100, Number.parseFloat(parsed.toFixed(2))));
+    const normalized = Math.max(
+      0,
+      Math.min(100, Number.parseFloat(parsed.toFixed(2))),
+    );
     setPercentBoostDraft(normalized.toString());
     if (normalized === (course.percentBoost ?? 0)) return;
     updateCourse({ percentBoost: normalized });
   };
 
-  const updateCardColor = (colorValue: string) => {
+  const updateHeaderColor = (colorValue: string) => {
     const normalized = colorValue || null;
-    if ((course.cardColor ?? null) === normalized) return;
-    updateCourse({ cardColor: normalized });
+    if ((course.headerColor ?? null) === normalized) return;
+    updateCourse({ headerColor: normalized });
+  };
+
+  const startDirectGradeEdit = () => {
+    if (courseCriteria.length > 0) return;
+    setDirectGradeDraft(numericGrade > 0 ? String(numericGrade) : "");
+    setDirectGradeEditing(true);
+  };
+
+  const commitDirectGrade = () => {
+    const parsed = Number.parseFloat(directGradeDraft.trim());
+    const normalized = !Number.isNaN(parsed)
+      ? Math.min(100, Math.max(0, Number.parseFloat(parsed.toFixed(2))))
+      : 0;
+    setPercentBoostDraft(normalized > 0 ? String(normalized) : "");
+    updateCourse({ percentBoost: normalized });
+    setDirectGradeEditing(false);
   };
 
   const addCriterion = () => {
@@ -221,7 +280,9 @@ export function CourseCard({
 
   const updateCriterion = (id: string, updates: Partial<Criterion>) => {
     updateCourse({
-      criteria: courseCriteria.map((c) => (c.id === id ? { ...c, ...updates } : c)),
+      criteria: courseCriteria.map((c) =>
+        c.id === id ? { ...c, ...updates } : c,
+      ),
     });
   };
 
@@ -232,7 +293,9 @@ export function CourseCard({
       position: "before" | "after" = "before",
     ) => {
       if (!sourceId || sourceId === targetId) return;
-      const working = [...(Array.isArray(courseCriteria) ? courseCriteria : [])];
+      const working = [
+        ...(Array.isArray(courseCriteria) ? courseCriteria : []),
+      ];
       const sourceIndex = working.findIndex((c) => c.id === sourceId);
       if (sourceIndex === -1) return;
       const [moved] = working.splice(sourceIndex, 1);
@@ -266,7 +329,10 @@ export function CourseCard({
       id: newId,
       clientId: newId,
       name: source.name ? `${source.name} (copy)` : "",
-      subItems: source.subItems?.map((si) => ({ ...si, id: crypto.randomUUID() })),
+      subItems: source.subItems?.map((si) => ({
+        ...si,
+        id: crypto.randomUUID(),
+      })),
     };
     const sourceIndex = courseCriteria.findIndex((c) => c.id === id);
     const updated = [...courseCriteria];
@@ -274,16 +340,45 @@ export function CourseCard({
     updateCourse({ criteria: updated });
   };
 
-  const convertToSubCriterion = (sourceId: string, targetId: string) => {
+  const convertToSubCriterion = (
+    sourceId: string,
+    targetId: string,
+    adjacentSubItemId?: string | null,
+    position: "before" | "after" = "after",
+  ) => {
+    if (sourceId === targetId) return;
     const source = courseCriteria.find((c) => c.id === sourceId);
     const target = courseCriteria.find((c) => c.id === targetId);
     if (!source || !target) return;
     const sourceScore =
       source.subItems && source.subItems.length > 0
-        ? source.subItems.reduce((sum, si) => sum + si.score, 0) / source.subItems.length
+        ? source.subItems.reduce((sum, si) => sum + si.score, 0) /
+          source.subItems.length
         : source.score;
-    const newSubItem: SubItem = { id: crypto.randomUUID(), name: source.name || "Item", score: sourceScore };
-    const updatedTarget: Criterion = { ...target, subItems: [...(target.subItems ?? []), newSubItem] };
+    const newSubItem: SubItem = {
+      id: crypto.randomUUID(),
+      name: source.name || "Item",
+      score: sourceScore,
+    };
+    const targetSubItems = [...(target.subItems ?? [])];
+    if (adjacentSubItemId) {
+      const adjacentIndex = targetSubItems.findIndex(
+        (item) => item.id === adjacentSubItemId,
+      );
+      const insertIndex =
+        adjacentIndex === -1
+          ? targetSubItems.length
+          : position === "after"
+            ? adjacentIndex + 1
+            : adjacentIndex;
+      targetSubItems.splice(insertIndex, 0, newSubItem);
+    } else {
+      targetSubItems.push(newSubItem);
+    }
+    const updatedTarget: Criterion = {
+      ...target,
+      subItems: targetSubItems,
+    };
     const targetKey = target.clientId ?? target.id;
     setExpandedCriteria((prev) => new Set(prev).add(targetKey));
     updateCourse({
@@ -297,12 +392,18 @@ export function CourseCard({
     const criterion = courseCriteria.find((c) => c.id === criterionId);
     if (!criterion) return;
     const newSubItem: SubItem = { id: crypto.randomUUID(), name: "", score: 0 };
-    updateCriterion(criterionId, { subItems: [...(criterion.subItems || []), newSubItem] });
+    updateCriterion(criterionId, {
+      subItems: [...(criterion.subItems || []), newSubItem],
+    });
     const expandedKey = criterion.clientId ?? criterion.id;
     setExpandedCriteria((prev) => new Set(prev).add(expandedKey));
   };
 
-  const updateSubItem = (criterionId: string, subItemId: string, updates: Partial<SubItem>) => {
+  const updateSubItem = (
+    criterionId: string,
+    subItemId: string,
+    updates: Partial<SubItem>,
+  ) => {
     const criterion = courseCriteria.find((c) => c.id === criterionId);
     if (!criterion?.subItems) return;
     updateCriterion(criterionId, {
@@ -326,7 +427,11 @@ export function CourseCard({
     const source = criterion.subItems.find((si) => si.id === subItemId);
     if (!source) return;
     const newId = crypto.randomUUID();
-    const dupe = { ...source, id: newId, name: source.name ? `${source.name} (copy)` : "" };
+    const dupe = {
+      ...source,
+      id: newId,
+      name: source.name ? `${source.name} (copy)` : "",
+    };
     const idx = criterion.subItems.findIndex((si) => si.id === subItemId);
     const updated = [...criterion.subItems];
     updated.splice(idx + 1, 0, dupe);
@@ -366,7 +471,9 @@ export function CourseCard({
     const subItem = parent.subItems.find((si) => si.id === subItemId);
     if (!subItem) return;
     const subItemWeight = subItem.weight ?? 100 / parent.subItems.length;
-    const criterionWeight = Number(((subItemWeight * parent.weight) / 100).toFixed(2));
+    const criterionWeight = Number(
+      ((subItemWeight * parent.weight) / 100).toFixed(2),
+    );
     const newId = crypto.randomUUID();
     const newCriterion: Criterion = {
       id: newId,
@@ -381,7 +488,9 @@ export function CourseCard({
       ...parent,
       subItems: parent.subItems.filter((si) => si.id !== subItemId),
     };
-    let updated = courseCriteria.map((c) => (c.id === parentCriterionId ? updatedParent : c));
+    let updated = courseCriteria.map((c) =>
+      c.id === parentCriterionId ? updatedParent : c,
+    );
     if (!adjacentCriterionId) {
       updated = [...updated, newCriterion];
     } else {
@@ -397,14 +506,60 @@ export function CourseCard({
     updateCourse({ criteria: updated });
   };
 
+  const NEST_THRESHOLD_PX = 60;
+
+  const computeIntent = (
+    e: React.DragEvent<HTMLDivElement>,
+    targetId: string,
+  ): DropIndicator | null => {
+    const sourceId = draggingIdRef.current;
+    if (!sourceId || sourceId === targetId) return null;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const yRatio = (e.clientY - rect.top) / rect.height;
+    const position: "before" | "after" = yRatio < 0.5 ? "before" : "after";
+    const isSubItem = sourceId.startsWith("subitem:");
+    const horizontalShift = e.clientX - dragStartXRef.current;
+
+    let intent: DragIntent;
+    if (isSubItem) {
+      intent = horizontalShift < -NEST_THRESHOLD_PX ? "promote" : "reorder";
+    } else {
+      intent = horizontalShift > NEST_THRESHOLD_PX ? "nest" : "reorder";
+    }
+    return { targetId, position, intent };
+  };
+
+  const handleDragStart = (
+    event: React.DragEvent<HTMLDivElement>,
+    criterionId: string,
+  ) => {
+    const target = event.target as HTMLElement | null;
+    if (target && target.closest(interactiveDragSelector)) {
+      event.preventDefault();
+      return;
+    }
+    event.stopPropagation();
+    draggingIdRef.current = criterionId;
+    dragStartXRef.current = event.clientX;
+    setDraggingCriterionId(criterionId);
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", criterionId);
+  };
+
   const handleSubItemDragStart = (
     event: React.DragEvent<HTMLDivElement>,
     criterionId: string,
     subItemId: string,
   ) => {
+    const target = event.target as HTMLElement | null;
+    if (target && target.closest(interactiveDragSelector)) {
+      event.preventDefault();
+      return;
+    }
     event.stopPropagation();
     const key = `subitem:${criterionId}:${subItemId}`;
     draggingIdRef.current = key;
+    dragStartXRef.current = event.clientX;
     setDraggingSubItemId(subItemId);
     setDraggingSubItemParentId(criterionId);
     event.dataTransfer.effectAllowed = "move";
@@ -415,9 +570,70 @@ export function CourseCard({
     draggingIdRef.current = null;
     setDraggingSubItemId(null);
     setDraggingSubItemParentId(null);
+    setDropIndicator(null);
   };
 
-  const handleSubItemDropOnSibling = (
+  const handleDragOver = (
+    event: React.DragEvent<HTMLDivElement>,
+    targetId: string,
+  ) => {
+    event.preventDefault();
+    event.stopPropagation();
+    event.dataTransfer.dropEffect = "move";
+    const indicator = computeIntent(event, targetId);
+    if (indicator) {
+      setDropIndicator(indicator);
+    }
+  };
+
+  const handleDragLeave = (
+    event: React.DragEvent<HTMLDivElement>,
+    targetId: string,
+  ) => {
+    if (event.currentTarget.contains(event.relatedTarget as Node | null)) return;
+    setDropIndicator((current) =>
+      current?.targetId === targetId ? null : current,
+    );
+  };
+
+  const handleSubItemDragOver = (
+    event: React.DragEvent<HTMLDivElement>,
+    parentCriterionId: string,
+    subItemId: string,
+  ) => {
+    event.preventDefault();
+    event.stopPropagation();
+    event.dataTransfer.dropEffect = "move";
+    const sourceId = draggingIdRef.current;
+    if (!sourceId) return;
+
+    const rect = event.currentTarget.getBoundingClientRect();
+    const position: "before" | "after" = (event.clientY - rect.top) / rect.height < 0.5 ? "before" : "after";
+    const horizontalShift = event.clientX - dragStartXRef.current;
+
+    const isSubItemSource = sourceId.startsWith("subitem:");
+    let intent: DragIntent;
+    if (isSubItemSource) {
+      intent = horizontalShift < -NEST_THRESHOLD_PX ? "promote" : "reorder";
+    } else {
+      intent = "nest";
+    }
+    setDropIndicator({ targetId: `sub:${parentCriterionId}:${subItemId}`, position, intent });
+  };
+
+  const handleSubItemDragLeave = (
+    event: React.DragEvent<HTMLDivElement>,
+    parentCriterionId: string,
+    subItemId: string,
+  ) => {
+    if (event.currentTarget.contains(event.relatedTarget as Node | null)) return;
+    const targetId = `sub:${parentCriterionId}:${subItemId}`;
+    setDropIndicator((current) =>
+      current?.targetId === targetId ? null : current,
+    );
+  };
+
+  const handleSubItemDrop = (
     event: React.DragEvent<HTMLDivElement>,
     parentCriterionId: string,
     targetSubItemId: string,
@@ -426,103 +642,83 @@ export function CourseCard({
     event.stopPropagation();
     const raw = draggingIdRef.current || event.dataTransfer.getData("text/plain");
     if (!raw) return;
-    draggingIdRef.current = null;
-    setDraggingSubItemId(null);
-    setDraggingSubItemParentId(null);
-    if (!raw.startsWith("subitem:")) return;
-    const [, srcParentId, srcSubItemId] = raw.split(":");
-    if (srcSubItemId === targetSubItemId) return;
-    const rect = event.currentTarget.getBoundingClientRect();
-    const after = event.clientY - rect.top > rect.height / 2;
-    if (srcParentId === parentCriterionId) {
-      moveSubItemWithinParent(parentCriterionId, srcSubItemId, targetSubItemId, after);
-    } else {
-      promoteSubItemToCriterion(srcParentId, srcSubItemId, parentCriterionId, after ? "after" : "before");
-    }
-  };
 
-  const handleDragStart = (event: React.DragEvent<HTMLDivElement>, criterionId: string) => {
-    const target = event.target as HTMLElement | null;
-    if (target && target.closest(interactiveDragSelector)) {
-      event.preventDefault();
+    const indicator = dropIndicator;
+    clearDragState();
+
+    if (!raw.startsWith("subitem:")) {
+      if (raw === parentCriterionId) return;
+      convertToSubCriterion(
+        raw,
+        parentCriterionId,
+        targetSubItemId,
+        indicator?.position ?? "after",
+      );
       return;
     }
-    event.stopPropagation();
-    draggingIdRef.current = criterionId;
-    setDraggingCriterionId(criterionId);
-    event.dataTransfer.effectAllowed = "move";
-    event.dataTransfer.setData("text/plain", criterionId);
-  };
 
-  const handleDragOver = (event: React.DragEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    event.dataTransfer.dropEffect = "move";
-  };
+    if (raw.startsWith("subitem:")) {
+      const [, srcParentId, srcSubItemId] = raw.split(":");
+      if (srcSubItemId === targetSubItemId) return;
 
-  const handleDragEnter = (event: React.DragEvent<HTMLDivElement>, targetId: string) => {
-    event.preventDefault();
-    if (dragOverIdRef.current === targetId) return;
-    dragOverIdRef.current = targetId;
-    if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
-    setSubDropTargetId(null);
-    const sourceId = draggingIdRef.current;
-    if (sourceId && !sourceId.startsWith("subitem:") && sourceId !== targetId) {
-      hoverTimerRef.current = setTimeout(() => setSubDropTargetId(targetId), 500);
+      if (indicator?.intent === "promote") {
+        promoteSubItemToCriterion(srcParentId, srcSubItemId, parentCriterionId, indicator.position);
+        return;
+      }
+
+      if (srcParentId === parentCriterionId) {
+        const after = indicator?.position === "after";
+        moveSubItemWithinParent(parentCriterionId, srcSubItemId, targetSubItemId, after);
+      } else {
+        promoteSubItemToCriterion(srcParentId, srcSubItemId, parentCriterionId, indicator?.position ?? "before");
+      }
     }
   };
 
-  const handleDragLeave = (event: React.DragEvent<HTMLDivElement>, targetId: string) => {
-    if (event.currentTarget.contains(event.relatedTarget as Node)) return;
-    if (dragOverIdRef.current === targetId) {
-      dragOverIdRef.current = null;
-      if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
-      setSubDropTargetId(null);
-    }
-  };
-
-  const handleDropOnCriterion = (event: React.DragEvent<HTMLDivElement>, targetId: string) => {
+  const handleDropOnCriterion = (
+    event: React.DragEvent<HTMLDivElement>,
+    targetId: string,
+  ) => {
     event.preventDefault();
     event.stopPropagation();
     const raw = draggingIdRef.current || event.dataTransfer.getData("text/plain");
     if (!raw) return;
-    if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
-    dragOverIdRef.current = null;
+
+    const indicator = dropIndicator;
+    clearDragState();
 
     if (raw.startsWith("subitem:")) {
       const [, parentId, subItemId] = raw.split(":");
-      draggingIdRef.current = null;
-      setDraggingSubItemId(null);
-      setDraggingSubItemParentId(null);
-      setSubDropTargetId(null);
-      setDraggingCriterionId(null);
-      if (parentId === targetId) return;
-      const rect = event.currentTarget.getBoundingClientRect();
-      const after = event.clientY - rect.top > rect.height / 2;
-      promoteSubItemToCriterion(parentId, subItemId, targetId, after ? "after" : "before");
+      if (parentId === targetId && indicator?.intent !== "promote") return;
+      promoteSubItemToCriterion(
+        parentId,
+        subItemId,
+        targetId,
+        indicator?.position ?? "after",
+      );
       return;
     }
 
     const sourceId = raw;
-    if (subDropTargetId === targetId && sourceId !== targetId) {
+    if (sourceId === targetId) return;
+
+    if (indicator?.intent === "nest") {
       convertToSubCriterion(sourceId, targetId);
     } else {
-      const rect = event.currentTarget.getBoundingClientRect();
-      const dropAfter = event.clientY - rect.top > rect.height / 2;
-      moveCriterion(sourceId, targetId, dropAfter ? "after" : "before");
+      moveCriterion(sourceId, targetId, indicator?.position ?? "after");
     }
+  };
+
+  const clearDragState = () => {
     draggingIdRef.current = null;
-    setSubDropTargetId(null);
     setDraggingCriterionId(null);
+    setDraggingSubItemId(null);
+    setDraggingSubItemParentId(null);
+    setDropIndicator(null);
   };
 
   const handleDragEnd = () => {
-    if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
-    dragOverIdRef.current = null;
-    draggingIdRef.current = null;
-    setDraggingCriterionId(null);
-    setSubDropTargetId(null);
-    setDraggingSubItemId(null);
-    setDraggingSubItemParentId(null);
+    clearDragState();
   };
 
   const handleDropAtEnd = (event: React.DragEvent<HTMLDivElement>) => {
@@ -530,18 +726,12 @@ export function CourseCard({
     event.stopPropagation();
     const raw = draggingIdRef.current || event.dataTransfer.getData("text/plain");
     if (!raw) return;
-    if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
-    dragOverIdRef.current = null;
-    draggingIdRef.current = null;
-    setSubDropTargetId(null);
+    clearDragState();
     if (raw.startsWith("subitem:")) {
       const [, parentId, subItemId] = raw.split(":");
-      setDraggingSubItemId(null);
-      setDraggingSubItemParentId(null);
       promoteSubItemToCriterion(parentId, subItemId, null, "after");
     } else {
       moveCriterion(raw, null, "after");
-      setDraggingCriterionId(null);
     }
   };
 
@@ -575,11 +765,7 @@ export function CourseCard({
         : passFailSettings.failLabel,
     [numericGrade, passFailSettings],
   );
-
-  const cardBackgroundStyle = useMemo(() => {
-    const color = getMonochromeCardColor(course.cardColor);
-    return color ? { backgroundColor: color } : undefined;
-  }, [course.cardColor]);
+  const isDraggingGradeItem = Boolean(draggingCriterionId || draggingSubItemId);
 
   const handlePassFailToggle = useCallback(
     (value: boolean) => {
@@ -587,31 +773,39 @@ export function CourseCard({
         const snapshot = course.gradeScaleSnapshot
           ? cloneGradeScale(course.gradeScaleSnapshot)
           : cloneGradeScale(course.gradeScale);
-        updateCourse({ isPassFail: true, gradeScaleSnapshot: snapshot, gradeScale: passFailScale });
+        updateCourse({
+          isPassFail: true,
+          gradeScaleSnapshot: snapshot,
+          gradeScale: passFailScale,
+        });
         return;
       }
       const restoredScale = course.gradeScaleSnapshot
         ? cloneGradeScale(course.gradeScaleSnapshot)
         : DEFAULT_GRADE_SCALE.map((grade) => ({ ...grade }));
-      updateCourse({ isPassFail: false, gradeScale: restoredScale, gradeScaleSnapshot: undefined });
+      updateCourse({
+        isPassFail: false,
+        gradeScale: restoredScale,
+        gradeScaleSnapshot: undefined,
+      });
     },
     [course.gradeScale, course.gradeScaleSnapshot, passFailScale, updateCourse],
   );
 
   const gradeSummary = (collapsed: boolean) => (
     <div
-      className={`flex items-center justify-between rounded-lg border border-primary/20 bg-primary/5/60 ${collapsed ? "p-4" : "p-6"}`}
+      className={`relative flex items-center justify-between rounded-lg border border-primary/25 bg-[#fff8f1] shadow-[3px_4px_0_rgba(198,90,78,0.13)] ${collapsed ? "p-4" : "p-6"}`}
     >
+      {!collapsed && (
+        <div className="pointer-events-none absolute -top-2 right-8 h-5 w-16 rotate-3 bg-primary/15" />
+      )}
       <div>
         <p className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
           Numeric Grade
           {courseCriteria.length === 0 && !directGradeEditing && (
             <button
               type="button"
-              onClick={() => {
-                setDirectGradeDraft(numericGrade > 0 ? String(numericGrade) : "");
-                setDirectGradeEditing(true);
-              }}
+              onClick={startDirectGradeEdit}
               className="ml-0.5 rounded p-0.5 text-muted-foreground/50 hover:text-primary transition-colors"
               title="Enter final grade"
             >
@@ -626,15 +820,7 @@ export function CourseCard({
             autoFocus
             value={directGradeDraft}
             onChange={(e) => setDirectGradeDraft(e.target.value)}
-            onBlur={() => {
-              const parsed = Number.parseFloat(directGradeDraft.trim());
-              const normalized = !Number.isNaN(parsed)
-                ? Math.min(100, Math.max(0, Number.parseFloat(parsed.toFixed(2))))
-                : 0;
-              setPercentBoostDraft(normalized > 0 ? String(normalized) : "");
-              updateCourse({ percentBoost: normalized });
-              setDirectGradeEditing(false);
-            }}
+            onBlur={commitDirectGrade}
             onKeyDown={(e) => {
               if (e.key === "Enter") e.currentTarget.blur();
               if (e.key === "Escape") setDirectGradeEditing(false);
@@ -643,7 +829,9 @@ export function CourseCard({
             className={`mt-1 rounded-md border-2 border-primary/40 bg-transparent px-3 py-1 font-bold text-primary outline-none focus:border-primary ${collapsed ? "w-28 py-0.5 text-2xl px-2" : "w-32 text-3xl"}`}
           />
         ) : (
-          <p className={`mt-1 font-bold text-primary ${collapsed ? "text-2xl" : "text-4xl"}`}>
+          <p
+            className={`mt-1 font-bold text-primary ${collapsed ? "text-2xl" : "text-4xl"}`}
+          >
             <RollingNumber value={numericGrade} decimals={2} />%
           </p>
         )}
@@ -658,290 +846,451 @@ export function CourseCard({
         >
           {course.isPassFail ? passFailLabel : letterGrade}
         </p>
+        {!collapsed && (
+          <Dialog open={isScaleOpen} onOpenChange={setIsScaleOpen}>
+            <DialogTrigger asChild>
+              <Button variant="ghost" size="sm" className="mt-3 gap-2">
+                <Settings className="h-4 w-4" />
+                Curve
+              </Button>
+            </DialogTrigger>
+            <DialogContent
+              className="max-h-[85vh] max-w-2xl overflow-hidden border-2 border-primary/25 bg-[#fff8f1] p-0 text-foreground ![box-shadow:none] [&_*]:![box-shadow:none] [&]:focus-visible:outline-none [&]:focus-visible:ring-0"
+              onOpenAutoFocus={(event) => event.preventDefault()}
+            >
+              <DialogHeader className="relative border-b border-primary/20 bg-[#fff3ea] px-6 pb-4 pt-6 text-left">
+                <div className="pointer-events-none absolute -top-2 left-10 h-5 w-16 rotate-[-2deg] bg-primary/12" />
+                <DialogTitle className="font-heading text-lg tracking-widest text-primary">
+                  Edit Curve
+                </DialogTitle>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Adjust grade cutoffs and pass/fail behavior for this course.
+                </p>
+              </DialogHeader>
+              <div className="max-h-[calc(85vh-104px)] overflow-y-auto px-4 py-4 sm:px-6">
+                <GradeScaleEditor
+                  gradeScale={course.gradeScale}
+                  isPassFail={course.isPassFail ?? false}
+                  onPassFailChange={handlePassFailToggle}
+                  passFailSettings={passFailSettings}
+                  onPassFailSettingsChange={(settings) =>
+                    updateCourse({
+                      passLabel: settings.passLabel,
+                      failLabel: settings.failLabel,
+                      passThreshold: settings.threshold,
+                    })
+                  }
+                  onUpdate={(gradeScale) => updateCourse({ gradeScale })}
+                />
+              </div>
+            </DialogContent>
+          </Dialog>
+        )}
       </div>
     </div>
   );
 
-  return (
-    <Card
-      className={`border-2 shadow-under-white transition-all duration-300 ${highlighted ? "border-primary ring-2 ring-primary/40 ring-offset-2" : "border-primary/35"}`}
-      style={cardBackgroundStyle}
-    >
-      <CardHeader className="">
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex-1 space-y-3">
-            {/* Course name + controls */}
-            <div className="flex flex-wrap items-center gap-3">
-              <Input
-                value={nameDraft}
-                onChange={(e) => setNameDraft(e.target.value)}
-                onBlur={commitCourseName}
+  if (course.collapsed) {
+    const displayGrade = course.isPassFail ? passFailLabel : letterGrade;
+    const displayColor = course.isPassFail ? "#6b7280" : gradeColor;
+    return (
+      <div
+        className={`${paperShellClass} overflow-visible ${collapsedPaperRotation} focus-within:z-50 hover:z-20 hover:rotate-0 hover:-translate-y-0.5`}
+      >
+        <div className="pointer-events-none absolute right-0 top-0 h-10 w-10 bg-primary/8 [clip-path:polygon(100%_0,0_0,100%_100%)]" />
+        <div
+          className={`${paperTapeClass} left-10 rotate-[-2deg] ${
+            course.headerColor ? "opacity-60" : ""
+          }`}
+        />
+        <div className={`${paperTapeClass} right-12 rotate-[3deg]`} />
+        {course.headerColor && (
+          <div
+            className="absolute inset-y-0 left-0 w-2"
+            style={{ backgroundColor: course.headerColor }}
+          />
+        )}
+        <CardHeader
+          className="cursor-pointer px-4 py-5 sm:px-5"
+          onClick={toggleCollapse}
+        >
+          <div className="flex flex-wrap items-center gap-3 sm:gap-4">
+            <span
+              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md border bg-white/45 text-foreground/75 transition-all ${
+                highlighted
+                  ? "animate-pulse border-primary bg-primary/15 text-primary ring-2 ring-primary/35"
+                  : "border-primary/20"
+              }`}
+              title="Expand course"
+            >
+              <ChevronDown className="h-4 w-4" />
+            </span>
+            <span className="min-w-0 flex-1 truncate text-lg font-bold text-foreground">
+              {course.name || "Untitled"}
+            </span>
+            {courseCriteria.length === 0 && directGradeEditing ? (
+              <input
+                type="text"
+                inputMode="decimal"
+                autoFocus
+                value={directGradeDraft}
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => e.stopPropagation()}
+                onChange={(e) => setDirectGradeDraft(e.target.value)}
+                onBlur={commitDirectGrade}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    commitCourseName();
-                    e.currentTarget.blur();
-                  }
+                  e.stopPropagation();
+                  if (e.key === "Enter") e.currentTarget.blur();
+                  if (e.key === "Escape") setDirectGradeEditing(false);
                 }}
-                className="max-w-md border-2 border-primary/20 bg-card text-lg font-semibold"
-                placeholder="Course Name"
+                placeholder="0-100"
+                className="w-24 shrink-0 rounded-md border border-primary/30 bg-white/70 px-2.5 py-1 text-sm font-bold tabular-nums text-primary outline-none focus:border-primary focus-visible:ring-2 focus-visible:ring-primary/40"
+                title="Enter final grade"
               />
-              {course.isPassFail && (
-                <Badge className="border border-grey-500/50 bg-grey-100/80 text-grey-900">
-                  Pass/Fail
-                </Badge>
-              )}
-              <Button variant="outline" size="sm" onClick={toggleCollapse} className="gap-2 bg-card">
-                {course.collapsed ? (
-                  <ChevronDown className="h-4 w-4" />
-                ) : (
-                  <ChevronUp className="h-4 w-4" />
-                )}
-              </Button>
-              {onDuplicate && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={onDuplicate}
-                  className="gap-2 bg-card"
-                  title="Duplicate course"
-                >
-                  <Copy className="h-4 w-4" />
-                </Button>
-              )}
-              <Dialog open={isScaleOpen} onOpenChange={setIsScaleOpen}>
-                <DialogTrigger asChild>
-                  <Button variant="outline" size="sm" className="gap-2 bg-card">
-                    <Settings className="h-4 w-4" />
-                    Grade Scale
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-2xl [&]:border-primary/20 [&]:focus-visible:outline-none [&]:focus-visible:ring-0">
-                  <DialogHeader>
-                    <DialogTitle>Edit Grade Scale</DialogTitle>
-                  </DialogHeader>
-                  <GradeScaleEditor
-                    gradeScale={course.gradeScale}
-                    isPassFail={course.isPassFail ?? false}
-                    onPassFailChange={handlePassFailToggle}
-                    passFailSettings={passFailSettings}
-                    onPassFailSettingsChange={(settings) =>
-                      updateCourse({
-                        passLabel: settings.passLabel,
-                        failLabel: settings.failLabel,
-                        passThreshold: settings.threshold,
-                      })
-                    }
-                    onUpdate={(gradeScale) => updateCourse({ gradeScale })}
-                  />
-                </DialogContent>
-              </Dialog>
-            </div>
-
-            {/* Credits + boost */}
-            <div className="flex flex-wrap items-center gap-4">
-              <div className="flex items-center gap-2">
-                <Label htmlFor={`credits-${course.id}`} className="text-sm font-medium">
-                  Credit:
-                </Label>
-                <input
-                  id={`credits-${course.id}`}
-                  type="text"
-                  inputMode="decimal"
-                  value={creditsDraft}
-                  onFocus={() => setCreditsFocused(true)}
-                  onChange={(e) => setCreditsDraft(e.target.value)}
-                  onBlur={() => { setCreditsFocused(false); commitCredits(); }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") { setCreditsFocused(false); commitCredits(); e.currentTarget.blur(); }
-                  }}
-                  placeholder="0"
-                  className="w-20 rounded-md border-2 border-primary/20 bg-transparent px-3 py-2 text-sm outline-none placeholder:text-muted-foreground/60 focus-visible:ring-2 focus-visible:ring-primary/50"
-                />
-              </div>
-              {courseCriteria.length > 0 && (
-                <div className="flex items-center gap-2">
-                  <Label htmlFor={`boost-${course.id}`} className="text-sm font-medium">
-                    Boost (%):
-                  </Label>
-                  <input
-                    id={`boost-${course.id}`}
-                    type="text"
-                    inputMode="decimal"
-                    value={percentBoostDraft}
-                    onFocus={() => setPercentBoostFocused(true)}
-                    onChange={(e) => setPercentBoostDraft(e.target.value)}
-                    onBlur={() => { setPercentBoostFocused(false); commitPercentBoost(); }}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") { setPercentBoostFocused(false); commitPercentBoost(); e.currentTarget.blur(); }
-                    }}
-                    placeholder="0"
-                    className="w-24 rounded-md border-2 border-primary/20 bg-transparent px-3 py-2 text-sm outline-none placeholder:text-muted-foreground/60 focus-visible:ring-2 focus-visible:ring-primary/50"
-                    title="Percent boost applied to the final course grade"
-                  />
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Action buttons */}
-          <div className="flex items-center gap-2">
-            <CourseColorPicker
-              currentColor={course.cardColor}
-              onChange={updateCardColor}
-            />
-            <Button
-              variant="outline"
-              size="icon"
-              className="shrink-0"
-              title="Export Course"
-              onClick={() => onExportCourse?.(course.id)}
+            ) : courseCriteria.length === 0 ? (
+              <button
+                type="button"
+                className="shrink-0 cursor-text rounded-md border border-primary/20 bg-white/55 px-2.5 py-1 text-sm font-bold tabular-nums text-primary transition-colors hover:border-primary/40 hover:bg-white/75"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  startDirectGradeEdit();
+                }}
+                onPointerDown={(e) => e.stopPropagation()}
+                title="Edit final grade"
+              >
+                {numericGrade.toFixed(2)}%
+              </button>
+            ) : (
+              <span className="shrink-0 rounded-md border border-primary/20 bg-white/55 px-2.5 py-1 text-sm font-bold tabular-nums text-primary">
+                {numericGrade.toFixed(2)}%
+              </span>
+            )}
+            <span
+              className="shrink-0 rounded-md border border-primary/20 bg-white/55 px-2.5 py-1 text-lg font-bold leading-none"
+              style={{ color: displayColor }}
             >
-              <Download className="h-4 w-4" />
-            </Button>
-            <Button
-              variant={whatIfMode ? "default" : "outline"}
-              size="icon"
+              {displayGrade}
+            </span>
+            <span className="shrink-0 rounded-md border border-primary/15 bg-white/45 px-2.5 py-1 text-xs font-semibold text-muted-foreground">
+              {course.credits || 0} cr
+            </span>
+            <div
               className="shrink-0"
-              title={whatIfMode ? "Exit What-If Mode" : "What-If Mode"}
-              onClick={() => {
-                if (!whatIfMode) {
-                  const initial: Record<string, string> = {};
-                  for (const c of courseCriteria)
-                    initial[c.id] = c.score > 0 ? String(c.score) : "";
-                  setWhatIfScores(initial);
-                }
-                setWhatIfMode((prev) => !prev);
-              }}
+              onClick={(e) => e.stopPropagation()}
+              onPointerDown={(e) => e.stopPropagation()}
             >
-              <FlaskConical className="h-4 w-4" />
-            </Button>
+              <HeaderColorPicker
+                currentColor={course.headerColor}
+                onChange={updateHeaderColor}
+              />
+            </div>
             <Button
               variant="destructive"
               size="icon"
-              onClick={() => onDelete(course.id)}
-              className="shrink-0"
+              className="h-9 w-9 shrink-0 ![box-shadow:none]"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(course.id);
+              }}
             >
-              <Trash2 className="h-4 w-4" />
+              <Trash2 className="h-3.5 w-3.5" />
             </Button>
+          </div>
+        </CardHeader>
+      </div>
+    );
+  }
+
+  return (
+    <div className={`${paperShellClass} overflow-hidden`}>
+      <div className="pointer-events-none absolute right-0 top-0 h-12 w-12 bg-primary/8 [clip-path:polygon(100%_0,0_0,100%_100%)]" />
+      <div className={`${paperTapeClass} left-12 rotate-[-2deg]`} />
+      <div className={`${paperTapeClass} right-16 rotate-[3deg]`} />
+      {course.headerColor && (
+        <div
+          className="absolute inset-y-0 left-0 w-2"
+          style={{ backgroundColor: course.headerColor }}
+        />
+      )}
+      <CardHeader className="px-5 pb-4 pt-6">
+        <div
+          className="relative cursor-pointer rounded-lg border border-primary/20 bg-white/45 p-4 shadow-[3px_4px_0_rgba(198,90,78,0.10)]"
+          onClick={(event) => {
+            if ((event.target as HTMLElement).closest(interactiveDragSelector)) return;
+            toggleCollapse();
+          }}
+          title="Collapse course"
+        >
+          <div className="pointer-events-none absolute -top-2 left-8 h-5 w-16 rotate-[-3deg] bg-primary/12" />
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={toggleCollapse}
+              title="Collapse course"
+              className="mt-1.5 h-8 w-8 shrink-0 border border-primary/15 bg-[#fff8f1]/80 p-0"
+            >
+              <ChevronUp className="h-4 w-4" />
+            </Button>
+            <div className="flex-1 space-y-3">
+              {/* Course name + controls */}
+              <div className="flex flex-wrap items-center gap-3">
+                <Input
+                  value={nameDraft}
+                  onChange={(e) => setNameDraft(e.target.value)}
+                  onBlur={commitCourseName}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      commitCourseName();
+                      e.currentTarget.blur();
+                    }
+                  }}
+                  className="max-w-md border-2 border-primary/20 bg-[#fff8f1] text-lg font-semibold"
+                  placeholder="Course Name"
+                />
+                {onDuplicate && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={onDuplicate}
+                    className="gap-2"
+                    title="Duplicate course"
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+
+              {/* Credits + boost */}
+              <div className="flex flex-wrap items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <Label
+                    htmlFor={`credits-${course.id}`}
+                    className="text-sm font-medium"
+                  >
+                    Credit:
+                  </Label>
+                  <input
+                    id={`credits-${course.id}`}
+                    type="text"
+                    inputMode="decimal"
+                    value={creditsDraft}
+                    onFocus={() => setCreditsFocused(true)}
+                    onChange={(e) => setCreditsDraft(e.target.value)}
+                    onBlur={() => {
+                      setCreditsFocused(false);
+                      commitCredits();
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        setCreditsFocused(false);
+                        commitCredits();
+                        e.currentTarget.blur();
+                      }
+                    }}
+                    placeholder="0"
+                    className="w-20 rounded-md border-2 border-primary/20 bg-[#fff8f1]/80 px-3 py-2 text-sm outline-none placeholder:text-muted-foreground/60 focus-visible:ring-2 focus-visible:ring-primary/50"
+                  />
+                </div>
+                {courseCriteria.length > 0 && (
+                  <div className="flex items-center gap-2">
+                    <Label
+                      htmlFor={`boost-${course.id}`}
+                      className="text-sm font-medium"
+                    >
+                      Boost (%):
+                    </Label>
+                    <input
+                      id={`boost-${course.id}`}
+                      type="text"
+                      inputMode="decimal"
+                      value={percentBoostDraft}
+                      onFocus={() => setPercentBoostFocused(true)}
+                      onChange={(e) => setPercentBoostDraft(e.target.value)}
+                      onBlur={() => {
+                        setPercentBoostFocused(false);
+                        commitPercentBoost();
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          setPercentBoostFocused(false);
+                          commitPercentBoost();
+                          e.currentTarget.blur();
+                        }
+                      }}
+                      placeholder="0"
+                      className="w-24 rounded-md border-2 border-primary/20 bg-[#fff8f1]/80 px-3 py-2 text-sm outline-none placeholder:text-muted-foreground/60 focus-visible:ring-2 focus-visible:ring-primary/50"
+                      title="Percent boost applied to the final course grade"
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Action buttons */}
+            <div className="flex items-center gap-2 self-start lg:self-auto">
+              <HeaderColorPicker
+                currentColor={course.headerColor}
+                onChange={updateHeaderColor}
+              />
+              <Button
+                variant={whatIfMode ? "default" : "ghost"}
+                size="icon"
+                className="shrink-0"
+                title={whatIfMode ? "Exit What-If Mode" : "What-If Mode"}
+                onClick={() => {
+                  if (!whatIfMode) {
+                    const initial: Record<string, string> = {};
+                    for (const c of courseCriteria)
+                      initial[c.id] = c.score > 0 ? String(c.score) : "";
+                    setWhatIfScores(initial);
+                  }
+                  setWhatIfMode((prev) => !prev);
+                }}
+              >
+                <FlaskConical className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="destructive"
+                size="icon"
+                onClick={() => onDelete(course.id)}
+                className="shrink-0 ![box-shadow:none]"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         </div>
       </CardHeader>
 
-      <div
-        className="grid transition-[grid-template-rows] duration-[220ms] ease-[cubic-bezier(0.4,0,0.2,1)]"
-        style={{ gridTemplateRows: !course.collapsed ? "1fr" : "0fr" }}
-      >
-        <div className="overflow-hidden">
-          <CardContent className="pt-6">
-            <div className="space-y-4" onDragOver={handleDragOver} onDrop={handleDropAtEnd}>
+      <CardContent className="px-5 pb-6 pt-2">
+        <div
+          className="space-y-4 rounded-lg border border-primary/20 bg-white/35 p-4"
+          onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; }}
+          onDragLeave={(e) => {
+            if (e.currentTarget.contains(e.relatedTarget as Node | null)) return;
+            setDropIndicator(null);
+          }}
+          onDrop={handleDropAtEnd}
+        >
+          <div className="flex items-center justify-between">
+            <h3 className="font-semibold text-primary">Distribution</h3>
+            {courseCriteria.length > 0 && (
+              <span
+                className={`text-xs font-semibold ${
+                  totalWeight === 100 ? "text-primary" : "text-amber-700"
+                }`}
+              >
+                {totalWeight}%{totalWeight !== 100 && " ≠ 100"}
+              </span>
+            )}
+          </div>
+
+          <CourseContext.Provider
+            value={{
+              gradeScale: course.gradeScale,
+              whatIfMode,
+              whatIfScores,
+              expandedCriteria,
+              draggingCriterionId,
+              draggingSubItemId,
+              draggingSubItemParentId,
+              dropIndicator,
+              setWhatIfScores,
+              updateCriterion,
+              deleteCriterion,
+              duplicateCriterion,
+              toggleExpanded,
+              addSubItem,
+              updateSubItem,
+              deleteSubItem,
+              duplicateSubItem,
+              handleDragStart,
+              handleDragOver,
+              handleDragLeave,
+              handleDropOnCriterion,
+              handleDragEnd,
+              handleSubItemDragStart,
+              handleSubItemDragOver,
+              handleSubItemDragLeave,
+              handleSubItemDrop,
+              handleSubItemDragEnd,
+            }}
+          >
+            {courseCriteria.map((criterion) => {
+              const criterionKey = criterion.clientId ?? criterion.id;
+              return <CriterionRow key={criterionKey} criterion={criterion} />;
+            })}
+          </CourseContext.Provider>
+
+          {courseCriteria.length > 0 && (
+            <div
+              className={`flex h-9 items-center justify-center rounded border-2 border-dashed text-xs font-semibold uppercase tracking-widest transition-all ${
+                isDraggingGradeItem
+                  ? "border-primary/25 bg-primary/5 text-primary/70"
+                  : "border-transparent text-transparent"
+              } ${
+                dropIndicator?.targetId === "__end__"
+                  ? "border-primary/60 bg-primary/10 text-primary"
+                  : ""
+              }`}
+              onDragOver={(e) => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = "move";
+                setDropIndicator({ targetId: "__end__", position: "after", intent: "reorder" });
+              }}
+              onDragLeave={() => {
+                if (dropIndicator?.targetId === "__end__") setDropIndicator(null);
+              }}
+              onDrop={handleDropAtEnd}
+            >
+              Drop at end
+            </div>
+          )}
+
+          {courseCriteria.length === 0 && (
+            <div className="rounded-lg border-2 border-dashed border-primary/20 bg-[#fff8f1]/70 py-8 text-center text-muted-foreground">
+              <p className="text-sm">
+                No criteria yet — add one below to start tracking your grade.
+              </p>
+            </div>
+          )}
+
+          <Button
+            onClick={addCriterion}
+            variant="outline"
+            size="sm"
+            className="w-full gap-2 border-2 border-dashed border-primary/30 bg-[#fff8f1]/70"
+          >
+            <Plus className="h-4 w-4" />
+            Add Criteria
+          </Button>
+        </div>
+
+        <div className="relative mt-6 rounded-lg border border-primary/25 bg-white/35 p-6 shadow-[3px_4px_0_rgba(198,90,78,0.10)]">
+          <div className="pointer-events-none absolute -top-2 left-1/2 h-5 w-20 -translate-x-1/2 rotate-2 bg-primary/15" />
+          {gradeSummary(false)}
+          {whatIfMode && (
+            <div className="mt-4 border-t border-primary/20 pt-4">
+              <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-widest text-primary/70">
+                <FlaskConical className="h-3 w-3" />
+                What-If
+              </p>
               <div className="flex items-center justify-between">
-                <h3 className="font-semibold text-primary">Distribution</h3>
-                {courseCriteria.length > 0 && (
-                  <span
-                    className={`text-xs font-semibold ${
-                      totalWeight === 100
-                        ? "text-primary"
-                        : "rounded-full border border-amber-300 bg-amber-100 px-2 py-0.5 text-amber-700"
-                    }`}
-                  >
-                    {totalWeight}%{totalWeight !== 100 && " ≠ 100"}
-                  </span>
-                )}
+                <p className="text-3xl font-bold text-primary/80">
+                  <RollingNumber value={whatIfNumericGrade} decimals={2} />%
+                </p>
+                <p
+                  className="text-4xl font-bold"
+                  style={{ color: whatIfGradeColor }}
+                >
+                  {whatIfLetterGrade}
+                </p>
               </div>
-
-              <CourseContext.Provider
-                value={{
-                  gradeScale: course.gradeScale,
-                  whatIfMode,
-                  whatIfScores,
-                  expandedCriteria,
-                  draggingCriterionId,
-                  subDropTargetId,
-                  draggingSubItemId,
-                  setWhatIfScores,
-                  updateCriterion,
-                  deleteCriterion,
-                  duplicateCriterion,
-                  toggleExpanded,
-                  addSubItem,
-                  updateSubItem,
-                  deleteSubItem,
-                  duplicateSubItem,
-                  handleDragStart,
-                  handleDragOver,
-                  handleDragEnter,
-                  handleDragLeave,
-                  handleDropOnCriterion,
-                  handleDragEnd,
-                  handleSubItemDragStart,
-                  handleSubItemDropOnSibling,
-                  handleSubItemDragEnd,
-                }}
-              >
-                {courseCriteria.map((criterion) => {
-                  const criterionKey = criterion.clientId ?? criterion.id;
-                  return <CriterionRow key={criterionKey} criterion={criterion} />;
-                })}
-              </CourseContext.Provider>
-
-              {courseCriteria.length > 0 && (
-                <div
-                  className="h-4 rounded border-2 border-dashed border-transparent"
-                  onDragOver={handleDragOver}
-                  onDrop={handleDropAtEnd}
-                />
-              )}
-
-              {courseCriteria.length === 0 && (
-                <div className="rounded-lg border-2 border-dashed border-primary/20 py-8 text-center text-muted-foreground">
-                  <p className="text-sm">No criteria yet — add one below to start tracking your grade.</p>
-                </div>
-              )}
-
-              <Button
-                onClick={addCriterion}
-                variant="outline"
-                size="sm"
-                className="w-full gap-2 border-2 border-dashed border-primary/30 bg-transparent"
-              >
-                <Plus className="h-4 w-4" />
-                Add Criterion
-              </Button>
             </div>
-
-            <div className="mt-6 rounded-lg border border-primary/30 bg-primary/5/60 p-6">
-              {gradeSummary(false)}
-              {whatIfMode && (
-                <div className="mt-4 border-t border-primary/20 pt-4">
-                  <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-widest text-primary/70">
-                    <FlaskConical className="h-3 w-3" />
-                    What-If
-                  </p>
-                  <div className="flex items-center justify-between">
-                    <p className="text-3xl font-bold text-primary/80">
-                      <RollingNumber value={whatIfNumericGrade} decimals={2} />%
-                    </p>
-                    <p className="text-4xl font-bold" style={{ color: whatIfGradeColor }}>
-                      {whatIfLetterGrade}
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
-          </CardContent>
+          )}
         </div>
-      </div>
-
-      <div
-        className="grid transition-[grid-template-rows] duration-150"
-        style={{ gridTemplateRows: course.collapsed ? "1fr" : "0fr" }}
-      >
-        <div className="overflow-hidden">
-          <CardContent className="pt-4 pb-6">
-            {gradeSummary(true)}
-          </CardContent>
-        </div>
-      </div>
-    </Card>
+      </CardContent>
+    </div>
   );
 }

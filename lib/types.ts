@@ -50,7 +50,7 @@ export interface Course {
   passLabel?: string
   failLabel?: string
   passThreshold?: number
-  cardColor?: string | null
+  headerColor?: string | null
 }
 
 export interface Semester {

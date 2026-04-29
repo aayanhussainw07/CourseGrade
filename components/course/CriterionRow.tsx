@@ -12,6 +12,8 @@ import {
   ChevronRight,
   Copy,
   X,
+  ArrowRight,
+  ArrowLeft,
 } from "lucide-react";
 import type { Criterion, SubItem } from "@/lib/types";
 import {
@@ -21,6 +23,7 @@ import {
   formatNumberValue,
 } from "@/lib/score-input";
 import { useCourseContext } from "@/components/course/CourseContext";
+import type { DragIntent } from "@/components/course/CourseContext";
 
 type NumericField = "weight" | "score" | "dropLowest" | "extraCredit";
 
@@ -33,9 +36,85 @@ function handleEnterCommit(
   onCommit?.();
   const target = e.currentTarget;
   window.getSelection()?.removeAllRanges();
-  // rAF lets React flush the draft-clear state update before blur fires,
-  // preventing the onBlur handler from seeing stale draft state and double-committing.
   requestAnimationFrame(() => target.blur());
+}
+
+function DropLine({ intent, position }: { intent: DragIntent; position: "before" | "after" }) {
+  const isNest = intent === "nest";
+  const isPromote = intent === "promote";
+  return (
+    <div
+      className={`pointer-events-none absolute left-0 right-0 z-10 flex items-center ${
+        position === "before" ? "-top-[5px]" : "-bottom-[5px]"
+      }`}
+    >
+      <div
+        className={`flex h-[3px] w-full items-center rounded-full ${
+          isNest ? "bg-blue-500 ml-8" : isPromote ? "bg-emerald-500" : "bg-primary"
+        }`}
+      >
+        {isNest && (
+          <span className="absolute -left-0 flex items-center gap-0.5 rounded bg-blue-500 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white shadow-sm">
+            <ArrowRight className="h-3 w-3" />
+            Nest
+          </span>
+        )}
+        {isPromote && (
+          <span className="absolute -left-0 flex items-center gap-0.5 rounded bg-emerald-500 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white shadow-sm">
+            <ArrowLeft className="h-3 w-3" />
+            Promote
+          </span>
+        )}
+      </div>
+      <div
+        className={`absolute right-0 h-3 w-3 rounded-full border-2 ${
+          isNest
+            ? "border-blue-500 bg-blue-100"
+            : isPromote
+              ? "border-emerald-500 bg-emerald-100"
+              : "border-primary bg-primary/20"
+        }`}
+      />
+      <div
+        className={`absolute left-0 h-3 w-3 rounded-full border-2 ${
+          isNest
+            ? "border-blue-500 bg-blue-100"
+            : isPromote
+              ? "border-emerald-500 bg-emerald-100"
+              : "border-primary bg-primary/20"
+        }`}
+        style={isNest ? { left: "2rem" } : undefined}
+      />
+    </div>
+  );
+}
+
+function SubItemDropLine({
+  intent = "reorder",
+  position,
+}: {
+  intent?: Extract<DragIntent, "reorder" | "nest">;
+  position: "before" | "after";
+}) {
+  const isNest = intent === "nest";
+  return (
+    <div
+      className={`pointer-events-none absolute left-0 right-0 z-10 flex items-center ${
+        position === "before" ? "-top-[5px]" : "-bottom-[5px]"
+      }`}
+    >
+      <div className={`flex h-[2px] w-full items-center rounded-full ${isNest ? "bg-blue-500" : "bg-primary"}`}>
+        {isNest && (
+          <span className="absolute -left-0 flex items-center gap-0.5 rounded bg-blue-500 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white shadow-sm">
+            <ArrowRight className="h-3 w-3" />
+            Nest
+          </span>
+        )}
+      </div>
+      <div className={`absolute right-0 h-2.5 w-2.5 rounded-full border-2 ${isNest ? "border-blue-500 bg-blue-100" : "border-primary bg-primary/20"}`} />
+      <div className={`absolute left-0 h-2.5 w-2.5 rounded-full border-2 ${isNest ? "border-blue-500 bg-blue-100" : "border-primary bg-primary/20"}`} />
+    </div>
+  );
 }
 
 export function CriterionRow({ criterion }: { criterion: Criterion }) {
@@ -45,8 +124,9 @@ export function CriterionRow({ criterion }: { criterion: Criterion }) {
     whatIfScores,
     expandedCriteria,
     draggingCriterionId,
-    subDropTargetId,
     draggingSubItemId,
+    draggingSubItemParentId,
+    dropIndicator,
     setWhatIfScores,
     updateCriterion,
     deleteCriterion,
@@ -58,20 +138,30 @@ export function CriterionRow({ criterion }: { criterion: Criterion }) {
     duplicateSubItem,
     handleDragStart,
     handleDragOver,
-    handleDragEnter,
     handleDragLeave,
     handleDropOnCriterion,
     handleDragEnd,
     handleSubItemDragStart,
-    handleSubItemDropOnSibling,
+    handleSubItemDragOver,
+    handleSubItemDragLeave,
+    handleSubItemDrop,
     handleSubItemDragEnd,
   } = useCourseContext();
 
   const criterionKey = criterion.clientId ?? criterion.id;
   const isDragging = draggingCriterionId === criterion.id;
-  const isSubDropTarget = subDropTargetId === criterion.id;
+  const isDraggingAnything = !!(draggingCriterionId || draggingSubItemId);
   const isExpanded = expandedCriteria.has(criterionKey);
   const whatIfScore = whatIfScores[criterion.id];
+
+  const showDropBefore =
+    dropIndicator?.targetId === criterion.id && dropIndicator.position === "before";
+  const showDropAfter =
+    dropIndicator?.targetId === criterion.id && dropIndicator.position === "after";
+  const isNestTarget =
+    dropIndicator?.targetId === criterion.id && dropIndicator.intent === "nest";
+  const isPromoteTarget =
+    dropIndicator?.targetId === criterion.id && dropIndicator.intent === "promote";
 
   // Local draft state — undefined means "no active edit, show persisted value"
   const [nameDraft, setNameDraft] = useState<string | undefined>(undefined);
@@ -83,7 +173,6 @@ export function CriterionRow({ criterion }: { criterion: Criterion }) {
   const [subItemScoreDrafts, setSubItemScoreDrafts] = useState<Record<string, string>>({});
   const [subItemWeightDrafts, setSubItemWeightDrafts] = useState<Record<string, string>>({});
 
-  // Clear stale drafts when criterion is updated externally (e.g. by the AI)
   const prevCriterionRef = useRef(criterion);
   useEffect(() => {
     const prev = prevCriterionRef.current;
@@ -249,24 +338,50 @@ export function CriterionRow({ criterion }: { criterion: Criterion }) {
   };
 
   return (
-    <div className="space-y-2">
+    <div className="relative space-y-2">
+      {/* Drop indicator: before */}
+      {showDropBefore && !isDragging && (
+        <DropLine intent={dropIndicator!.intent} position="before" />
+      )}
+
       {/* Criterion row */}
       <div
-        className={`relative flex items-start gap-2 rounded-lg border-2 pt-3 px-3 pb-5 transition-all ${
+        className={`relative flex items-start gap-2 rounded-lg border-2 pt-3 px-3 pb-5 transition-all duration-150 ${
           isDragging
-            ? "border-primary/20 bg-muted/30 opacity-40"
-            : isSubDropTarget
-              ? "border-dashed border-red-500 bg-red-500/5"
-              : "border-primary/20 bg-muted/30"
+            ? "scale-[0.97] border-primary/40 bg-primary/5 opacity-50 shadow-lg"
+            : isNestTarget
+              ? "border-blue-400 bg-blue-50/60 ring-2 ring-blue-400/30"
+              : isPromoteTarget
+                ? "border-emerald-400 bg-emerald-50/50 ring-2 ring-emerald-400/25"
+              : isDraggingAnything
+                ? "border-primary/15 bg-muted/20"
+                : "border-primary/20 bg-muted/30"
         }`}
         draggable
         onDragStart={(e) => handleDragStart(e, criterion.id)}
-        onDragOver={handleDragOver}
-        onDragEnter={(e) => handleDragEnter(e, criterion.id)}
+        onDragOver={(e) => handleDragOver(e, criterion.id)}
         onDragLeave={(e) => handleDragLeave(e, criterion.id)}
         onDrop={(e) => handleDropOnCriterion(e, criterion.id)}
         onDragEnd={handleDragEnd}
       >
+        {/* Nest target label */}
+        {isNestTarget && (
+          <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-blue-500/10">
+            <span className="flex items-center gap-1.5 rounded-full bg-blue-500 px-3 py-1 text-xs font-bold uppercase tracking-wider text-white shadow-md">
+              <ArrowRight className="h-3.5 w-3.5" />
+              Nest as sub-item
+            </span>
+          </div>
+        )}
+        {isPromoteTarget && (
+          <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-emerald-500/10">
+            <span className="flex items-center gap-1.5 rounded-full bg-emerald-500 px-3 py-1 text-xs font-bold uppercase tracking-wider text-white shadow-md">
+              <ArrowLeft className="h-3.5 w-3.5" />
+              Promote to criterion
+            </span>
+          </div>
+        )}
+
         {/* Drag handle */}
         <div className="mt-6 flex shrink-0 cursor-grab items-center active:cursor-grabbing">
           <GripVertical className="h-4 w-4 text-muted-foreground/40 transition-colors hover:text-muted-foreground" />
@@ -438,92 +553,155 @@ export function CriterionRow({ criterion }: { criterion: Criterion }) {
         </div>
       </div>
 
+      {/* Drop indicator: after (only when no sub-items expanded, otherwise it goes between criterion and sub-items) */}
+      {showDropAfter && !isDragging && !isNestTarget && !(hasSubItems && isExpanded) && (
+        <DropLine intent={dropIndicator!.intent} position="after" />
+      )}
+
       {/* Sub-items */}
       {hasSubItems && isExpanded && (
         <div className="ml-4 space-y-2 border-l-2 border-primary/20 pl-4">
-          {criterion.subItems!.map((subItem) => (
-            <div
-              key={subItem.id}
-              draggable
-              onDragStart={(e) => handleSubItemDragStart(e, criterion.id, subItem.id)}
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={(e) => handleSubItemDropOnSibling(e, criterion.id, subItem.id)}
-              onDragEnd={handleSubItemDragEnd}
-              className={`grid grid-cols-1 gap-2 rounded-md border bg-card p-3 sm:grid-cols-[auto_2fr_1fr_1fr_auto] transition-opacity ${
-                draggingSubItemId === subItem.id
-                  ? "opacity-40 border-dashed border-red-500/80"
-                  : "border-primary/10"
-              }`}
-            >
-              <div className="flex items-center pt-5">
-                <GripVertical className="h-4 w-4 cursor-grab text-muted-foreground/40 hover:text-muted-foreground active:cursor-grabbing" />
-              </div>
-              <div>
-                <Label className="text-xs text-muted-foreground">Name</Label>
-                <Input
-                  value={getSubItemNameValue(subItem)}
-                  onChange={(e) =>
-                    setSubItemNameDrafts((prev) => ({ ...prev, [subItem.id]: e.target.value }))
-                  }
-                  onBlur={() => commitSubItemName(subItem.id)}
-                  onKeyDown={(e) => handleEnterCommit(e, () => commitSubItemName(subItem.id))}
-                  className="h-9 border-primary/20"
-                  placeholder="e.g., Homework 1"
-                />
-              </div>
-              <div>
-                <Label className="text-xs text-muted-foreground">Score (%)</Label>
-                <Input
-                  type="text"
-                  inputMode="decimal"
-                  value={getSubItemScoreValue(subItem)}
-                  onChange={(e) =>
-                    setSubItemScoreDrafts((prev) => ({ ...prev, [subItem.id]: e.target.value }))
-                  }
-                  onBlur={() => commitSubItemScore(subItem.id)}
-                  onKeyDown={(e) => handleEnterCommit(e, () => commitSubItemScore(subItem.id))}
-                  placeholder="0"
-                  className="h-9 border-primary/20"
-                />
-              </div>
-              <div>
-                <Label className="text-xs text-muted-foreground">Weight (%)</Label>
-                <Input
-                  type="text"
-                  inputMode="decimal"
-                  value={getSubItemWeightValue(subItem)}
-                  onChange={(e) =>
-                    setSubItemWeightDrafts((prev) => ({ ...prev, [subItem.id]: e.target.value }))
-                  }
-                  onBlur={() => commitSubItemWeight(subItem)}
-                  onKeyDown={(e) => handleEnterCommit(e, () => commitSubItemWeight(subItem))}
-                  placeholder="equal"
-                  className="h-9 border-primary/20"
-                  title="Weight of this sub-item (100% = full criterion weight)"
-                />
-              </div>
-              <div className="flex items-end gap-1">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => duplicateSubItem(criterion.id, subItem.id)}
-                  className="h-9 w-9 text-muted-foreground hover:bg-muted hover:text-foreground"
-                  title="Duplicate sub-item"
+          {criterion.subItems!.map((subItem) => {
+            const isSubDragging = draggingSubItemId === subItem.id;
+            const subIndicatorId = `sub:${criterion.id}:${subItem.id}`;
+            const showSubBefore = dropIndicator?.targetId === subIndicatorId && dropIndicator.position === "before";
+            const showSubAfter = dropIndicator?.targetId === subIndicatorId && dropIndicator.position === "after";
+            const isPromoteTarget = dropIndicator?.targetId === subIndicatorId && dropIndicator.intent === "promote";
+            const isNestSubTarget = dropIndicator?.targetId === subIndicatorId && dropIndicator.intent === "nest";
+
+            return (
+              <div key={subItem.id} className="relative">
+                {showSubBefore && !isSubDragging && (
+                  isPromoteTarget ? (
+                    <div className="pointer-events-none absolute -top-[5px] -left-6 right-0 z-10 flex items-center">
+                      <div className="flex h-[3px] w-[calc(100%+1.5rem)] items-center rounded-full bg-emerald-500">
+                        <span className="absolute -left-0 flex items-center gap-0.5 rounded bg-emerald-500 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white shadow-sm">
+                          <ArrowLeft className="h-3 w-3" />
+                          Promote
+                        </span>
+                      </div>
+                      <div className="absolute right-0 h-2.5 w-2.5 rounded-full border-2 border-emerald-500 bg-emerald-100" />
+                    </div>
+                  ) : (
+                    <SubItemDropLine
+                      intent={isNestSubTarget ? "nest" : "reorder"}
+                      position="before"
+                    />
+                  )
+                )}
+
+                <div
+                  draggable
+                  onDragStart={(e) => handleSubItemDragStart(e, criterion.id, subItem.id)}
+                  onDragOver={(e) => handleSubItemDragOver(e, criterion.id, subItem.id)}
+                  onDragLeave={(e) => handleSubItemDragLeave(e, criterion.id, subItem.id)}
+                  onDrop={(e) => handleSubItemDrop(e, criterion.id, subItem.id)}
+                  onDragEnd={handleSubItemDragEnd}
+                  className={`grid grid-cols-1 gap-2 rounded-md border p-3 transition-all duration-150 sm:grid-cols-[auto_2fr_1fr_1fr_auto] ${
+                    isSubDragging
+                      ? "scale-[0.97] border-primary/40 bg-primary/5 opacity-50 shadow-md"
+                      : isNestSubTarget
+                        ? "border-blue-400 bg-blue-50/40 ring-1 ring-blue-400/30"
+                      : isPromoteTarget
+                        ? "border-emerald-400 bg-emerald-50/40 ring-1 ring-emerald-400/30"
+                        : "border-primary/10 bg-card"
+                  }`}
                 >
-                  <Copy className="h-3 w-3" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => deleteSubItem(criterion.id, subItem.id)}
-                  className="h-9 w-9 text-destructive hover:bg-destructive/10"
-                >
-                  <X className="h-3 w-3" />
-                </Button>
+                  <div className="flex items-center pt-5">
+                    <GripVertical className="h-4 w-4 cursor-grab text-muted-foreground/40 hover:text-muted-foreground active:cursor-grabbing" />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Name</Label>
+                    <Input
+                      value={getSubItemNameValue(subItem)}
+                      onChange={(e) =>
+                        setSubItemNameDrafts((prev) => ({ ...prev, [subItem.id]: e.target.value }))
+                      }
+                      onBlur={() => commitSubItemName(subItem.id)}
+                      onKeyDown={(e) => handleEnterCommit(e, () => commitSubItemName(subItem.id))}
+                      className="h-9 border-primary/20"
+                      placeholder="e.g., Homework 1"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Score (%)</Label>
+                    <Input
+                      type="text"
+                      inputMode="decimal"
+                      value={getSubItemScoreValue(subItem)}
+                      onChange={(e) =>
+                        setSubItemScoreDrafts((prev) => ({ ...prev, [subItem.id]: e.target.value }))
+                      }
+                      onBlur={() => commitSubItemScore(subItem.id)}
+                      onKeyDown={(e) => handleEnterCommit(e, () => commitSubItemScore(subItem.id))}
+                      placeholder="0"
+                      className="h-9 border-primary/20"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Weight (%)</Label>
+                    <Input
+                      type="text"
+                      inputMode="decimal"
+                      value={getSubItemWeightValue(subItem)}
+                      onChange={(e) =>
+                        setSubItemWeightDrafts((prev) => ({ ...prev, [subItem.id]: e.target.value }))
+                      }
+                      onBlur={() => commitSubItemWeight(subItem)}
+                      onKeyDown={(e) => handleEnterCommit(e, () => commitSubItemWeight(subItem))}
+                      placeholder="equal"
+                      className="h-9 border-primary/20"
+                      title="Weight of this sub-item (100% = full criterion weight)"
+                    />
+                  </div>
+                  <div className="flex items-end gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => duplicateSubItem(criterion.id, subItem.id)}
+                      className="h-9 w-9 text-muted-foreground hover:bg-muted hover:text-foreground"
+                      title="Duplicate sub-item"
+                    >
+                      <Copy className="h-3 w-3" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => deleteSubItem(criterion.id, subItem.id)}
+                      className="h-9 w-9 text-destructive hover:bg-destructive/10"
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </div>
+                </div>
+
+                {showSubAfter && !isSubDragging && (
+                  isPromoteTarget ? (
+                    <div className="pointer-events-none absolute -bottom-[5px] -left-6 right-0 z-10 flex items-center">
+                      <div className="flex h-[3px] w-[calc(100%+1.5rem)] items-center rounded-full bg-emerald-500">
+                        <span className="absolute -left-0 flex items-center gap-0.5 rounded bg-emerald-500 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white shadow-sm">
+                          <ArrowLeft className="h-3 w-3" />
+                          Promote
+                        </span>
+                      </div>
+                      <div className="absolute right-0 h-2.5 w-2.5 rounded-full border-2 border-emerald-500 bg-emerald-100" />
+                    </div>
+                  ) : (
+                    <SubItemDropLine
+                      intent={isNestSubTarget ? "nest" : "reorder"}
+                      position="after"
+                    />
+                  )
+                )}
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
+      )}
+
+      {/* Drop indicator: after when sub-items are expanded */}
+      {showDropAfter && !isDragging && !isNestTarget && hasSubItems && isExpanded && (
+        <DropLine intent={dropIndicator!.intent} position="after" />
       )}
     </div>
   );

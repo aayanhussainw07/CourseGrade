@@ -18,9 +18,9 @@ import {
   Trash2,
   Check,
   X,
-  Upload,
   TrendingUp,
   Copy,
+  ChevronRight,
 } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
@@ -35,7 +35,6 @@ interface CourseSidebarProps {
   onEditSemester: (semesterId: string, newName: string) => void;
   onDeleteCourse: (courseId: string) => void;
   onEditCourse: (courseId: string, newName: string) => void;
-  onImportSemester?: (file: File) => void;
   onReorderSemesters?: (orderedSemesterIds: string[]) => void;
   onReorderCourses?: (semesterId: string, orderedCourseIds: string[]) => void;
   onDuplicateSemester?: (semesterId: string) => void;
@@ -62,7 +61,6 @@ export function CourseSidebar({
   onEditSemester,
   onDeleteCourse,
   onEditCourse,
-  onImportSemester,
   onReorderSemesters,
   onReorderCourses,
   onDuplicateSemester,
@@ -95,7 +93,6 @@ export function CourseSidebar({
     null,
   );
   const [draggingCourseId, setDraggingCourseId] = useState<string | null>(null);
-  const semesterFileInputRef = useRef<HTMLInputElement | null>(null);
   const activeSemester = useMemo(
     () => semesters.find((s) => s.id === activeSemesterId),
     [semesters, activeSemesterId],
@@ -256,19 +253,6 @@ export function CourseSidebar({
               </button>
             )}
           </div>
-          <input
-            ref={semesterFileInputRef}
-            type="file"
-            accept="application/json,.json"
-            className="hidden"
-            onChange={(event) => {
-              const file = event.target.files?.[0];
-              if (file && onImportSemester) {
-                onImportSemester(file);
-              }
-              event.target.value = "";
-            }}
-          />
         </div>
 
         <div className="flex-1 overflow-y-auto">
@@ -281,64 +265,93 @@ export function CourseSidebar({
                       type="button"
                       onClick={onDashboardClick}
                       className={cn(
-                        "w-full rounded-lg border border-white/15 bg-white/8 p-3 text-left transition-colors hover:border-white/25 hover:bg-white/12 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30",
+                        "group w-full rounded-lg px-3 py-3 text-left transition-colors hover:bg-white/12 active:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30",
                         isDashboardActive &&
-                          "border-primary/40 bg-primary/30 text-white hover:bg-primary/30 hover:border-primary/40",
+                          "bg-white/15 text-white hover:bg-white/20",
                       )}
                     >
                       <div className="flex items-center justify-between">
-                        <span className="text-xs uppercase tracking-wide text-white/50">
-                          Dashboard
-                        </span>
-                        <TrendingUp className="h-4 w-4 text-primary" />
+                        <div className="flex items-center gap-2">
+                          <TrendingUp
+                            className={cn(
+                              "h-4 w-4",
+                              isDashboardActive ? "text-primary" : "text-white/45",
+                            )}
+                          />
+                          <span className="text-xs font-semibold uppercase tracking-wide text-white/50 group-hover:text-white/70">
+                            Dashboard
+                          </span>
+                        </div>
+                        <ChevronRight className="h-4 w-4 text-white/35 transition-transform group-hover:translate-x-0.5 group-hover:text-white/70" />
                       </div>
-                      <div className="mt-2 flex items-center justify-between text-sm font-semibold text-white">
-                        <span>
+                      <div className="mt-2">
+                        <div className="text-lg font-bold leading-none text-white">
                           {dashboardSummary.overallGpa.toFixed(2)} GPA
-                        </span>
-                        <span className="text-xs font-medium text-white/50">
-                          View
-                        </span>
+                        </div>
+                        <div className="mt-1 text-[10px] uppercase tracking-wide text-white/40">
+                          Overall
+                        </div>
                       </div>
-                      <div className="mt-2 flex items-center justify-between">
-                        <span>Total Credits</span>
-                        <span className="font-semibold text-white">
-                          {Number.isFinite(dashboardSummary.totalCredits)
-                            ? dashboardSummary.totalCredits
-                            : "-"}
-                        </span>
-                      </div>
-                      <div className="mt-1 flex items-center justify-between">
-                        <span>Semesters</span>
-                        <span className="font-semibold text-white">
-                          {Number.isFinite(dashboardSummary.totalSemesters)
-                            ? dashboardSummary.totalSemesters
-                            : "-"}
-                        </span>
+                      <div className="mt-3 grid grid-cols-2 gap-2">
+                        <div>
+                          <div className="text-[10px] uppercase tracking-wide text-white/40">
+                            Credits
+                          </div>
+                          <div className="text-sm font-semibold text-white">
+                            {Number.isFinite(dashboardSummary.totalCredits)
+                              ? dashboardSummary.totalCredits
+                              : "-"}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-[10px] uppercase tracking-wide text-white/40">
+                            Terms
+                          </div>
+                          <div className="text-sm font-semibold text-white">
+                            {Number.isFinite(dashboardSummary.totalSemesters)
+                              ? dashboardSummary.totalSemesters
+                              : "-"}
+                          </div>
+                        </div>
                       </div>
                     </button>
                   ) : (
-                    <div className="rounded-lg border border-white/15 bg-white/8 p-3">
+                    <div className="rounded-lg px-3 py-3">
                       <div className="flex items-center justify-between">
-                        <span className="text-sm font-bold text-white">
+                        <span className="text-xs font-semibold uppercase tracking-wide text-white/50">
+                          Dashboard
+                        </span>
+                        <TrendingUp className="h-4 w-4 text-white/45" />
+                      </div>
+                      <div className="mt-2">
+                        <div className="text-lg font-bold leading-none text-white">
                           {dashboardSummary.overallGpa.toFixed(2)} GPA
-                        </span>
+                        </div>
+                        <div className="mt-1 text-[10px] uppercase tracking-wide text-white/40">
+                          Overall
+                        </div>
                       </div>
-                      <div className="mt-2 flex items-center justify-between">
-                        <span>Total Credits</span>
-                        <span className="font-semibold text-white">
-                          {Number.isFinite(dashboardSummary.totalCredits)
-                            ? dashboardSummary.totalCredits
-                            : "-"}
-                        </span>
-                      </div>
-                      <div className="mt-1 flex items-center justify-between">
-                        <span>Semesters</span>
-                        <span className="font-semibold text-white">
-                          {Number.isFinite(dashboardSummary.totalSemesters)
-                            ? dashboardSummary.totalSemesters
-                            : "-"}
-                        </span>
+                      <div className="mt-3 grid grid-cols-2 gap-2">
+                        <div>
+                          <div className="text-[10px] uppercase tracking-wide text-white/40">
+                            Credits
+                          </div>
+                          <div className="text-sm font-semibold text-white">
+                            {Number.isFinite(dashboardSummary.totalCredits)
+                              ? dashboardSummary.totalCredits
+                              : "-"}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-[10px] uppercase tracking-wide text-white/40">
+                            Terms
+                          </div>
+                          <div className="text-sm font-semibold text-white">
+                            {Number.isFinite(dashboardSummary.totalSemesters)
+                              ? dashboardSummary.totalSemesters
+                              : "-"}
+                          </div>
+                        </div>
                       </div>
                     </div>
                   )}
@@ -348,17 +361,6 @@ export function CourseSidebar({
               <h3 className="text-xs font-semibold uppercase tracking-wide text-white/50">
                 Semesters
               </h3>
-              <div className="flex items-center gap-1">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7 text-white/50 hover:text-white hover:bg-white/10"
-                  onClick={() => semesterFileInputRef.current?.click()}
-                  title="Import semester JSON"
-                >
-                  <Upload className="h-3.5 w-3.5" />
-                </Button>
-              </div>
             </div>
             <div className={cn("max-h-[150px]", scrollbarClasses)}>
               {semesters.map((semester) => {

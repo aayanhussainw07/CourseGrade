@@ -2,6 +2,7 @@ import os
 
 from flask import Flask, jsonify
 from flask_cors import CORS
+from sqlalchemy import inspect, text
 from werkzeug.exceptions import HTTPException
 
 from env_loader import load_backend_env
@@ -11,6 +12,24 @@ load_backend_env()
 from config import Config, get_cors_origins
 from extensions import db, migrate
 from routes import api
+
+
+def _ensure_feedback_completed_column() -> None:
+    inspector = inspect(db.engine)
+    if "feedback" not in inspector.get_table_names():
+        return
+    columns = {column["name"] for column in inspector.get_columns("feedback")}
+    if "completed" in columns:
+        return
+
+    default_value = "0" if db.engine.dialect.name == "sqlite" else "false"
+    db.session.execute(
+        text(
+            "ALTER TABLE feedback "
+            f"ADD COLUMN completed BOOLEAN NOT NULL DEFAULT {default_value}"
+        )
+    )
+    db.session.commit()
 
 
 def create_app() -> Flask:
@@ -54,6 +73,7 @@ def create_app() -> Flask:
     if app.config.get("AUTO_CREATE_TABLES", False):
         with app.app_context():
             db.create_all()
+            _ensure_feedback_completed_column()
 
     return app
 

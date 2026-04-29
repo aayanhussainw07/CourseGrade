@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button";
 import { syllabusApi, type SyllabusExtracted } from "@/lib/api";
 import type { CoursePortableData } from "@/lib/csv";
 import { DEFAULT_GRADE_SCALE } from "@/lib/types";
+import { getRandomHeaderColor } from "@/lib/header-colors";
 
 interface SyllabusImportDialogProps {
   open: boolean;
@@ -39,6 +40,10 @@ const ALLOWED_TYPES = [
   "image/jpeg",
   "image/webp",
 ];
+const paperPanelClass =
+  "relative overflow-hidden rounded-lg border border-primary/25 bg-white/50 p-4 text-foreground";
+const paperTapeClass =
+  "pointer-events-none absolute -top-2 h-5 w-16 bg-primary/12";
 
 export function SyllabusImportDialog({
   open,
@@ -55,7 +60,7 @@ export function SyllabusImportDialog({
   const [importsRemaining, setImportsRemaining] = useState<number | null>(null);
   const [extracted, setExtracted] = useState<SyllabusExtracted | null>(null);
   const [editedName, setEditedName] = useState("");
-  const [editedCredits, setEditedCredits] = useState(3);
+  const [editedCreditsDraft, setEditedCreditsDraft] = useState("3");
   const [editedAssignments, setEditedAssignments] = useState<
     Array<{
       clientId: string;
@@ -75,7 +80,7 @@ export function SyllabusImportDialog({
     setErrorMsg("");
     setExtracted(null);
     setEditedName("");
-    setEditedCredits(3);
+    setEditedCreditsDraft("3");
     setEditedAssignments([]);
     setIsCreating(false);
   }, []);
@@ -137,7 +142,7 @@ export function SyllabusImportDialog({
       const result = await syllabusApi.analyze(formData);
       setExtracted(result.extracted);
       setEditedName(result.extracted.courseName);
-      setEditedCredits(result.extracted.credits);
+      setEditedCreditsDraft(String(result.extracted.credits));
       setEditedAssignments(
         result.extracted.assignments.map((a) => ({
           ...a,
@@ -169,14 +174,19 @@ export function SyllabusImportDialog({
     if (!extracted || isCreating) return;
     setIsCreating(true);
 
+    const parsedCredits = Number.parseFloat(editedCreditsDraft.trim());
+    const normalizedCredits = Number.isFinite(parsedCredits)
+      ? Math.max(0, Number.parseFloat(parsedCredits.toFixed(2)))
+      : 3;
+
     const courseData: CoursePortableData = {
       name: editedName.trim() || extracted.courseName,
-      credits: editedCredits,
+      credits: normalizedCredits,
       isPassFail: extracted.isPassFail,
       passLabel: "P",
       failLabel: "F",
       passThreshold: 60,
-      cardColor: null,
+      headerColor: getRandomHeaderColor(),
       percentBoost: 0,
       gradeScale: DEFAULT_GRADE_SCALE.map((g) => ({ ...g })),
       criteria: editedAssignments.map((a) => ({
@@ -202,15 +212,25 @@ export function SyllabusImportDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-fit">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-base font-bold uppercase tracking-wide text-primary">
+      <DialogContent
+        className="max-h-[88vh] w-[min(92vw,860px)] max-w-none gap-0 overflow-hidden border-2 border-primary/25 bg-[#fff8f1] p-0 text-foreground ![box-shadow:none] sm:rounded-xl [&_*]:![box-shadow:none]"
+        onOpenAutoFocus={(event) => event.preventDefault()}
+      >
+        <DialogHeader className="relative border-b border-primary/20 bg-[#fff3ea] px-5 pb-4 pt-5 text-left sm:px-7 sm:pt-6">
+          <div className={`${paperTapeClass} left-10 rotate-[-2deg]`} />
+          <DialogTitle className="flex items-center gap-2 font-heading text-lg font-bold uppercase tracking-wide text-primary">
             <Sparkles className="h-4 w-4" />
             Import Syllabus
           </DialogTitle>
+          <p className="max-w-2xl text-sm text-muted-foreground">
+            Add a course to{" "}
+            <span className="font-semibold text-foreground">{semesterName}</span>{" "}
+            by uploading a syllabus file or pasting the text.
+          </p>
         </DialogHeader>
 
-        <AnimatePresence mode="wait">
+        <div className="max-h-[calc(88vh-92px)] overflow-y-auto">
+          <AnimatePresence mode="wait">
           {/* PHASE: idle — upload or paste */}
           {phase === "idle" && (
             <motion.div
@@ -219,127 +239,148 @@ export function SyllabusImportDialog({
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.2 }}
-              className="space-y-4"
+              className="px-4 pb-4 sm:px-6 sm:pb-6"
             >
-              <p className="text-xs text-muted-foreground">
-                Adding to:{" "}
-                <span className="font-semibold text-foreground">
-                  {semesterName}
-                </span>
-              </p>
+              <div className="grid gap-4 md:grid-cols-2">
+                <section className={`${paperPanelClass} flex min-h-[280px] flex-col`}>
+                  <div className={`${paperTapeClass} right-10 rotate-2`} />
+                  <div className="mb-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      Upload file
+                    </p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      PDFs and screenshots work best for detailed syllabi.
+                    </p>
+                  </div>
 
-              {/* Drop zone */}
-              <div
-                className={`relative flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed px-4 py-6 text-center transition-colors ${
-                  isDragging
-                    ? "border-primary bg-primary/8"
-                    : "border-border/60 hover:border-primary/50 hover:bg-muted/40"
-                }`}
-                onClick={() => fileInputRef.current?.click()}
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  setIsDragging(true);
-                }}
-                onDragLeave={() => setIsDragging(false)}
-                onDrop={handleDrop}
-              >
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept={ALLOWED_EXTENSIONS}
-                  className="hidden"
-                  onChange={handleFileInput}
-                />
-                {file ? (
-                  <>
-                    <FileText className="h-7 w-7 text-primary" />
-                    <p className="text-sm font-medium text-foreground">
-                      {file.name}
+                  {/* Drop zone */}
+                  <div
+                    className={`relative flex flex-1 cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed px-4 py-8 text-center transition-colors ${
+                      isDragging
+                        ? "border-primary bg-primary/10"
+                        : "border-primary/20 bg-[#fff8f1]/70 hover:border-primary/60 hover:bg-primary/5"
+                    }`}
+                    onClick={() => fileInputRef.current?.click()}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      setIsDragging(true);
+                    }}
+                    onDragLeave={() => setIsDragging(false)}
+                    onDrop={handleDrop}
+                  >
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept={ALLOWED_EXTENSIONS}
+                      className="hidden"
+                      onChange={handleFileInput}
+                    />
+                    {file ? (
+                      <>
+                        <FileText className="h-10 w-10 text-primary" />
+                        <p className="max-w-full truncate text-sm font-semibold text-foreground">
+                          {file.name}
+                        </p>
+                        <button
+                          className="absolute right-3 top-3 rounded p-1 text-muted-foreground hover:bg-primary/10 hover:text-foreground"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setFile(null);
+                          }}
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="h-10 w-10 text-primary/70" />
+                        <div>
+                          <p className="text-sm font-medium text-foreground">
+                            Drop a PDF or image here
+                          </p>
+                          <p className="mt-1 text-sm text-muted-foreground">
+                            or{" "}
+                            <span className="font-semibold text-primary">
+                              click to browse
+                            </span>
+                          </p>
+                        </div>
+                        <p className="text-[11px] text-muted-foreground/70">
+                          PDF, PNG, JPG, WEBP — max 10 MB
+                        </p>
+                      </>
+                    )}
+                  </div>
+                </section>
+
+                <section className={`${paperPanelClass} flex min-h-[280px] flex-col`}>
+                  <div className={`${paperTapeClass} left-10 rotate-[-2deg]`} />
+                  <div className="mb-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      Paste text
                     </p>
-                    <button
-                      className="absolute right-2 top-2 rounded p-0.5 text-muted-foreground hover:text-foreground"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setFile(null);
-                      }}
-                    >
-                      <X className="h-3.5 w-3.5" />
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <Upload className="h-7 w-7 text-muted-foreground/60" />
-                    <p className="text-sm text-muted-foreground">
-                      Drop a PDF or image here, or{" "}
-                      <span className="font-medium text-primary">
-                        click to browse
-                      </span>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Paste syllabus text, or paste an image from your clipboard.
                     </p>
-                    <p className="text-[11px] text-muted-foreground/60">
-                      PDF, PNG, JPG, WEBP — max 10 MB
-                    </p>
-                  </>
-                )}
+                  </div>
+
+                  <textarea
+                    value={text}
+                    onChange={handleTextChange}
+                    placeholder="Paste your syllabus text or image here..."
+                    className="min-h-[210px] flex-1 resize-y rounded-md border-2 border-primary/20 bg-[#fff8f1] px-3 py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground/50 focus:border-primary/50 focus:ring-1 focus:ring-primary/30"
+                    onPaste={(e) => {
+                      const imageItem = Array.from(e.clipboardData.items).find(
+                        (item) =>
+                          item.kind === "file" &&
+                          item.type.startsWith("image/"),
+                      );
+                      if (imageItem) {
+                        e.preventDefault();
+                        const f = imageItem.getAsFile();
+                        if (f) selectFile(f);
+                      }
+                    }}
+                  />
+                </section>
               </div>
 
-              <div className="flex items-center gap-3">
-                <div className="h-px flex-1 bg-border/50" />
-                <span className="text-xs text-muted-foreground">
-                  or paste text
-                </span>
-                <div className="h-px flex-1 bg-border/50" />
-              </div>
+              <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-h-5">
+                  {errorMsg && (
+                    <p className="flex items-center gap-1.5 rounded-md border border-destructive/25 bg-destructive/5 px-3 py-2 text-xs text-destructive">
+                      <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                      {errorMsg}
+                    </p>
+                  )}
 
-              <textarea
-                value={text}
-                onChange={handleTextChange}
-                placeholder="Paste your syllabus text or image here..."
-                rows={4}
-                className="w-full resize-y rounded-md border border-input bg-background/80 px-3 py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground/50 focus:border-primary/50 focus:ring-1 focus:ring-primary/30"
-                onPaste={(e) => {
-                  const imageItem = Array.from(e.clipboardData.items).find(
-                    (item) =>
-                      item.kind === "file" && item.type.startsWith("image/"),
-                  );
-                  if (imageItem) {
-                    e.preventDefault();
-                    const f = imageItem.getAsFile();
-                    if (f) selectFile(f);
-                  }
-                }}
-              />
+                  {importsRemaining !== null && !errorMsg && (
+                    <p className="text-xs text-muted-foreground">
+                      {importsRemaining} import
+                      {importsRemaining !== 1 ? "s" : ""} remaining this window
+                    </p>
+                  )}
+                </div>
 
-              {errorMsg && (
-                <p className="flex items-center gap-1.5 text-xs text-destructive">
-                  <AlertCircle className="h-3.5 w-3.5 shrink-0" />
-                  {errorMsg}
-                </p>
-              )}
-
-              {importsRemaining !== null && (
-                <p className="text-xs text-muted-foreground">
-                  {importsRemaining} import{importsRemaining !== 1 ? "s" : ""}{" "}
-                  remaining this window
-                </p>
-              )}
-
-              <div className="flex justify-end gap-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleOpenChange(false)}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  size="sm"
-                  disabled={!canAnalyze}
-                  onClick={analyze}
-                  className="gap-2 bg-primary text-white hover:bg-primary/90"
-                >
-                  <Sparkles className="h-3.5 w-3.5" />
-                  Analyze
-                </Button>
+                <div className="flex justify-end gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleOpenChange(false)}
+                    className="hover:bg-primary/10"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    size="sm"
+                    disabled={!canAnalyze}
+                    onClick={analyze}
+                    className="gap-2 bg-primary text-white hover:bg-primary/90"
+                  >
+                    <Sparkles className="h-3.5 w-3.5" />
+                    Analyze
+                  </Button>
+                </div>
               </div>
             </motion.div>
           )}
@@ -352,12 +393,20 @@ export function SyllabusImportDialog({
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.2 }}
-              className="flex flex-col items-center gap-4 py-10"
+              className="px-4 pb-4 sm:px-6 sm:pb-6"
             >
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              <p className="text-sm text-muted-foreground">
-                Analyzing your syllabus…
-              </p>
+              <div className={`${paperPanelClass} flex min-h-[320px] flex-col items-center justify-center gap-4 p-8 text-center`}>
+                <div className={`${paperTapeClass} left-1/2 -translate-x-1/2 rotate-2`} />
+                <Loader2 className="h-10 w-10 animate-spin text-primary" />
+                <div>
+                  <p className="text-base font-semibold text-foreground">
+                    Analyzing your syllabus
+                  </p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Extracting course details and grading breakdown…
+                  </p>
+                </div>
+              </div>
             </motion.div>
           )}
 
@@ -369,52 +418,70 @@ export function SyllabusImportDialog({
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.2 }}
-              className="space-y-4"
+              className="px-4 pb-4 sm:px-6 sm:pb-6"
             >
-              <p className="text-xs text-muted-foreground">
-                Review the extracted details before creating the course.
-              </p>
-
-              <div className="space-y-3">
-                <div className="space-y-1">
-                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                    Course Name
-                  </label>
-                  <input
-                    type="text"
-                    value={editedName}
-                    onChange={(e) => setEditedName(e.target.value)}
-                    className="w-full rounded-md border border-input bg-background/80 px-3 py-1.5 text-sm text-foreground outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/30"
-                  />
+              <div className={`${paperPanelClass} p-4 sm:p-5`}>
+                <div className={`${paperTapeClass} right-12 rotate-2`} />
+                <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      Review course
+                    </p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Confirm the extracted details before creating the course.
+                    </p>
+                  </div>
                 </div>
 
-                <div className="space-y-1">
-                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                    Credits
-                  </label>
-                  <input
-                    type="number"
-                    min={1}
-                    max={6}
-                    value={editedCredits}
-                    onChange={(e) =>
-                      setEditedCredits(
-                        Math.max(1, Math.min(6, parseInt(e.target.value) || 3)),
-                      )
-                    }
-                    className="w-20 rounded-md border border-input bg-background/80 px-3 py-1.5 text-sm text-foreground outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/30"
-                  />
+                <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_120px]">
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      Course Name
+                    </label>
+                    <input
+                      type="text"
+                      value={editedName}
+                      onChange={(e) => setEditedName(e.target.value)}
+                      className="w-full rounded-md border-2 border-primary/20 bg-[#fff8f1] px-3 py-2 text-sm text-foreground outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/30"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      Credits
+                    </label>
+                      <input
+                        type="number"
+                      min={0}
+                      step={0.25}
+                      value={editedCreditsDraft}
+                      onChange={(e) => setEditedCreditsDraft(e.target.value)}
+                      onBlur={() => {
+                        const parsedCredits = Number.parseFloat(
+                          editedCreditsDraft.trim(),
+                        );
+                        const normalizedCredits = Number.isFinite(
+                          parsedCredits,
+                        )
+                          ? Math.max(0, Number.parseFloat(parsedCredits.toFixed(2)))
+                          : 3;
+
+                        setEditedCreditsDraft(String(normalizedCredits));
+                      }}
+                      className="w-full rounded-md border-2 border-primary/20 bg-[#fff8f1] px-3 py-2 text-sm text-foreground outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/30"
+                    />
+                  </div>
                 </div>
 
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                <div className="mt-4 space-y-1.5">
+                  <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                     Grading Breakdown
                   </label>
-                  <div className="space-y-1 rounded-md border border-border/50 bg-muted/20 p-2">
+                  <div className="max-h-[34vh] space-y-2 overflow-y-auto rounded-md border border-primary/20 bg-[#fff8f1]/70 p-2">
                     {editedAssignments.map((a) => (
                       <div
                         key={a.clientId}
-                        className="group flex items-center gap-2"
+                        className="group relative flex items-center gap-2 overflow-hidden rounded-md border border-primary/15 bg-white/45 px-2 py-1"
                       >
                         <input
                           type="text"
@@ -428,7 +495,7 @@ export function SyllabusImportDialog({
                               ),
                             )
                           }
-                          className="min-w-0 flex-1 rounded border border-transparent bg-transparent px-2 py-1 text-sm text-foreground outline-none hover:border-border focus:border-primary/50 focus:bg-background/80 focus:ring-1 focus:ring-primary/30"
+                          className="min-w-0 flex-1 rounded border border-transparent bg-transparent px-2 py-1 text-sm text-foreground outline-none hover:border-primary/20 focus:border-primary/50 focus:bg-[#fff8f1] focus:ring-1 focus:ring-primary/30"
                         />
                         <div className="flex shrink-0 items-center gap-0.5">
                           <input
@@ -454,7 +521,7 @@ export function SyllabusImportDialog({
                                 ),
                               )
                             }
-                            className="w-14 rounded border border-transparent bg-transparent px-2 py-1 text-right text-sm font-semibold text-primary outline-none hover:border-border focus:border-primary/50 focus:bg-background/80 focus:ring-1 focus:ring-primary/30"
+                            className="w-14 rounded border border-transparent bg-transparent px-2 py-1 text-right text-sm font-semibold text-primary outline-none hover:border-primary/20 focus:border-primary/50 focus:bg-[#fff8f1] focus:ring-1 focus:ring-primary/30"
                           />
                           <span className="text-sm font-semibold text-primary">
                             %
@@ -474,35 +541,35 @@ export function SyllabusImportDialog({
                     ))}
                   </div>
                 </div>
-              </div>
 
-              {errorMsg && (
-                <p className="flex items-center gap-1.5 text-xs text-destructive">
-                  <AlertCircle className="h-3.5 w-3.5 shrink-0" />
-                  {errorMsg}
-                </p>
-              )}
+                {errorMsg && (
+                  <p className="mt-4 flex items-center gap-1.5 rounded-md border border-destructive/25 bg-destructive/5 px-3 py-2 text-xs text-destructive">
+                    <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                    {errorMsg}
+                  </p>
+                )}
 
-              <div className="flex justify-end gap-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={reset}
-                  disabled={isCreating}
-                >
-                  Back
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={createCourse}
-                  disabled={isCreating || !editedName.trim()}
-                  className="gap-2 bg-primary text-white hover:bg-primary/90"
-                >
-                  {isCreating && (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  )}
-                  Create Course
-                </Button>
+                <div className="mt-5 flex justify-end gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={reset}
+                    disabled={isCreating}
+                  >
+                    Back
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={createCourse}
+                    disabled={isCreating || !editedName.trim()}
+                    className="gap-2 bg-primary text-white hover:bg-primary/90"
+                  >
+                    {isCreating && (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    )}
+                    Create Course
+                  </Button>
+                </div>
               </div>
             </motion.div>
           )}
@@ -515,29 +582,40 @@ export function SyllabusImportDialog({
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.2 }}
-              className="flex flex-col items-center gap-4 py-8 text-center"
+              className="px-4 pb-4 sm:px-6 sm:pb-6"
             >
-              <AlertCircle className="h-8 w-8 text-destructive" />
-              <p className="text-sm text-foreground">{errorMsg}</p>
-              <div className="flex gap-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleOpenChange(false)}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={reset}
-                  className="bg-primary text-white hover:bg-primary/90"
-                >
-                  Try Again
-                </Button>
+              <div className={`${paperPanelClass} flex min-h-[280px] flex-col items-center justify-center gap-4 p-8 text-center`}>
+                <div className={`${paperTapeClass} left-1/2 -translate-x-1/2 rotate-[-2deg]`} />
+                <AlertCircle className="h-10 w-10 text-destructive" />
+                <div>
+                  <p className="text-base font-semibold text-foreground">
+                    Import failed
+                  </p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {errorMsg}
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleOpenChange(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={reset}
+                    className="bg-primary text-white hover:bg-primary/90"
+                  >
+                    Try Again
+                  </Button>
+                </div>
               </div>
             </motion.div>
           )}
-        </AnimatePresence>
+          </AnimatePresence>
+        </div>
       </DialogContent>
     </Dialog>
   );
