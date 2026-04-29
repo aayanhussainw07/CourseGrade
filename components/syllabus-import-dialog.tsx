@@ -124,10 +124,12 @@ export function SyllabusImportDialog({
     setErrorMsg("");
   };
 
-  const canAnalyze = (!!file || text.trim().length > 0) && phase === "idle";
+  const hasAnalyzeInput = !!file || text.trim().length > 0;
+  const canAnalyze = hasAnalyzeInput && phase === "idle";
 
   const analyze = async () => {
-    if (!canAnalyze) return;
+    if (!hasAnalyzeInput || phase === "loading") return;
+    setErrorMsg("");
     setPhase("loading");
 
     const formData = new FormData();
@@ -605,10 +607,20 @@ export function SyllabusImportDialog({
                   </Button>
                   <Button
                     size="sm"
-                    onClick={reset}
+                    onClick={
+                      extracted
+                        ? () => setPhase("preview")
+                        : hasAnalyzeInput
+                          ? analyze
+                          : reset
+                    }
                     className="bg-primary text-white hover:bg-primary/90"
                   >
-                    Try Again
+                    {extracted
+                      ? "Back to Review"
+                      : hasAnalyzeInput
+                        ? "Try Again"
+                        : "Start Over"}
                   </Button>
                 </div>
               </div>
