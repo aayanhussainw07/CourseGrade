@@ -207,13 +207,13 @@ export function DashboardPanel({ timelineData, courses, bare = false }: Dashboar
                 <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
                   Distribution
                 </p>
-                <div className="flex gap-0.5">
+                <div className="relative z-20 flex gap-0.5">
                   <Button variant={chartType === "bar" ? "default" : "ghost"} size="icon" className="h-6 w-6"
-                    onClick={() => setChartType("bar")} title="Bar chart">
+                    type="button" onClick={() => setChartType("bar")} title="Bar chart">
                     <BarChart3 className="h-3.5 w-3.5" />
                   </Button>
                   <Button variant={chartType === "pie" ? "default" : "ghost"} size="icon" className="h-6 w-6"
-                    onClick={() => setChartType("pie")} title="Donut chart">
+                    type="button" onClick={() => setChartType("pie")} title="Donut chart">
                     <PieChart className="h-3.5 w-3.5" />
                   </Button>
                 </div>
@@ -233,8 +233,8 @@ export function DashboardPanel({ timelineData, courses, bare = false }: Dashboar
 
   return (
     <div className="relative flex flex-col gap-6 overflow-hidden rounded-md border-2 border-primary/30 bg-[#fff8f1] py-0">
-      <div className="absolute -top-2 left-8 z-10 h-5 w-20 rotate-[-2deg] bg-primary/15" />
-      <div className="absolute -top-2 right-12 z-10 h-5 w-20 rotate-[3deg] bg-primary/15" />
+      <div className="pointer-events-none absolute -top-2 left-8 z-10 h-5 w-20 rotate-[-2deg] bg-primary/15" />
+      <div className="pointer-events-none absolute -top-2 right-12 z-10 h-5 w-20 rotate-[3deg] bg-primary/15" />
       <CardContent className="p-0">{inner}</CardContent>
     </div>
   )

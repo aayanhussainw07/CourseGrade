@@ -4,13 +4,19 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Paintbrush } from "lucide-react";
 import { HEADER_COLOR_OPTIONS } from "@/lib/header-colors";
+import { cn } from "@/lib/utils";
 
 interface HeaderColorPickerProps {
   currentColor: string | null | undefined;
   onChange: (color: string) => void;
+  side?: "top" | "bottom";
 }
 
-export function HeaderColorPicker({ currentColor, onChange }: HeaderColorPickerProps) {
+export function HeaderColorPicker({
+  currentColor,
+  onChange,
+  side = "bottom",
+}: HeaderColorPickerProps) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement | null>(null);
 
@@ -26,7 +32,7 @@ export function HeaderColorPicker({ currentColor, onChange }: HeaderColorPickerP
   }, [open]);
 
   return (
-    <div className="relative z-30">
+    <div ref={ref} className="relative z-30">
       <Button
         variant="ghost"
         size="icon"
@@ -38,8 +44,10 @@ export function HeaderColorPicker({ currentColor, onChange }: HeaderColorPickerP
       </Button>
       {open && (
         <div
-          ref={ref}
-          className="absolute right-0 top-10 z-[80] min-w-[180px] rounded-xl border border-border/60 bg-card/95 p-3 shadow-[0_8px_18px_rgba(92,30,26,0.14)]"
+          className={cn(
+            "absolute right-0 z-[80] min-w-[180px] rounded-xl border border-border/60 bg-card/95 p-3 shadow-[0_8px_18px_rgba(92,30,26,0.14)]",
+            side === "top" ? "bottom-10" : "top-10",
+          )}
         >
           <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
             Header Color

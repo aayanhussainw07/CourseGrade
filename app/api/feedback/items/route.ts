@@ -1,14 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
-
-const ADMIN_EMAILS = new Set([
-  "aayanhussainw07@gmail.com",
-  "ah2425@gmail.com",
-]);
+import {
+  getAdminSession,
+  getBackendApiBaseUrl,
+  getBackendInternalApiSecret,
+  getRequiredSession,
+} from "@/lib/server-auth";
 
 const readJson = async (response: Response) => {
   const text = await response.text();
@@ -17,17 +13,17 @@ const readJson = async (response: Response) => {
 };
 
 export async function POST(req: NextRequest) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.email) {
-    return NextResponse.json({ detail: "Unauthorized." }, { status: 401 });
-  }
+  const auth = await getRequiredSession();
+  if ("error" in auth) return auth.error;
 
   const body = await req.json();
-  const res = await fetch(`${API_BASE_URL}/feedback/`, {
+  const res = await fetch(`${getBackendApiBaseUrl()}/feedback/`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "X-User-Id": session.user.id ?? session.user.email,
+      "X-User-Id": auth.userId,
+      "X-User-Email": auth.userEmail,
+      "X-Internal-Api-Secret": getBackendInternalApiSecret(),
     },
     body: JSON.stringify(body),
   });
@@ -37,19 +33,14 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.email) {
-    return NextResponse.json({ detail: "Unauthorized." }, { status: 401 });
-  }
+  const auth = await getAdminSession();
+  if ("error" in auth) return auth.error;
 
-  if (!ADMIN_EMAILS.has(session.user.email.toLowerCase())) {
-    return NextResponse.json({ detail: "Forbidden." }, { status: 403 });
-  }
-
-  const res = await fetch(`${API_BASE_URL}/feedback/`, {
+  const res = await fetch(`${getBackendApiBaseUrl()}/feedback/`, {
     headers: {
-      "X-User-Id": session.user.id ?? session.user.email,
-      "X-User-Email": session.user.email,
+      "X-User-Id": auth.userId,
+      "X-User-Email": auth.userEmail,
+      "X-Internal-Api-Secret": getBackendInternalApiSecret(),
     },
   });
 

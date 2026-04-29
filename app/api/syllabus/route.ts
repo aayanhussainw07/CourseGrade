@@ -47,6 +47,11 @@ export type SyllabusExtracted = {
   assignments: Array<{ name: string; weight: number; drop_lowest: number }>;
 };
 
+type RateLimitResult = {
+  allowed: boolean;
+  request_count: number;
+};
+
 function getWindowKey(): string {
   const bucket = Math.floor(Date.now() / WINDOW_MS);
   return `5m-${bucket}`;
@@ -163,7 +168,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Rate limit
+  // Rate limit before the AI call so failed upstream calls still count.
   const supabase = createClient(
     process.env.SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
@@ -180,16 +185,29 @@ export async function POST(req: NextRequest) {
       new Date(Date.now() - 60 * 60 * 1000).toISOString(),
     );
 
-  const { data: limitRow } = await supabase
-    .from("syllabus_rate_limits")
-    .select("request_count")
-    .eq("user_id", userId)
-    .eq("window_key", windowKey)
-    .single();
+  const { data: rateLimitRows, error: rateLimitError } = await supabase.rpc(
+    "consume_syllabus_import",
+    {
+      p_user_id: userId,
+      p_window_key: windowKey,
+      p_limit: RATE_LIMIT,
+    },
+  );
 
-  const currentCount = limitRow?.request_count ?? 0;
+  if (rateLimitError) {
+    console.error("[syllabus] Rate limit error:", rateLimitError);
+    return NextResponse.json(
+      { error: "Service error. Please try again.", code: "RATE_LIMIT_ERROR" },
+      { status: 503 },
+    );
+  }
 
-  if (currentCount >= RATE_LIMIT) {
+  const rateLimitResult = (
+    Array.isArray(rateLimitRows) ? rateLimitRows[0] : rateLimitRows
+  ) as RateLimitResult | null;
+  const currentCount = rateLimitResult?.request_count ?? RATE_LIMIT;
+
+  if (!rateLimitResult?.allowed) {
     const msUntilReset = WINDOW_MS - (Date.now() % WINDOW_MS);
     return NextResponse.json(
       {
@@ -266,16 +284,8 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Increment rate limit only after successful extraction
-  await supabase.from("syllabus_rate_limits").upsert({
-    user_id: userId,
-    window_key: windowKey,
-    request_count: currentCount + 1,
-    updated_at: new Date().toISOString(),
-  });
-
   return NextResponse.json({
     extracted,
-    importsRemaining: RATE_LIMIT - (currentCount + 1),
+    importsRemaining: Math.max(0, RATE_LIMIT - currentCount),
   });
 }

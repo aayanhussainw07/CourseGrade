@@ -4,10 +4,11 @@ import { GeistMono } from "geist/font/mono";
 import "./globals.css";
 import { AuthProvider } from "@/components/auth-provider";
 
-const siteUrl = new URL("https://coursegrade.io");
+const siteUrl = new URL("https://www.coursegrade.io");
 const siteTitle = "CourseGrade";
 const siteDescription =
   "Track grades, GPA, credits, and what-if scenarios without wrestling another spreadsheet.";
+const socialImage = "/social-preview.png";
 
 export const metadata: Metadata = {
   metadataBase: siteUrl,
@@ -35,7 +36,7 @@ export const metadata: Metadata = {
     type: "website",
     images: [
       {
-        url: "/opengraph-image",
+        url: socialImage,
         width: 1200,
         height: 630,
         alt: "CourseGrade grade tracking dashboard preview",
@@ -46,7 +47,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: siteTitle,
     description: siteDescription,
-    images: ["/twitter-image"],
+    images: [socialImage],
   },
 };
 

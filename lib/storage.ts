@@ -74,13 +74,19 @@ export const storage = {
     await semesterApi.delete(id)
   },
 
-  async createCourse(semesterId: string, name: string, credits: number): Promise<Course> {
+  async createCourse(
+    semesterId: string,
+    name: string,
+    credits: number,
+    headerColor?: string | null,
+  ): Promise<Course> {
     const apiCourse = await courseApi.create({
       semester: semesterId,
       name,
       credits,
       is_pass_fail: false,
       percent_boost: 0,
+      header_color: headerColor ?? null,
       assignments: [],
     })
 
@@ -88,6 +94,7 @@ export const storage = {
     createdCourse.collapsed = false
     createdCourse.isPassFail = false
     createdCourse.percentBoost = 0
+    createdCourse.headerColor = headerColor ?? createdCourse.headerColor ?? null
     return createdCourse
   },
 
@@ -101,6 +108,7 @@ export const storage = {
         credits: course.credits,
         is_pass_fail: course.isPassFail ?? false,
         percent_boost: course.percentBoost ?? 0,
+        header_color: course.headerColor ?? null,
       }),
       assignmentApi.getAll(course.id),
     ])

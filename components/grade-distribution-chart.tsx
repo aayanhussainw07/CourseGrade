@@ -93,6 +93,7 @@ export function GradeDistributionChart({
               variant={chartType === "bar" ? "default" : "ghost"}
               size="icon"
               className="h-8 w-8"
+              type="button"
               onClick={() => setChartType("bar")}
               title="Bar chart"
             >
@@ -102,6 +103,7 @@ export function GradeDistributionChart({
               variant={chartType === "pie" ? "default" : "ghost"}
               size="icon"
               className="h-8 w-8"
+              type="button"
               onClick={() => setChartType("pie")}
               title="Donut chart"
             >

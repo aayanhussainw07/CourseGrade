@@ -278,6 +278,7 @@ export function useSemesterData({ appSettings }: { appSettings: AppSettings }) {
         semesterId,
         fallbackName,
         numericOr(courseData.credits, 0),
+        courseData.headerColor ?? null,
       );
       const normalizedCriteria =
         courseData.criteria?.map((criterion, index) => ({
@@ -411,10 +412,12 @@ export function useSemesterData({ appSettings }: { appSettings: AppSettings }) {
   const addCourse = useCallback(async (): Promise<Course | null> => {
     if (!activeSemesterId) return null;
     try {
+      const headerColor = getRandomHeaderColor();
       const newCourse = await storage.createCourse(
         activeSemesterId,
         `Course ${courses.length + 1}`,
         appSettings.defaultCredits,
+        headerColor,
       );
       newCourse.gradeScale = appSettings.defaultGradeScale.map((g) => ({ ...g }));
       newCourse.isPassFail = appSettings.defaultIsPassFail;
@@ -424,7 +427,7 @@ export function useSemesterData({ appSettings }: { appSettings: AppSettings }) {
       newCourse.gradeScaleSnapshot = appSettings.defaultIsPassFail
         ? appSettings.defaultGradeScaleSnapshot?.map((g) => ({ ...g }))
         : undefined;
-      newCourse.headerColor = getRandomHeaderColor();
+      newCourse.headerColor = headerColor;
       newCourse.collapsed = true;
       persistCourseSettings(newCourse);
       setSemesters((prev) =>

@@ -1,14 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
-
-const ADMIN_EMAILS = new Set([
-  "aayanhussainw07@gmail.com",
-  "ah2425@gmail.com",
-]);
+import {
+  getAdminSession,
+  getBackendApiBaseUrl,
+  getBackendInternalApiSecret,
+} from "@/lib/server-auth";
 
 type RouteContext = {
   params: Promise<{ id: string }>;
@@ -20,30 +15,19 @@ const readJson = async (response: Response) => {
   return JSON.parse(text);
 };
 
-const getAdminSession = async () => {
-  const session = await getServerSession(authOptions);
-  const userEmail = session?.user?.email;
-  if (!userEmail) {
-    return { error: NextResponse.json({ detail: "Unauthorized." }, { status: 401 }) };
-  }
-  if (!ADMIN_EMAILS.has(userEmail.toLowerCase())) {
-    return { error: NextResponse.json({ detail: "Forbidden." }, { status: 403 }) };
-  }
-  return { session, userEmail };
-};
-
 export async function PATCH(req: NextRequest, context: RouteContext) {
-  const { session, userEmail, error } = await getAdminSession();
-  if (error) return error;
+  const auth = await getAdminSession();
+  if ("error" in auth) return auth.error;
 
   const { id } = await context.params;
   const body = await req.json();
-  const res = await fetch(`${API_BASE_URL}/feedback/${id}/`, {
+  const res = await fetch(`${getBackendApiBaseUrl()}/feedback/${id}/`, {
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",
-      "X-User-Id": session.user.id ?? userEmail,
-      "X-User-Email": userEmail,
+      "X-User-Id": auth.userId,
+      "X-User-Email": auth.userEmail,
+      "X-Internal-Api-Secret": getBackendInternalApiSecret(),
     },
     body: JSON.stringify(body),
   });
@@ -53,15 +37,16 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
 }
 
 export async function DELETE(_req: NextRequest, context: RouteContext) {
-  const { session, userEmail, error } = await getAdminSession();
-  if (error) return error;
+  const auth = await getAdminSession();
+  if ("error" in auth) return auth.error;
 
   const { id } = await context.params;
-  const res = await fetch(`${API_BASE_URL}/feedback/${id}/`, {
+  const res = await fetch(`${getBackendApiBaseUrl()}/feedback/${id}/`, {
     method: "DELETE",
     headers: {
-      "X-User-Id": session.user.id ?? userEmail,
-      "X-User-Email": userEmail,
+      "X-User-Id": auth.userId,
+      "X-User-Email": auth.userEmail,
+      "X-Internal-Api-Secret": getBackendInternalApiSecret(),
     },
   });
 

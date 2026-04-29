@@ -40,6 +40,7 @@ class Course(TimestampMixin, db.Model):
     credits = db.Column(db.Float, nullable=False, default=3)
     is_pass_fail = db.Column(db.Boolean, nullable=False, default=False)
     percent_boost = db.Column(db.Float, nullable=False, default=0)
+    header_color = db.Column(db.String(32), nullable=True)
 
     __table_args__ = (
         CheckConstraint("percent_boost >= 0 AND percent_boost <= 100", name="courses_percent_boost_range"),

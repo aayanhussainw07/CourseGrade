@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from datetime import date, datetime, timezone
 
 from flask import Blueprint, jsonify, request
@@ -28,10 +29,28 @@ DEFAULT_GRADE_SCALES = [
     {"letter": "F", "min_percentage": 0, "gpa_value": 0.0},
 ]
 
+DEFAULT_ADMIN_EMAILS = {"aayanhussainw07@gmail.com", "ah2425@gmail.com"}
+
+
+def _admin_emails() -> set[str]:
+    configured = {
+        email.strip().lower()
+        for email in os.getenv("ADMIN_EMAILS", "").split(",")
+        if email.strip()
+    }
+    return configured or DEFAULT_ADMIN_EMAILS
+
 
 def _request_user_id() -> str:
     user_id = request.headers.get("X-User-Id", "").strip()
     return user_id or "default"
+
+
+def _admin_forbidden():
+    admin_email = request.headers.get("X-User-Email", "").strip().lower()
+    if admin_email not in _admin_emails():
+        return jsonify({"detail": "Forbidden."}), 403
+    return None
 
 
 def _json_payload() -> dict:
@@ -78,6 +97,7 @@ def _serialize_course(course: Course) -> dict:
         "credits": course.credits,
         "is_pass_fail": course.is_pass_fail,
         "percent_boost": course.percent_boost,
+        "header_color": course.header_color,
         "assignments": [_serialize_assignment(assignment) for assignment in assignments],
         "created_at": _serialize_datetime(course.created_at),
         "updated_at": _serialize_datetime(course.updated_at),
@@ -165,6 +185,21 @@ def _parse_bool(value: object, field: str, errors: dict[str, list[str]]) -> bool
 
     errors.setdefault(field, []).append("Must be a valid boolean.")
     return None
+
+
+def _parse_optional_short_string(value: object, field: str, errors: dict[str, list[str]], max_length: int) -> str | None:
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        errors.setdefault(field, []).append("Not a valid string.")
+        return None
+    normalized = value.strip()
+    if normalized == "":
+        return None
+    if len(normalized) > max_length:
+        errors.setdefault(field, []).append(f"Ensure this field has no more than {max_length} characters.")
+        return None
+    return normalized
 
 
 def _parse_date(value: object, field: str, errors: dict[str, list[str]]) -> date | None:
@@ -410,6 +445,8 @@ def courses_collection():
 
     percent_boost = _parse_float(payload.get("percent_boost", 0), "percent_boost", errors, min_value=0, max_value=100)
 
+    header_color = _parse_optional_short_string(payload.get("header_color"), "header_color", errors, 32)
+
     assignment_seeds_payload = payload.get("assignments")
     assignment_seeds: list[dict[str, object]] = []
     if assignment_seeds_payload is not None:
@@ -437,6 +474,7 @@ def courses_collection():
         credits=credits,
         is_pass_fail=is_pass_fail,
         percent_boost=percent_boost,
+        header_color=header_color,
     )
     db.session.add(course)
 
@@ -499,6 +537,11 @@ def course_detail(course_id: int):
         )
         if "percent_boost" not in errors:
             course.percent_boost = percent_boost
+
+    if "header_color" in payload:
+        header_color = _parse_optional_short_string(payload.get("header_color"), "header_color", errors, 32)
+        if "header_color" not in errors:
+            course.header_color = header_color
 
     if errors:
         return jsonify(errors), 400
@@ -627,6 +670,10 @@ def grade_scales_collection():
         grade_scales = GradeScale.query.order_by(GradeScale.min_percentage.desc()).all()
         return jsonify([_serialize_grade_scale(scale) for scale in grade_scales])
 
+    forbidden = _admin_forbidden()
+    if forbidden:
+        return forbidden
+
     payload = _json_payload()
     errors: dict[str, list[str]] = {}
 
@@ -662,6 +709,10 @@ def grade_scale_detail(grade_scale_id: int):
 
     if request.method == "GET":
         return jsonify(_serialize_grade_scale(grade_scale))
+
+    forbidden = _admin_forbidden()
+    if forbidden:
+        return forbidden
 
     if request.method == "DELETE":
         db.session.delete(grade_scale)
@@ -710,6 +761,10 @@ def grade_scale_detail(grade_scale_id: int):
 
 @api.route("/grade-scales/reset_default/", methods=["POST"])
 def grade_scales_reset_default():
+    forbidden = _admin_forbidden()
+    if forbidden:
+        return forbidden
+
     GradeScale.query.delete()
 
     for scale_data in DEFAULT_GRADE_SCALES:
@@ -757,9 +812,6 @@ def user_settings():
 # ── Feedback ────────────────────────────────────────────────────────────────
 
 
-ADMIN_EMAILS = {"aayanhussainw07@gmail.com", "ah2425@gmail.com"}
-
-
 def _serialize_feedback(fb: Feedback) -> dict:
     return {
         "id": fb.id,
@@ -769,14 +821,6 @@ def _serialize_feedback(fb: Feedback) -> dict:
         "completed": fb.completed,
         "created_at": _serialize_datetime(fb.created_at),
     }
-
-
-def _feedback_admin_forbidden():
-    admin_email = request.headers.get("X-User-Email", "").strip().lower()
-    if admin_email not in ADMIN_EMAILS:
-        return jsonify({"detail": "Forbidden."}), 403
-    return None
-
 
 @api.route("/feedback/", methods=["GET", "POST"])
 def feedback_list():
@@ -796,7 +840,7 @@ def feedback_list():
         return jsonify(_serialize_feedback(fb)), 201
 
     # GET — admin only
-    forbidden = _feedback_admin_forbidden()
+    forbidden = _admin_forbidden()
     if forbidden:
         return forbidden
 
@@ -806,7 +850,7 @@ def feedback_list():
 
 @api.route("/feedback/<int:feedback_id>/", methods=["PATCH", "DELETE"])
 def feedback_detail(feedback_id: int):
-    forbidden = _feedback_admin_forbidden()
+    forbidden = _admin_forbidden()
     if forbidden:
         return forbidden
 

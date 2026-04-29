@@ -982,6 +982,7 @@ export function CourseCard({
               <HeaderColorPicker
                 currentColor={course.headerColor}
                 onChange={updateHeaderColor}
+                side="top"
               />
             </div>
             <Button

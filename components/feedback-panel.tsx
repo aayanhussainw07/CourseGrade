@@ -62,18 +62,18 @@ export function FeedbackPanel() {
   };
 
   return (
-    <div ref={panelRef} className="fixed right-0 top-1/2 z-[60] -translate-y-1/2 print:hidden">
+    <div ref={panelRef} className="pointer-events-none fixed right-0 top-1/2 z-[60] -translate-y-1/2 print:hidden">
       <motion.div
         animate={{ x: open ? 0 : 300 }}
         initial={{ x: 300 }}
         transition={{ type: "spring", damping: 26, stiffness: 300 }}
-        className="flex items-end"
+        className="pointer-events-none flex items-center"
       >
         {/* Vertical tab — attached to panel */}
         <button
           type="button"
           onClick={() => { setOpen((p) => !p); if (!open) reset(); }}
-          className="flex shrink-0 items-center gap-1.5 rounded-l-lg border-2 border-r-0 border-primary/25 bg-[#fff8f1] px-2 py-3 text-primary transition-colors hover:bg-[#fff3ea]"
+          className="pointer-events-auto flex shrink-0 items-center gap-1.5 rounded-l-lg border-2 border-r-0 border-primary/25 bg-[#fff8f1] px-2 py-3 text-primary transition-colors hover:bg-[#fff3ea]"
           style={{ writingMode: "vertical-rl", textOrientation: "mixed" }}
         >
           <ChevronRight className={`h-3 w-3 rotate-90 transition-transform ${open ? "rotate-[-90deg]" : ""}`} />
@@ -83,7 +83,7 @@ export function FeedbackPanel() {
 
         {/* Panel */}
         <div
-          className="relative w-[300px] overflow-hidden rounded-xl border-2 border-primary/25 bg-[#fff8f1] shadow-[0_3px_0_rgba(198,90,78,0.20),0_10px_18px_rgba(77,31,26,0.08)]"
+          className={`${open ? "pointer-events-auto" : "pointer-events-none"} relative w-[300px] overflow-hidden rounded-l-xl border-2 border-r-0 border-primary/25 bg-[#fff8f1] shadow-[0_3px_0_rgba(198,90,78,0.20),0_10px_18px_rgba(77,31,26,0.08)]`}
         >
             {/* Tape decorations */}
             <div className={`${paperTapeClass} left-8 rotate-[-2deg]`} />

@@ -37,12 +37,14 @@ const Tape = ({ className = "" }: { className?: string }) => (
 const BlockHeading = ({
   children,
   className = "",
+  border = true,
 }: {
   children: React.ReactNode;
   className?: string;
+  border?: boolean;
 }) => (
   <span
-    className={`relative inline-flex items-center justify-center rounded-sm border-2 border-primary/30 bg-[#fff8f1] px-6 py-2 font-futura-bold font-black uppercase tracking-widest text-foreground shadow-none ${className}`}
+    className={`relative inline-flex items-center justify-center rounded-sm bg-[#fff8f1] px-6 py-2 font-futura-bold font-black uppercase tracking-widest text-foreground shadow-none ${border ? "border-2 border-primary/30" : ""} ${className}`}
   >
     <Tape className="-top-3 left-1/2 -translate-x-1/2 rotate-[-2deg]" />
     {children}
@@ -88,12 +90,18 @@ export function MarketingPage() {
 
               <div className="space-y-3">
                 <div>
-                  <BlockHeading className="text-3xl leading-none sm:text-5xl">
+                  <BlockHeading
+                    border={false}
+                    className="text-3xl leading-none sm:text-5xl"
+                  >
                     Failing your prelims?
                   </BlockHeading>
                 </div>
                 <div className="pl-4">
-                  <BlockHeading className="rotate-[0.8deg] text-3xl leading-none sm:text-5xl">
+                  <BlockHeading
+                    border={false}
+                    className="rotate-[0.8deg] text-3xl leading-none sm:text-5xl"
+                  >
                     Track how to fix them!
                   </BlockHeading>
                 </div>
@@ -184,7 +192,7 @@ export function MarketingPage() {
             <Tape className="-top-3 right-10 rotate-[3deg]" />
             <span
               aria-hidden="true"
-              className="absolute right-0 top-0 h-12 w-12 rounded-bl-xl border-b border-l border-primary/15 bg-primary/5"
+              className="pointer-events-none absolute right-0 top-0 h-12 w-12 rounded-bl-xl border-b border-l border-primary/15 bg-primary/5"
             />
             <DashboardPanel
               timelineData={marketingTimelineData}

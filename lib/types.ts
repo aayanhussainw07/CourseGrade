@@ -80,6 +80,7 @@ export interface ApiCourse {
   credits: number
   is_pass_fail?: boolean
   percent_boost?: number
+  header_color?: string | null
   assignments: ApiAssignment[]
   created_at: string
   updated_at: string
@@ -143,5 +144,6 @@ export function apiToFrontendCourse(apiCourse: ApiCourse): Course {
     passLabel: "P",
     failLabel: "F",
     passThreshold: 60,
+    headerColor: apiCourse.header_color ?? null,
   }
 }

@@ -1,9 +1,15 @@
 import importlib.util
 import os
 
+DEV_INTERNAL_API_SECRET = "coursegrade-dev-internal-secret"
+
 
 def _postgres_driver_available() -> bool:
     return bool(importlib.util.find_spec("psycopg2") or importlib.util.find_spec("psycopg"))
+
+
+def _is_production() -> bool:
+    return os.getenv("FLASK_ENV", "").lower() == "production" or os.getenv("ENV", "").lower() == "production"
 
 
 def _normalize_database_url(url: str, env_var: str) -> str:
@@ -17,7 +23,7 @@ def _normalize_database_url(url: str, env_var: str) -> str:
         if not _postgres_driver_available():
             raise RuntimeError(
                 "PostgreSQL driver missing. Install dependencies with "
-                "`pip install -r backend/requirements.txt` "
+                "`pip install -r requirements.txt` "
                 "(or at minimum `pip install psycopg2-binary`)."
             )
         url = url.replace("postgres://", "postgresql+psycopg2://", 1)
@@ -25,7 +31,7 @@ def _normalize_database_url(url: str, env_var: str) -> str:
         if not _postgres_driver_available():
             raise RuntimeError(
                 "PostgreSQL driver missing. Install dependencies with "
-                "`pip install -r backend/requirements.txt` "
+                "`pip install -r requirements.txt` "
                 "(or at minimum `pip install psycopg2-binary`)."
             )
         url = url.replace("postgresql://", "postgresql+psycopg2://", 1)
@@ -53,15 +59,33 @@ def get_cors_origins() -> list[str]:
     default_origins = [
         "http://localhost:3000",
         "http://127.0.0.1:3000",
+        "https://coursegrade.io",
         "https://coursegrade.vercel.app",
         "https://course-grade.vercel.app",
     ]
     origins = os.getenv("FLASK_CORS_ALLOWED_ORIGINS", ",".join(default_origins))
-    return [origin.strip() for origin in origins.split(",") if origin.strip()]
+    parsed = [origin.strip() for origin in origins.split(",") if origin.strip()]
+    if _is_production() and not parsed:
+        raise RuntimeError("FLASK_CORS_ALLOWED_ORIGINS must be set in production.")
+    if _is_production() and "*" in parsed:
+        raise RuntimeError("FLASK_CORS_ALLOWED_ORIGINS cannot include '*' in production.")
+    return parsed
+
+
+def get_internal_api_secret() -> str:
+    secret = os.getenv("INTERNAL_API_SECRET")
+    if secret:
+        return secret
+
+    if _is_production():
+        raise RuntimeError("INTERNAL_API_SECRET is required in production.")
+
+    return DEV_INTERNAL_API_SECRET
 
 
 class Config:
     SQLALCHEMY_DATABASE_URI = get_database_url()
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     JSON_SORT_KEYS = False
-    AUTO_CREATE_TABLES = os.getenv("AUTO_CREATE_TABLES", "true").lower() in {"1", "true", "yes"}
+    AUTO_CREATE_TABLES = os.getenv("AUTO_CREATE_TABLES", "false").lower() in {"1", "true", "yes"}
+    INTERNAL_API_SECRET = get_internal_api_secret()

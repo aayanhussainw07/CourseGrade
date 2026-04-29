@@ -1,8 +1,7 @@
 // API service layer for communicating with backend service
 import type { ApiAssignment, ApiCourse, ApiGradeScale, ApiSemester } from "./types"
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api"
-let apiUserScope = "default"
+const API_BASE_URL = "/api/backend"
 
 export type ApiListResponse<T> = T[] | { results?: T[] | null }
 
@@ -26,6 +25,7 @@ type CoursePayload = {
   credits: number
   is_pass_fail?: boolean
   percent_boost?: number
+  header_color?: string | null
   assignments?: CourseAssignmentPayload[]
   criteria?: unknown
 }
@@ -61,7 +61,7 @@ const normalizeCoursePayload = <T extends Record<string, unknown> | undefined>(p
 }
 
 export function setApiUserScope(scope: string | null | undefined) {
-  apiUserScope = scope && scope.trim().length > 0 ? scope.trim() : "default"
+  void scope
 }
 
 export class ApiUnavailableError extends Error {
@@ -112,7 +112,6 @@ async function apiFetch<T>(endpoint: string, options?: RequestInit): Promise<T> 
       ...options,
       headers: {
         "Content-Type": "application/json",
-        "X-User-Id": apiUserScope,
         ...options?.headers,
       },
     })

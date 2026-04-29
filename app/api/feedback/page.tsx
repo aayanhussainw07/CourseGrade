@@ -13,11 +13,6 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-const ADMIN_EMAILS = new Set([
-  "aayanhussainw07@gmail.com",
-  "ah2425@gmail.com",
-]);
-
 type FeedbackEntry = {
   id: number;
   user_id: string;
@@ -44,16 +39,12 @@ const formatDate = (value: string) =>
   });
 
 export default function FeedbackChecklistPage() {
-  const { data: session, status } = useSession();
+  const { status } = useSession();
   const [entries, setEntries] = useState<FeedbackEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [forbidden, setForbidden] = useState(false);
   const [busyIds, setBusyIds] = useState<Set<number>>(new Set());
-
-  const isAdmin =
-    status === "authenticated" &&
-    session?.user?.email &&
-    ADMIN_EMAILS.has(session.user.email.toLowerCase());
 
   const sortedEntries = useMemo(
     () =>
@@ -76,8 +67,14 @@ export default function FeedbackChecklistPage() {
   const loadEntries = useCallback(async () => {
     setLoading(true);
     setError("");
+    setForbidden(false);
     try {
       const res = await fetch("/api/feedback/items");
+      if (res.status === 401 || res.status === 403) {
+        setForbidden(true);
+        setEntries([]);
+        return;
+      }
       if (!res.ok) throw new Error("Failed to load feedback.");
       const data = (await res.json()) as FeedbackEntry[];
       setEntries(Array.isArray(data) ? data : []);
@@ -90,12 +87,13 @@ export default function FeedbackChecklistPage() {
 
   useEffect(() => {
     if (status === "loading") return;
-    if (!isAdmin) {
+    if (status !== "authenticated") {
+      setForbidden(true);
       setLoading(false);
       return;
     }
     loadEntries();
-  }, [isAdmin, loadEntries, status]);
+  }, [loadEntries, status]);
 
   const setBusy = (id: number, busy: boolean) => {
     setBusyIds((current) => {
@@ -176,7 +174,7 @@ export default function FeedbackChecklistPage() {
     );
   }
 
-  if (!isAdmin) {
+  if (forbidden) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background px-4">
         <div className="max-w-md text-center">

@@ -142,8 +142,9 @@ export function SemesterPanel({ courses }: SemesterPanelProps) {
             <div className="flex w-[220px] shrink-0 flex-col p-4">
               <div className="flex items-center justify-between mb-2">
                 <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: LABEL_COLOR }}>Distribution</p>
-                <div className="flex gap-0.5">
+                <div className="relative z-20 flex gap-0.5">
                   <button
+                    type="button"
                     className="h-6 w-6 rounded flex items-center justify-center transition-colors"
                     style={{ background: chartType === "bar" ? "rgba(160,70,65,0.5)" : "transparent", color: TEXT_COLOR }}
                     onClick={() => setChartType("bar")}
@@ -152,6 +153,7 @@ export function SemesterPanel({ courses }: SemesterPanelProps) {
                     <BarChart3 className="h-3.5 w-3.5" />
                   </button>
                   <button
+                    type="button"
                     className="h-6 w-6 rounded flex items-center justify-center transition-colors"
                     style={{ background: chartType === "pie" ? "rgba(160,70,65,0.5)" : "transparent", color: TEXT_COLOR }}
                     onClick={() => setChartType("pie")}
