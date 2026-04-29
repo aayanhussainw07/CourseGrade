@@ -263,7 +263,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <div className="fixed left-4 top-6 z-50 md:hidden">
         <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
           <SheetTrigger asChild>
-            <Button className="flex items-center gap-2 border border-border/70 bg-card/90 px-3 py-2 text-sm text-foreground shadow-under-white hover:bg-card">
+            <Button className="flex items-center gap-2 border border-border/70 bg-card/90 px-3 py-2 text-sm text-foreground ![box-shadow:none] hover:bg-card hover:![box-shadow:none]">
               <Menu className="h-4 w-4" />
               Overview
             </Button>
