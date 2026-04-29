@@ -18,6 +18,22 @@ export const metadata: Metadata = {
   authors: [{ name: siteTitle }],
   creator: siteTitle,
   publisher: siteTitle,
+  icons: {
+    icon: [
+      {
+        url: "/coursegrade.png",
+        type: "image/png",
+        sizes: "2000x2000",
+      },
+    ],
+    apple: [
+      {
+        url: "/coursegrade.png",
+        type: "image/png",
+        sizes: "2000x2000",
+      },
+    ],
+  },
 };
 
 export default function RootLayout({
