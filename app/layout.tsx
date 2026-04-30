@@ -5,10 +5,15 @@ import "./globals.css";
 import { AuthProvider } from "@/components/auth-provider";
 
 const siteTitle = "CourseGrade";
+const siteUrl = "https://www.coursegrade.io";
 const siteDescription =
   "Track grades, GPA, credits, and what-if scenarios without wrestling another spreadsheet.";
 
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl),
+  alternates: {
+    canonical: "/",
+  },
   title: {
     default: siteTitle,
     template: `%s | ${siteTitle}`,
