@@ -63,6 +63,27 @@ export function useSemesterData({ appSettings }: { appSettings: AppSettings }) {
   const saveStatusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dataLoadedRef = useRef(false);
 
+  const [ignoredSemesterIds, setIgnoredSemesterIds] = useState<Set<string>>(() => {
+    try {
+      const stored = localStorage.getItem("ignored_semester_ids");
+      return stored ? new Set(JSON.parse(stored)) : new Set();
+    } catch {
+      return new Set();
+    }
+  });
+
+  const toggleSemesterIgnore = useCallback((semesterId: string) => {
+    setIgnoredSemesterIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(semesterId)) next.delete(semesterId);
+      else next.add(semesterId);
+      try {
+        localStorage.setItem("ignored_semester_ids", JSON.stringify([...next]));
+      } catch {}
+      return next;
+    });
+  }, []);
+
   const { handleUndo, handleRedo } = useUndoRedo({
     semesters,
     semesterOrder,
@@ -210,9 +231,14 @@ export function useSemesterData({ appSettings }: { appSettings: AppSettings }) {
     return [...ordered, ...missing];
   }, [semesterOrder, semesters]);
 
+  const activeSemesters = useMemo(
+    () => orderedSemesters.filter((s) => !ignoredSemesterIds.has(s.id)),
+    [orderedSemesters, ignoredSemesterIds],
+  );
+
   const allCourses = useMemo(
-    () => orderedSemesters.flatMap((s) => (Array.isArray(s.courses) ? s.courses : [])),
-    [orderedSemesters],
+    () => activeSemesters.flatMap((s) => (Array.isArray(s.courses) ? s.courses : [])),
+    [activeSemesters],
   );
 
   const overallGpa = useMemo(
@@ -230,11 +256,11 @@ export function useSemesterData({ appSettings }: { appSettings: AppSettings }) {
     [allCourses],
   );
 
-  const totalSemesters = orderedSemesters.length;
+  const totalSemesters = activeSemesters.length;
 
   const semesterSummaries = useMemo(
     () =>
-      orderedSemesters.map((semester) => {
+      activeSemesters.map((semester) => {
         const coursesList = Array.isArray(semester.courses) ? semester.courses : [];
         const credits = coursesList.reduce((sum, c) => sum + c.credits, 0);
         const gpa =
@@ -247,7 +273,7 @@ export function useSemesterData({ appSettings }: { appSettings: AppSettings }) {
           createdAt: semester.createdAt ?? semester.updatedAt ?? "",
         };
       }),
-    [orderedSemesters, appSettings.aPlusGpaValue],
+    [activeSemesters, appSettings.aPlusGpaValue],
   );
 
   const timelineData = useMemo(
@@ -385,26 +411,6 @@ export function useSemesterData({ appSettings }: { appSettings: AppSettings }) {
     setActiveSemesterId(null);
     localStorage.removeItem(COURSE_SETTINGS_STORAGE_KEY);
   }, [semesters]);
-
-  const duplicateSemester = useCallback(
-    async (semesterId: string) => {
-      const src = semesters.find((s) => s.id === semesterId);
-      if (!src) return;
-      try {
-        const newSem = await storage.createSemester(`${src.name} (Copy)`);
-        const syncedCourses: Course[] = [];
-        for (const c of src.courses) {
-          syncedCourses.push(await importPortableCourse(courseToPortable(c), newSem.id));
-        }
-        setSemesters((prev) => [...prev, { ...newSem, courses: syncedCourses }]);
-        setServerOffline(false);
-      } catch (error) {
-        if (error instanceof ApiUnavailableError) setServerOffline(true);
-        else console.error("[v0] Failed to duplicate semester:", error);
-      }
-    },
-    [semesters, importPortableCourse],
-  );
 
   // ── Course CRUD ───────────────────────────────────────────────────────────
 
@@ -879,7 +885,6 @@ export function useSemesterData({ appSettings }: { appSettings: AppSettings }) {
     deleteSemester,
     editSemester,
     clearAllData,
-    duplicateSemester,
     // Course CRUD
     addCourse,
     updateCourse,
@@ -891,6 +896,9 @@ export function useSemesterData({ appSettings }: { appSettings: AppSettings }) {
     editCourse,
     handleReorderSemesters,
     handleReorderCourses,
+    // Ignored semesters
+    ignoredSemesterIds,
+    toggleSemesterIgnore,
     // Import/Export
     importSemesterFromJson,
     importCourseFromJson,

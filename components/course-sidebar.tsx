@@ -19,8 +19,9 @@ import {
   Check,
   X,
   TrendingUp,
-  Copy,
   ChevronRight,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
@@ -37,7 +38,8 @@ interface CourseSidebarProps {
   onEditCourse: (courseId: string, newName: string) => void;
   onReorderSemesters?: (orderedSemesterIds: string[]) => void;
   onReorderCourses?: (semesterId: string, orderedCourseIds: string[]) => void;
-  onDuplicateSemester?: (semesterId: string) => void;
+  onToggleSemesterIgnore?: (semesterId: string) => void;
+  ignoredSemesterIds?: Set<string>;
   skipSemesterDeleteConfirm?: boolean;
   userEmail?: string;
   onSignOut?: () => void;
@@ -63,7 +65,8 @@ export function CourseSidebar({
   onEditCourse,
   onReorderSemesters,
   onReorderCourses,
-  onDuplicateSemester,
+  onToggleSemesterIgnore,
+  ignoredSemesterIds,
   skipSemesterDeleteConfirm,
   dashboardSummary,
   onDashboardClick,
@@ -440,12 +443,15 @@ export function CourseSidebar({
                         <Button
                           variant="ghost"
                           className={cn(
-                            "flex-1 min-w-0 overflow-hidden px-2 py-6 text-left justify-start text-white hover:text-white",
+                            "flex-1 min-w-0 overflow-hidden px-2 py-6 text-left justify-start hover:text-white",
                             semesterDragEnabled &&
                               "cursor-grab active:cursor-grabbing",
                             isActive
                               ? "bg-white/15 hover:bg-white/20"
                               : "hover:bg-white/10",
+                            ignoredSemesterIds?.has(semester.id)
+                              ? "text-white/35"
+                              : "text-white",
                           )}
                           onClick={() => onSemesterClick(semester.id)}
                           onDoubleClick={() => {
@@ -457,13 +463,13 @@ export function CourseSidebar({
                               {semester.name}
                             </div>
                             {semester.courses.length > 0 && (
-                              <div className="text-[10px] text-white/45 mt-0.5">
+                              <div className={cn("text-[10px] mt-0.5", ignoredSemesterIds?.has(semester.id) ? "text-white/25 line-through" : "text-white/45")}>
                                 {calculateGPA(semester.courses).toFixed(2)}
                               </div>
                             )}
                           </div>
                         </Button>
-                        <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className={cn("flex gap-0.5 transition-opacity", ignoredSemesterIds?.has(semester.id) ? "opacity-100" : "opacity-0 group-hover:opacity-100 [@media(hover:none)]:opacity-100")}>
                           <Button
                             size="icon"
                             variant="ghost"
@@ -475,15 +481,23 @@ export function CourseSidebar({
                           >
                             <Edit2 className="h-3 w-3" />
                           </Button>
-                          {onDuplicateSemester && (
+                          {onToggleSemesterIgnore && (
                             <Button
                               size="icon"
                               variant="ghost"
-                              className="h-8 w-8 shrink-0 text-white/50 hover:text-white hover:bg-white/10"
-                              onClick={() => onDuplicateSemester(semester.id)}
-                              title="Duplicate"
+                              className={cn(
+                                "h-8 w-8 shrink-0 hover:bg-white/10",
+                                ignoredSemesterIds?.has(semester.id)
+                                  ? "text-white/60 hover:text-white"
+                                  : "text-white/50 hover:text-white",
+                              )}
+                              onClick={() => onToggleSemesterIgnore(semester.id)}
+                              title={ignoredSemesterIds?.has(semester.id) ? "Include in GPA" : "Exclude from GPA"}
                             >
-                              <Copy className="h-3 w-3" />
+                              {ignoredSemesterIds?.has(semester.id)
+                                ? <EyeOff className="h-3 w-3" />
+                                : <Eye className="h-3 w-3" />
+                              }
                             </Button>
                           )}
                           <Button
@@ -653,7 +667,7 @@ export function CourseSidebar({
                               </div>
                             </div>
                           </Button>
-                          <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 [@media(hover:none)]:opacity-100 transition-opacity">
                             <Button
                               size="icon"
                               variant="ghost"

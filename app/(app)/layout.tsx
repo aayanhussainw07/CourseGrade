@@ -88,7 +88,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     deleteSemester,
     editSemester,
     clearAllData,
-    duplicateSemester,
     addCourse: createCourse,
     updateCourse,
     deleteCourse,
@@ -99,6 +98,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     editCourse,
     handleReorderSemesters,
     handleReorderCourses,
+    ignoredSemesterIds,
+    toggleSemesterIgnore,
   } = useSemesterData({ appSettings });
 
   // ── Dashboard message ─────────────────────────────────────────────────────
@@ -293,6 +294,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               onEditCourse={editCourse}
               onReorderSemesters={handleReorderSemesters}
               onReorderCourses={handleReorderCourses}
+              onToggleSemesterIgnore={toggleSemesterIgnore}
+              ignoredSemesterIds={ignoredSemesterIds}
               dashboardSummary={totalSemesters ? dashboardSummary : undefined}
               onDashboardClick={() => {
                 setSidebarOpen(false);
@@ -324,7 +327,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         onEditCourse={editCourse}
         onReorderSemesters={handleReorderSemesters}
         onReorderCourses={handleReorderCourses}
-        onDuplicateSemester={duplicateSemester}
+        onToggleSemesterIgnore={toggleSemesterIgnore}
+        ignoredSemesterIds={ignoredSemesterIds}
         dashboardSummary={totalSemesters ? dashboardSummary : undefined}
         onDashboardClick={() => {
           setActiveSemesterId(null);
