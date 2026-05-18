@@ -436,49 +436,54 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   )}
                 </div>
 
-                <div className="grid gap-4 sm:grid-cols-3">
+                <div className="grid gap-4 sm:grid-cols-3 sm:grid-rows-2">
+                  {/* Hero stat — GPA dominates */}
+                  <div className="relative flex flex-col rotate-[0.8deg] rounded-md border-2 border-primary/35 bg-[#fff8f1] p-6 text-foreground shadow-[7px_9px_0_rgba(0,0,0,0.20)] sm:col-span-2 sm:row-span-2">
+                    <div className="absolute -top-2.5 left-7 h-6 w-24 rotate-[-3deg] bg-primary/25" />
+                    <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                      Overall GPA
+                    </p>
+                    <div className="mt-auto flex items-end gap-4">
+                      <p className="text-7xl font-black leading-[0.85] text-primary sm:text-8xl">
+                        {overallGpa.toFixed(2)}
+                      </p>
+                      <span className="mb-2 text-3xl font-bold uppercase text-foreground/55">
+                        {overallGpaLetter}
+                      </span>
+                    </div>
+                    <TrendingUp className="absolute bottom-5 right-5 h-7 w-7 text-primary/40" />
+                  </div>
+
+                  {/* Secondary stats — demoted */}
                   {[
-                    {
-                      label: "Overall GPA",
-                      value: overallGpa.toFixed(2),
-                      detail: overallGpaLetter,
-                      rotate: "rotate-[1deg]",
-                      wide: "sm:col-span-1",
-                    },
                     {
                       label: "Total Credits",
                       value: String(totalCredits),
                       detail: "credits",
-                      rotate: "rotate-[-0.8deg]",
-                      wide: "sm:col-span-1",
+                      rotate: "rotate-[-0.9deg]",
                     },
                     {
                       label: "Semesters",
                       value: String(totalSemesters),
                       detail: "tracked",
                       rotate: "rotate-[0.6deg]",
-                      wide: "sm:col-span-1",
                     },
-                  ].map(({ label, value, detail, rotate, wide }) => (
+                  ].map(({ label, value, detail, rotate }) => (
                     <div
                       key={label}
-                      className={`relative min-h-[170px] rounded-md border border-primary/25 bg-[#fff8f1] p-4 text-foreground shadow-[5px_6px_0_rgba(0,0,0,0.16)] ${rotate} ${wide}`}
+                      className={`relative flex min-h-[80px] flex-col justify-center rounded-md border border-primary/20 bg-[#fff8f1] px-4 py-3 text-foreground shadow-[4px_5px_0_rgba(0,0,0,0.13)] ${rotate}`}
                     >
-                      <div className="absolute -top-2 left-5 h-5 w-16 rotate-[-3deg] bg-primary/20" />
-                      <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
+                      <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
                         {label}
                       </p>
-                      <div className="mt-5 flex items-end justify-between gap-3">
-                        <p className="text-5xl font-black leading-none text-primary">
+                      <div className="mt-1.5 flex items-baseline gap-2">
+                        <p className="text-3xl font-bold leading-none text-primary">
                           {value}
                         </p>
-                        <span className="text-lg font-bold uppercase text-foreground/55">
+                        <span className="text-xs font-semibold uppercase text-foreground/45">
                           {detail}
                         </span>
                       </div>
-                      {label === "Overall GPA" && (
-                        <TrendingUp className="absolute bottom-4 left-4 h-5 w-5 text-primary/45" />
-                      )}
                     </div>
                   ))}
                 </div>
