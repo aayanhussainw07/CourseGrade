@@ -21,12 +21,6 @@ const GoogleIcon = () => (
   </svg>
 );
 
-const paperRotations = [
-  "-rotate-[0.6deg]",
-  "rotate-[0.45deg]",
-  "-rotate-[0.35deg]",
-];
-
 const Tape = ({ className = "" }: { className?: string }) => (
   <span
     aria-hidden="true"
@@ -67,13 +61,10 @@ export function MarketingPage() {
               "repeating-linear-gradient(0deg, white 0px, white 1px, transparent 1px, transparent 40px), repeating-linear-gradient(90deg, white 0px, white 1px, transparent 1px, transparent 40px)",
           }}
         />
-        <div className="absolute left-10 top-10 hidden h-24 w-24 rotate-[-9deg] rounded-sm border border-white/10 bg-white/5 md:block" />
-        <div className="absolute bottom-16 right-12 hidden h-28 w-36 rotate-[7deg] rounded-sm border border-white/10 bg-primary/10 lg:block" />
         <div className="relative mx-auto max-w-7xl px-6 py-20 lg:px-12">
           <div className="flex flex-col items-center text-center max-w-3xl mx-auto gap-10">
             <div className="animate-fade-up w-full space-y-6">
-              <div className="relative mx-auto flex w-fit items-center justify-center gap-3 rounded-sm border border-white/15 bg-white/[0.06] px-5 py-3">
-                <Tape className="-top-3 left-4 w-20 rotate-[-4deg] bg-white/15" />
+              <div className="relative mx-auto flex w-fit items-center justify-center gap-3 px-5 py-3">
                 <div className="animate-logo-wiggle">
                   <Image
                     src="/coursegrade.png"
@@ -136,38 +127,84 @@ export function MarketingPage() {
       {/* FEATURES */}
       <section id="feature-grid" className="relative bg-background py-20">
         <div className="mx-auto max-w-[1400px] px-2 lg:px-4">
+          <h2 className="mb-6 -rotate-2 px-4 text-center font-futura-bold font-black uppercase tracking-widest text-foreground text-3xl md:sr-only">
+            See your progress at a glance
+          </h2>
           <div
             ref={featuresRef}
-            className={`mb-12 px-4 ${featuresInView ? "animate-fade-up" : "opacity-0"}`}
+            className={`grid gap-6 px-4 md:grid-cols-3 md:grid-rows-2 ${featuresInView ? "animate-fade-up" : "opacity-0"}`}
           >
-            <BlockHeading className="text-2xl">Built for students</BlockHeading>
-          </div>
-          <div className="grid gap-6 px-4 md:grid-cols-3">
             {marketingFeatures.map((feature, i) => {
-              const Icon = feature.icon;
-              const rotation = paperRotations[i % paperRotations.length];
+              const isHero = i === 0;
+              // Cards ascend left→right to follow the slanted divider:
+              // hero sits low + tilts up on its right edge, the two
+              // stacked cards lift progressively higher.
+              const layout = isHero
+                ? "flex flex-col items-center justify-center min-h-72 md:min-h-[24rem] p-6 sm:p-9 md:col-span-2 md:row-span-2 md:mt-6 rotate-[-2deg]"
+                : i === 1
+                  ? "flex flex-col items-center justify-center md:self-start min-h-44 md:min-h-[17rem] p-6 md:-translate-y-10 rotate-[-2deg]"
+                  : "flex flex-col items-center justify-center md:self-start min-h-44 md:min-h-[12rem] p-6 md:-translate-y-7 rotate-[-2deg]";
 
               return (
                 <div
                   key={feature.title}
-                  className={`${featuresInView ? "animate-fade-up-sm" : "opacity-0"} relative min-h-56 rounded-lg border-2 border-primary/20 bg-[#fff8f1] p-7 shadow-none transition-transform hover:-translate-y-1 ${rotation}`}
+                  className={`${featuresInView ? "animate-fade-up-sm" : "opacity-0"} relative rounded-lg border-2 border-white/15 text-center text-white shadow-none ${layout}`}
                   style={{
                     animationDelay: featuresInView ? `${i * 0.1}s` : undefined,
+                    backgroundColor: ["#a8473d", "#c56b5e", "#8f3a32"][i] ?? "#b5564b",
                   }}
                 >
-                  <Tape className="-top-3 left-1/2 -translate-x-1/2 rotate-[2deg]" />
-                  <div className="mb-6 flex h-12 w-12 items-center justify-center rounded-sm border border-primary/25 bg-primary/10 text-primary">
-                    <Icon className="h-5 w-5" />
-                  </div>
-                  <h3 className="mb-4 font-futura-bold text-xl font-black uppercase tracking-wide">
+                  {isHero && (
+                    <svg
+                      aria-hidden="true"
+                      viewBox="0 0 560 200"
+                      preserveAspectRatio="xMinYMin meet"
+                      className="pointer-events-none absolute -left-11 -top-14 hidden h-[60%] w-[80%] overflow-visible md:block"
+                      fill="currentColor"
+                    >
+                      <defs>
+                        <path
+                          id="hdr-curve"
+                          d="M 22,118 L 22,52 C 22,32 28,24 48,24 L 552,24"
+                          fill="none"
+                        />
+                      </defs>
+                      <text
+                        className="font-futura-bold font-black uppercase text-foreground"
+                        style={{ letterSpacing: "0.01em", fontSize: "20px" }}
+                      >
+                        <textPath href="#hdr-curve" startOffset="14">
+                          See your progress at a glance
+                        </textPath>
+                      </text>
+                    </svg>
+                  )}
+                  <Tape
+                    className={
+                      isHero
+                        ? "-top-3 left-12 rotate-[-3deg] bg-white/25"
+                        : "-top-3 right-10 rotate-[2deg] bg-white/25"
+                    }
+                  />
+                  <h3
+                    className={`mb-3 font-futura-bold font-black uppercase tracking-wide text-white ${
+                      isHero ? "text-4xl sm:text-6xl" : "text-2xl sm:text-3xl"
+                    }`}
+                  >
                     {feature.title}
                   </h3>
-                  <p className="text-sm leading-6 text-muted-foreground">
+                  <p
+                    className={`text-white/80 ${
+                      isHero
+                        ? "max-w-2xl text-lg sm:text-2xl sm:leading-9"
+                        : "text-base sm:text-lg sm:leading-8"
+                    }`}
+                  >
                     {feature.description}
                   </p>
                   <span
                     aria-hidden="true"
-                    className="absolute right-0 top-0 h-10 w-10 rounded-bl-lg border-b border-l border-primary/15 bg-primary/5"
+                    className="absolute right-0 top-0 h-10 w-10 rounded-bl-lg border-b border-l border-white/15 bg-white/5"
                   />
                 </div>
               );
@@ -180,14 +217,16 @@ export function MarketingPage() {
       <section className="bg-background pb-16">
         <div className="mx-auto max-w-[1400px] px-2 lg:px-4">
           <div
-            ref={chartsRef}
-            className={`mb-10 flex justify-end px-4 ${chartsInView ? "animate-fade-up" : "opacity-0"}`}
+            className={`mx-4 mb-4 flex justify-end ${chartsInView ? "animate-fade-up" : "opacity-0"}`}
           >
-            <BlockHeading className="text-2xl">
-              See your progress at a glance
-            </BlockHeading>
+            <h2 className="rotate-[1.5deg] font-futura-bold font-black uppercase tracking-widest text-foreground text-2xl sm:text-3xl">
+              Times, lines, timelines!
+            </h2>
           </div>
-          <div className="relative mx-4 rounded-xl border-2 border-primary/20 bg-[#fff8f1] p-3 shadow-none sm:p-5">
+          <div
+            ref={chartsRef}
+            className={`relative mx-4 rounded-xl border-2 border-primary/20 bg-[#fff8f1] p-3 shadow-none sm:p-5 ${chartsInView ? "animate-fade-up" : "opacity-0"}`}
+          >
             <Tape className="-top-3 left-10 rotate-[-2deg]" />
             <Tape className="-top-3 right-10 rotate-[3deg]" />
             <span
@@ -204,7 +243,7 @@ export function MarketingPage() {
       </section>
 
       {/* CTA + FOOTER */}
-      <section className="relative bg-foreground text-white pb-10 overflow-hidden -mt-px">
+      <section className="relative bg-foreground text-white pb-8 overflow-hidden -mt-px">
         <div
           className="absolute inset-0 opacity-[0.04]"
           style={{
@@ -219,19 +258,19 @@ export function MarketingPage() {
         <div className="relative mx-auto max-w-4xl px-6 pt-10 text-center">
           <div
             ref={ctaRef}
-            className={`${ctaInView ? "animate-fade-up" : "opacity-0"} relative mx-auto max-w-2xl rounded-xl border-2 border-primary/25 bg-[#fff8f1] px-6 py-10 text-foreground shadow-none sm:px-10`}
+            className={`${ctaInView ? "animate-fade-up" : "opacity-0"} relative mx-auto max-w-2xl rounded-xl bg-[#fff8f1] px-6 py-10 text-foreground shadow-none sm:px-10`}
           >
             <Tape className="-top-3 left-1/2 -translate-x-1/2 rotate-[-2deg]" />
-            <div className="space-y-3">
+            <div className="space-y-1">
               <div>
-                <BlockHeading className="text-3xl sm:text-4xl">
+                <span className="font-futura-bold font-black uppercase tracking-widest text-foreground text-3xl sm:text-4xl">
                   READY TO TAKE
-                </BlockHeading>
+                </span>
               </div>
               <div className="pl-8">
-                <BlockHeading className="text-3xl sm:text-4xl">
+                <span className="font-futura-bold font-black uppercase tracking-widest text-foreground text-3xl sm:text-4xl">
                   CONTROL?
-                </BlockHeading>
+                </span>
               </div>
             </div>
             <p className="mx-auto mt-8 max-w-md text-muted-foreground">
@@ -239,7 +278,7 @@ export function MarketingPage() {
             </p>
           </div>
 
-          <div className="mt-16 flex flex-col items-center gap-1.5 pt-6">
+          <div className="mt-10 flex flex-col items-center gap-1.5">
             <p className="text-xs text-white/40">Made with ♥ by @aayanh7</p>
             <a
               href="https://www.buymeacoffee.com/aayanh7"
