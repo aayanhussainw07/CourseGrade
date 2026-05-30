@@ -22,7 +22,13 @@ import type { CoursePortableData } from "@/lib/csv";
 import { AnimatePresence, motion } from "framer-motion";
 import { signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { SyllabusImportDialog } from "@/components/syllabus-import-dialog";
 import { SettingsDialog } from "@/components/settings-dialog";
 import { loadAppSettings, loadAppSettingsFromServer, type AppSettings } from "@/lib/app-settings";
@@ -251,6 +257,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       {/* Top-right actions */}
       <div className="fixed right-4 top-4 z-50 flex items-center gap-2">
         <Button
+          aria-label="Open settings"
+          title="Open settings"
           variant="ghost"
           size="icon"
           onClick={() => setSettingsOpen(true)}
@@ -273,6 +281,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             side="left"
             className="w-[85vw] border-border/40 bg-background/95 p-0 text-foreground sm:w-96"
           >
+            <SheetTitle className="sr-only">Course overview</SheetTitle>
+            <SheetDescription className="sr-only">
+              Navigate dashboards, semesters, courses, and account actions.
+            </SheetDescription>
             <CourseSidebar
               variant="overlay"
               semesters={orderedSemesters}

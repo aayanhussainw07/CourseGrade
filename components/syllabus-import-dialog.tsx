@@ -14,6 +14,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -224,11 +225,11 @@ export function SyllabusImportDialog({
             <Sparkles className="h-4 w-4" />
             Import Syllabus
           </DialogTitle>
-          <p className="max-w-2xl text-sm text-muted-foreground">
+          <DialogDescription className="max-w-2xl text-sm text-muted-foreground">
             Add a course to{" "}
             <span className="font-semibold text-foreground">{semesterName}</span>{" "}
             by uploading a syllabus file or pasting the text.
-          </p>
+          </DialogDescription>
         </DialogHeader>
 
         <div className="max-h-[calc(88vh-92px)] overflow-y-auto">

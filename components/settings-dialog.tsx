@@ -8,6 +8,7 @@ import { GradeScaleEditor } from "@/components/grade-scale-editor";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -140,9 +141,9 @@ export function SettingsDialog({
           <DialogTitle className="font-heading text-lg tracking-widest text-primary">
             Settings
           </DialogTitle>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <DialogDescription className="mt-1 text-sm text-muted-foreground">
             Defaults, behavior, and account controls.
-          </p>
+          </DialogDescription>
         </DialogHeader>
 
         <div className="max-h-[calc(85vh-92px)] space-y-4 overflow-y-auto px-4 py-4 sm:px-6">
@@ -154,8 +155,11 @@ export function SettingsDialog({
             </h3>
 
             <div className={settingRowClass}>
-              <Label className="text-sm">Default Credits</Label>
+              <Label htmlFor="default-credits" className="text-sm">
+                Default Credits
+              </Label>
               <Input
+                id="default-credits"
                 type="text"
                 inputMode="decimal"
                 value={creditsDraft}
@@ -260,16 +264,23 @@ export function SettingsDialog({
 
             <div className={settingRowClass}>
               <div>
-                <Label className="text-sm">A+ counts as... </Label>
+                <p id="a-plus-gpa-label" className="text-sm font-medium">
+                  A+ counts as...
+                </p>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   Some schools treat A+ the same as A.
                 </p>
               </div>
-              <div className="flex overflow-hidden rounded-lg border border-primary/25 bg-[#fff8f1] text-sm font-medium">
+              <div
+                role="group"
+                aria-labelledby="a-plus-gpa-label"
+                className="flex overflow-hidden rounded-lg border border-primary/25 bg-[#fff8f1] text-sm font-medium"
+              >
                 {([4.0, 4.33] as const).map((val) => (
                   <button
                     key={val}
                     type="button"
+                    aria-pressed={Math.abs(settings.aPlusGpaValue - val) < 0.01}
                     onClick={() =>
                       update("aPlusGpaValue", val === 4.33 ? 4.33 : 4.0)
                     }
