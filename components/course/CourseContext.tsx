@@ -14,14 +14,11 @@ export interface DropIndicator {
 
 export interface CourseContextValue {
   gradeScale: GradeScale[];
-  whatIfMode: boolean;
-  whatIfScores: Record<string, string>;
   expandedCriteria: Set<string>;
   draggingCriterionId: string | null;
   draggingSubItemId: string | null;
   draggingSubItemParentId: string | null;
   dropIndicator: DropIndicator | null;
-  setWhatIfScores: React.Dispatch<React.SetStateAction<Record<string, string>>>;
   updateCriterion: (id: string, updates: Partial<Criterion>) => void;
   deleteCriterion: (id: string) => void;
   duplicateCriterion: (id: string) => void;

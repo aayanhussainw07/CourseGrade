@@ -120,14 +120,11 @@ function SubItemDropLine({
 export function CriterionRow({ criterion }: { criterion: Criterion }) {
   const {
     gradeScale,
-    whatIfMode,
-    whatIfScores,
     expandedCriteria,
     draggingCriterionId,
     draggingSubItemId,
     draggingSubItemParentId,
     dropIndicator,
-    setWhatIfScores,
     updateCriterion,
     deleteCriterion,
     duplicateCriterion,
@@ -152,7 +149,6 @@ export function CriterionRow({ criterion }: { criterion: Criterion }) {
   const isDragging = draggingCriterionId === criterion.id;
   const isDraggingAnything = !!(draggingCriterionId || draggingSubItemId);
   const isExpanded = expandedCriteria.has(criterionKey);
-  const whatIfScore = whatIfScores[criterion.id];
 
   const showDropBefore =
     dropIndicator?.targetId === criterion.id && dropIndicator.position === "before";
@@ -439,35 +435,6 @@ export function CriterionRow({ criterion }: { criterion: Criterion }) {
               />
             )}
           </div>
-
-          {/* What-If */}
-          {whatIfMode && (
-            <div>
-              <Label className="text-xs font-semibold text-primary/80">What-If (%)</Label>
-              <Input
-                type="text"
-                inputMode="decimal"
-                value={whatIfScore ?? ""}
-                onChange={(e) =>
-                  setWhatIfScores((prev) => ({ ...prev, [criterion.id]: e.target.value }))
-                }
-                onBlur={() => {
-                  const raw = whatIfScores[criterion.id];
-                  if (!raw) return;
-                  const parsed = parseScoreInput(raw, gradeScale);
-                  if (parsed === null) {
-                    setWhatIfScores((prev) => {
-                      const next = { ...prev };
-                      delete next[criterion.id];
-                      return next;
-                    });
-                  }
-                }}
-                placeholder={String(criterion.score || 0)}
-                className="border-primary/50 bg-primary/5"
-              />
-            </div>
-          )}
 
           {/* Extra Credit */}
           <div>

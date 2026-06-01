@@ -172,7 +172,7 @@ export function MarketingPage() {
               </div>
 
               <p className="text-lg text-white/70 max-w-lg mx-auto text-center">
-                Track weighted grades, test what-if scores, and see your GPA
+                Track weighted grades on your own curve, and see your GPA
                 before the final has a chance to surprise you.
               </p>
 

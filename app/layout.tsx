@@ -7,7 +7,7 @@ import { AuthProvider } from "@/components/auth-provider";
 const siteTitle = "CourseGrade";
 const siteUrl = "https://www.coursegrade.io";
 const siteDescription =
-  "Track grades, GPA, credits, and what-if scenarios without wrestling another spreadsheet.";
+  "Track grades, GPA, credits, and custom grade curves without wrestling another spreadsheet.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),

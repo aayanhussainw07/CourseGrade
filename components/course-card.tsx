@@ -13,7 +13,6 @@ import {
   ChevronDown,
   ChevronUp,
   Copy,
-  FlaskConical,
   Pencil,
 } from "lucide-react";
 import {
@@ -122,8 +121,6 @@ export function CourseCard({
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const draggingIdRef = useRef<string | null>(null);
   const dragStartXRef = useRef<number>(0);
-  const [whatIfMode, setWhatIfMode] = useState(false);
-  const [whatIfScores, setWhatIfScores] = useState<Record<string, string>>({});
   const [directGradeEditing, setDirectGradeEditing] = useState(false);
   const [directGradeDraft, setDirectGradeDraft] = useState("");
   const interactiveDragSelector =
@@ -171,33 +168,16 @@ export function CourseCard({
     letterGrade,
     gradeColor,
     totalWeight,
-    whatIfNumericGrade,
-    whatIfLetterGrade,
-    whatIfGradeColor,
   } = useMemo(() => {
     const numeric = calculateCourseGrade(courseCriteria, course.percentBoost);
     const letter = getLetterGrade(numeric, course.gradeScale);
-    const whatIfCriteria = courseCriteria.map((c) => {
-      const raw = whatIfScores[c.id];
-      if (raw === undefined) return c;
-      const parsed = parseScoreInput(raw, course.gradeScale);
-      return parsed !== null ? { ...c, score: parsed } : c;
-    });
-    const whatIfNumeric = calculateCourseGrade(
-      whatIfCriteria,
-      course.percentBoost,
-    );
-    const whatIfLetter = getLetterGrade(whatIfNumeric, course.gradeScale);
     return {
       numericGrade: numeric,
       letterGrade: letter,
       gradeColor: getLetterGradeColor(letter),
       totalWeight: courseCriteria.reduce((sum, c) => sum + c.weight, 0),
-      whatIfNumericGrade: whatIfNumeric,
-      whatIfLetterGrade: whatIfLetter,
-      whatIfGradeColor: getLetterGradeColor(whatIfLetter),
     };
-  }, [courseCriteria, course.gradeScale, course.percentBoost, whatIfScores]);
+  }, [courseCriteria, course.gradeScale, course.percentBoost]);
 
   const toggleCollapse = () => updateCourse({ collapsed: !course.collapsed });
 
@@ -1159,23 +1139,6 @@ export function CourseCard({
                 onChange={updateHeaderColor}
               />
               <Button
-                variant={whatIfMode ? "default" : "ghost"}
-                size="icon"
-                className="shrink-0"
-                title={whatIfMode ? "Exit What-If Mode" : "What-If Mode"}
-                onClick={() => {
-                  if (!whatIfMode) {
-                    const initial: Record<string, string> = {};
-                    for (const c of courseCriteria)
-                      initial[c.id] = c.score > 0 ? String(c.score) : "";
-                    setWhatIfScores(initial);
-                  }
-                  setWhatIfMode((prev) => !prev);
-                }}
-              >
-                <FlaskConical className="h-4 w-4" />
-              </Button>
-              <Button
                 variant="destructive"
                 size="icon"
                 title="Delete course"
@@ -1215,14 +1178,11 @@ export function CourseCard({
           <CourseContext.Provider
             value={{
               gradeScale: course.gradeScale,
-              whatIfMode,
-              whatIfScores,
               expandedCriteria,
               draggingCriterionId,
               draggingSubItemId,
               draggingSubItemParentId,
               dropIndicator,
-              setWhatIfScores,
               updateCriterion,
               deleteCriterion,
               duplicateCriterion,
@@ -1296,25 +1256,6 @@ export function CourseCard({
         <div className="relative mt-6 rounded-lg border border-primary/25 bg-white/35 p-6 shadow-[3px_4px_0_rgba(198,90,78,0.10)]">
           <div className="pointer-events-none absolute -top-2 left-1/2 h-5 w-20 -translate-x-1/2 rotate-2 bg-primary/15" />
           {gradeSummary(false)}
-          {whatIfMode && (
-            <div className="mt-4 border-t border-primary/20 pt-4">
-              <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-widest text-primary/70">
-                <FlaskConical className="h-3 w-3" />
-                What-If
-              </p>
-              <div className="flex items-center justify-between">
-                <p className="text-3xl font-bold text-primary/80">
-                  <RollingNumber value={whatIfNumericGrade} decimals={2} />%
-                </p>
-                <p
-                  className="text-4xl font-bold"
-                  style={{ color: whatIfGradeColor }}
-                >
-                  {whatIfLetterGrade}
-                </p>
-              </div>
-            </div>
-          )}
         </div>
       </CardContent>
       {deleteConfirmation}

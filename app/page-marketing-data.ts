@@ -1,4 +1,11 @@
-import { type LucideIcon, GraduationCap, Layers, Sparkles, TrendingUp } from "lucide-react";
+import {
+  type LucideIcon,
+  GraduationCap,
+  Layers,
+  SlidersHorizontal,
+  Sparkles,
+  TrendingUp,
+} from "lucide-react";
 import { DEFAULT_GRADE_SCALE, type Course } from "@/lib/types";
 import { cloneGradeScale } from "@/lib/grade-utils";
 import { getGpaColor } from "./page-utils";
@@ -15,10 +22,10 @@ export const marketingFeatures: {
     icon: Layers,
   },
   {
-    title: "Try the comeback math",
+    title: "Bend the curve your way",
     description:
-      "Use what-if scores to see whether the next quiz, lab, or final can move the needle.",
-    icon: TrendingUp,
+      "Set your own letter cutoffs, setting on grade scales for yourself.",
+    icon: SlidersHorizontal,
   },
   {
     title: "Skip the boring setup",
