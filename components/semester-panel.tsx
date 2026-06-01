@@ -49,7 +49,8 @@ export function SemesterPanel({ courses }: SemesterPanelProps) {
   const chartData = useMemo((): ChartEntry[] => {
     if (!safeCourses.length) return []
     const dist: Record<string, number> = {}
-    for (const { letter } of courseRows) {
+    for (const { course, letter } of courseRows) {
+      if (course.isPassFail) continue
       dist[letter] = (dist[letter] || 0) + 1
     }
     const total = Object.values(dist).reduce((s, v) => s + v, 0)

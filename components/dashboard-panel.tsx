@@ -107,6 +107,7 @@ export function DashboardPanel({ timelineData, courses, bare = false }: Dashboar
     if (!courses.length) return []
     const dist: Record<string, number> = {}
     for (const course of courses) {
+      if (course.isPassFail) continue
       const numeric = calculateCourseGrade(course.criteria, course.percentBoost)
       const letter = getLetterGrade(numeric, course.gradeScale)
       dist[letter] = (dist[letter] || 0) + 1

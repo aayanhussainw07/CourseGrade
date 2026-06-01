@@ -61,6 +61,7 @@ export function GradeDistributionChart({
     if (!courses.length) return [];
     const dist: Record<string, number> = {};
     for (const course of courses) {
+      if (course.isPassFail) continue;
       const numeric = calculateCourseGrade(
         course.criteria,
         course.percentBoost,
