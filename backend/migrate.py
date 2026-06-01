@@ -40,12 +40,31 @@ def _ensure_course_header_color_column() -> None:
     db.session.commit()
 
 
+def _ensure_semester_ignored_column() -> None:
+    inspector = inspect(db.engine)
+    if "semesters" not in inspector.get_table_names():
+        return
+    columns = {column["name"] for column in inspector.get_columns("semesters")}
+    if "ignored" in columns:
+        return
+
+    default_value = "0" if db.engine.dialect.name == "sqlite" else "false"
+    db.session.execute(
+        text(
+            "ALTER TABLE semesters "
+            f"ADD COLUMN ignored BOOLEAN NOT NULL DEFAULT {default_value}"
+        )
+    )
+    db.session.commit()
+
+
 def run_migrations() -> None:
     app = create_app()
     with app.app_context():
         db.create_all()
         _ensure_feedback_completed_column()
         _ensure_course_header_color_column()
+        _ensure_semester_ignored_column()
 
         # Seed grade scale defaults once for a brand-new database.
         if GradeScale.query.count() == 0:

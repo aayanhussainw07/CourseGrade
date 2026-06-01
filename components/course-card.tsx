@@ -21,11 +21,13 @@ import {
   cloneGradeScale,
   getLetterGrade,
   getLetterGradeColor,
+  isCourseDefault,
 } from "@/lib/grade-utils";
 import type { Course, Criterion, SubItem, GradeScale } from "@/lib/types";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -38,6 +40,7 @@ import { CriterionRow } from "@/components/course/CriterionRow";
 import { HeaderColorPicker } from "@/components/course/HeaderColorPicker";
 import { CourseContext } from "@/components/course/CourseContext";
 import type { DragIntent, DropIndicator } from "@/components/course/CourseContext";
+import { DeleteConfirmationDialog } from "@/components/delete-confirmation-dialog";
 
 const COLLAPSED_PAPER_ROTATIONS = [
   "rotate-[-0.35deg]",
@@ -116,6 +119,7 @@ export function CourseCard({
   const [draggingSubItemId, setDraggingSubItemId] = useState<string | null>(null);
   const [draggingSubItemParentId, setDraggingSubItemParentId] = useState<string | null>(null);
   const [dropIndicator, setDropIndicator] = useState<DropIndicator | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const draggingIdRef = useRef<string | null>(null);
   const dragStartXRef = useRef<number>(0);
   const [whatIfMode, setWhatIfMode] = useState(false);
@@ -247,6 +251,24 @@ export function CourseCard({
     if ((course.headerColor ?? null) === normalized) return;
     updateCourse({ headerColor: normalized });
   };
+
+  const requestCourseDelete = () => {
+    if (isCourseDefault(course)) {
+      onDelete(course.id);
+      return;
+    }
+    setDeleteDialogOpen(true);
+  };
+
+  const deleteConfirmation = (
+    <DeleteConfirmationDialog
+      open={deleteDialogOpen}
+      onOpenChange={setDeleteDialogOpen}
+      itemName={course.name || "Untitled"}
+      itemType="course"
+      onConfirm={() => onDelete(course.id)}
+    />
+  );
 
   const startDirectGradeEdit = () => {
     if (courseCriteria.length > 0) return;
@@ -863,9 +885,9 @@ export function CourseCard({
                 <DialogTitle className="font-heading text-lg tracking-widest text-primary">
                   Edit Curve
                 </DialogTitle>
-                <p className="mt-1 text-sm text-muted-foreground">
+                <DialogDescription className="mt-1 text-sm text-muted-foreground">
                   Adjust grade cutoffs and pass/fail behavior for this course.
-                </p>
+                </DialogDescription>
               </DialogHeader>
               <div className="max-h-[calc(85vh-104px)] overflow-y-auto px-4 py-4 sm:px-6">
                 <GradeScaleEditor
@@ -989,15 +1011,17 @@ export function CourseCard({
               variant="destructive"
               size="icon"
               className="h-9 w-9 shrink-0 ![box-shadow:none]"
+              title="Delete course"
               onClick={(e) => {
                 e.stopPropagation();
-                onDelete(course.id);
+                requestCourseDelete();
               }}
             >
               <Trash2 className="h-3.5 w-3.5" />
             </Button>
           </div>
         </CardHeader>
+        {deleteConfirmation}
       </div>
     );
   }
@@ -1154,7 +1178,8 @@ export function CourseCard({
               <Button
                 variant="destructive"
                 size="icon"
-                onClick={() => onDelete(course.id)}
+                title="Delete course"
+                onClick={requestCourseDelete}
                 className="shrink-0 ![box-shadow:none]"
               >
                 <Trash2 className="h-4 w-4" />
@@ -1292,6 +1317,7 @@ export function CourseCard({
           )}
         </div>
       </CardContent>
+      {deleteConfirmation}
     </div>
   );
 }

@@ -112,6 +112,7 @@ def _serialize_semester(semester: Semester) -> dict:
         "user_id": semester.user_id,
         "background": semester.background,
         "timeline_date": _serialize_date(semester.timeline_date),
+        "ignored": semester.ignored,
         "courses": [_serialize_course(course) for course in courses],
         "created_at": _serialize_datetime(semester.created_at),
         "updated_at": _serialize_datetime(semester.updated_at),
@@ -302,6 +303,10 @@ def semesters_collection():
 
     timeline_date = _parse_date(payload.get("timeline_date"), "timeline_date", errors)
 
+    ignored = payload.get("ignored", False)
+    if not isinstance(ignored, bool):
+        errors.setdefault("ignored", []).append("Not a valid boolean.")
+
     if errors:
         return jsonify(errors), 400
 
@@ -310,6 +315,7 @@ def semesters_collection():
         user_id=user_id,
         background=background,
         timeline_date=timeline_date,
+        ignored=ignored,
     )
     db.session.add(semester)
     db.session.commit()
@@ -358,6 +364,13 @@ def semester_detail(semester_id: int):
         if "timeline_date" not in errors:
             semester.timeline_date = timeline_date
 
+    if "ignored" in payload:
+        ignored = payload.get("ignored")
+        if not isinstance(ignored, bool):
+            errors.setdefault("ignored", []).append("Not a valid boolean.")
+        else:
+            semester.ignored = ignored
+
     if errors:
         return jsonify(errors), 400
 
@@ -377,6 +390,7 @@ def semester_duplicate(semester_id: int):
         user_id=semester.user_id,
         background=semester.background,
         timeline_date=semester.timeline_date,
+        ignored=semester.ignored,
     )
     db.session.add(duplicate)
     db.session.flush()

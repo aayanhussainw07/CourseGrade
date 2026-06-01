@@ -63,26 +63,31 @@ export function useSemesterData({ appSettings }: { appSettings: AppSettings }) {
   const saveStatusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dataLoadedRef = useRef(false);
 
-  const [ignoredSemesterIds, setIgnoredSemesterIds] = useState<Set<string>>(() => {
-    try {
-      const stored = localStorage.getItem("ignored_semester_ids");
-      return stored ? new Set(JSON.parse(stored)) : new Set();
-    } catch {
-      return new Set();
-    }
-  });
+  const ignoredSemesterIds = useMemo(
+    () => new Set(semesters.filter((s) => s.ignored).map((s) => s.id)),
+    [semesters],
+  );
 
-  const toggleSemesterIgnore = useCallback((semesterId: string) => {
-    setIgnoredSemesterIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(semesterId)) next.delete(semesterId);
-      else next.add(semesterId);
-      try {
-        localStorage.setItem("ignored_semester_ids", JSON.stringify([...next]));
-      } catch {}
-      return next;
-    });
-  }, []);
+  const toggleSemesterIgnore = useCallback(async (semesterId: string) => {
+    const target = semesters.find((s) => s.id === semesterId);
+    if (!target) return;
+    const nextIgnored = !target.ignored;
+    // Optimistic update
+    setSemesters((prev) =>
+      prev.map((s) => (s.id === semesterId ? { ...s, ignored: nextIgnored } : s)),
+    );
+    try {
+      await storage.updateSemester(semesterId, { ignored: nextIgnored });
+      setServerOffline(false);
+    } catch (error) {
+      // Revert on failure
+      setSemesters((prev) =>
+        prev.map((s) => (s.id === semesterId ? { ...s, ignored: !nextIgnored } : s)),
+      );
+      if (error instanceof ApiUnavailableError) setServerOffline(true);
+      else console.error("[v0] Failed to toggle semester ignore:", error);
+    }
+  }, [semesters]);
 
   const { handleUndo, handleRedo } = useUndoRedo({
     semesters,
@@ -159,7 +164,9 @@ export function useSemesterData({ appSettings }: { appSettings: AppSettings }) {
         } else if (loadedSemesters.find((s) => s.id === urlSemesterId)) {
           setActiveSemesterId(urlSemesterId);
         } else if (loadedSemesters.length > 0) {
-          setActiveSemesterId(loadedSemesters[0].id);
+          const fallbackSemesterId = loadedSemesters[0].id;
+          setActiveSemesterId(fallbackSemesterId);
+          router.replace(`/semesters/${fallbackSemesterId}`);
         }
       } else {
         const saved = localStorage.getItem(ACTIVE_SEMESTER_STORAGE_KEY);
@@ -183,7 +190,7 @@ export function useSemesterData({ appSettings }: { appSettings: AppSettings }) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [router]);
 
   // Load data on auth state change
   useEffect(() => {
@@ -204,8 +211,21 @@ export function useSemesterData({ appSettings }: { appSettings: AppSettings }) {
   // Sync activeSemesterId from URL on subsequent navigations (not initial load)
   useEffect(() => {
     if (!dataLoadedRef.current) return;
-    if (routeSemesterId !== undefined) setActiveSemesterId(routeSemesterId);
-  }, [routeSemesterId]);
+    if (routeSemesterId === undefined) return;
+    if (routeSemesterId === null) {
+      setActiveSemesterId(null);
+      return;
+    }
+    if (semesters.some((semester) => semester.id === routeSemesterId)) {
+      setActiveSemesterId(routeSemesterId);
+      return;
+    }
+    if (semesters.length > 0) {
+      const fallbackSemesterId = semesters[0].id;
+      setActiveSemesterId(fallbackSemesterId);
+      router.replace(`/semesters/${fallbackSemesterId}`);
+    }
+  }, [routeSemesterId, router, semesters]);
 
   useEffect(() => {
     if (!loading) dataLoadedRef.current = true;

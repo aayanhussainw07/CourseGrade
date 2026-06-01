@@ -41,7 +41,7 @@ export default function SharePage() {
         setError("No data found in this share link.");
         return;
       }
-      const parsed = JSON.parse(decodeURIComponent(data)) as SharedSemester;
+      const parsed = JSON.parse(data) as SharedSemester;
       if (!parsed.name || !Array.isArray(parsed.courses)) {
         setError("Invalid share link data.");
         return;

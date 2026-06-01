@@ -9,6 +9,7 @@ type SemesterPayload = {
   name: string
   background?: string
   timeline_date?: string | null
+  ignored?: boolean
 }
 
 type CourseAssignmentPayload = {

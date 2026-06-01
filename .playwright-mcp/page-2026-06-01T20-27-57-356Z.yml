@@ -1,0 +1,159 @@
+- generic [active] [ref=e1]:
+  - button "Open Next.js Dev Tools" [ref=e7] [cursor=pointer]:
+    - img [ref=e8]
+  - alert [ref=e11]
+  - generic [ref=e12]:
+    - generic [ref=e17]:
+      - generic [ref=e18]:
+        - img "CourseGrade" [ref=e20]
+        - generic [ref=e21]: coursegrade.
+      - generic [ref=e22]:
+        - generic [ref=e24]: Grades getting loud?
+        - generic [ref=e26]: Make the next move.
+      - paragraph [ref=e27]: Track weighted grades, test what-if scores, and see your GPA before the final has a chance to surprise you.
+      - button "Start tracking" [ref=e29]:
+        - img
+        - text: Start tracking
+    - generic [ref=e31]:
+      - generic:
+        - img
+        - img
+        - img
+        - img
+        - img
+        - img
+        - img
+        - img
+        - img
+        - img
+        - img
+        - img
+        - img
+        - img
+        - img
+        - img
+        - img
+        - img
+        - img
+        - img
+        - img
+        - img
+      - generic [ref=e32]:
+        - heading "See your progress at a glance" [level=2] [ref=e34]:
+          - text: See your progress
+          - generic [ref=e35]: at a glance
+        - generic [ref=e37]:
+          - generic [ref=e38]:
+            - img [ref=e40]
+            - heading "Stop guessing your GPA" [level=3] [ref=e44]
+            - paragraph [ref=e45]: Weighted grades, credits, and letter cutoffs stay visible without a spreadsheet rescue mission.
+          - generic [ref=e46]:
+            - img [ref=e48]
+            - heading "Try the comeback math" [level=3] [ref=e51]
+            - paragraph [ref=e52]: Use what-if scores to see whether the next quiz, lab, or final can move the needle.
+          - generic [ref=e53]:
+            - img [ref=e55]
+            - heading "Skip the boring setup" [level=3] [ref=e61]
+            - paragraph [ref=e62]: Import what you can, organize what matters, and keep the whole semester in one place.
+    - generic [ref=e63]:
+      - generic:
+        - img
+        - img
+        - img
+        - img
+        - img
+        - img
+        - img
+        - img
+        - img
+        - img
+        - img
+        - img
+        - img
+        - img
+        - img
+        - img
+        - img
+        - img
+        - img
+        - img
+        - img
+        - img
+      - generic [ref=e64]:
+        - heading "Times, lines, timelines!" [level=2] [ref=e67]:
+          - text: Times, lines,
+          - generic [ref=e68]: timelines!
+        - generic [ref=e71]:
+          - generic [ref=e72]:
+            - paragraph [ref=e73]: GPA Timeline
+            - img [ref=e74]:
+              - generic [ref=e76]: "3.0"
+              - generic [ref=e78]: "4.0"
+              - generic [ref=e81]:
+                - generic [ref=e82]: "3.91"
+                - generic [ref=e84]: Fall ’21
+              - generic [ref=e85]:
+                - generic [ref=e86]: "2.88"
+                - generic [ref=e88]: Spring ’22
+              - generic [ref=e89]:
+                - generic [ref=e90]: "3.85"
+                - generic [ref=e92]: Fall ’22
+              - generic [ref=e93]:
+                - generic [ref=e94]: "3.60"
+                - generic [ref=e96]: Spring ’23
+              - generic [ref=e97]:
+                - generic [ref=e98]: "3.70"
+                - generic [ref=e100]: Fall ’23
+              - generic [ref=e101]:
+                - generic [ref=e102]: "3.80"
+                - generic [ref=e104]: Spring ’24
+          - generic [ref=e106]:
+            - generic [ref=e107]:
+              - paragraph [ref=e108]: Distribution
+              - generic [ref=e109]:
+                - button "Bar chart" [ref=e110]:
+                  - img
+                - button "Donut chart" [ref=e111]:
+                  - img
+            - generic [ref=e113]:
+              - generic [ref=e114]:
+                - generic [ref=e115]: 15%
+                - generic [ref=e117]: "3"
+                - generic [ref=e119]: A+
+              - generic [ref=e120]:
+                - generic [ref=e121]: 20%
+                - generic [ref=e123]: "4"
+                - generic [ref=e125]: A
+              - generic [ref=e126]:
+                - generic [ref=e127]: 25%
+                - generic [ref=e129]: "5"
+                - generic [ref=e131]: A-
+              - generic [ref=e132]:
+                - generic [ref=e133]: 20%
+                - generic [ref=e135]: "4"
+                - generic [ref=e137]: B+
+              - generic [ref=e138]:
+                - generic [ref=e139]: 10%
+                - generic [ref=e141]: "2"
+                - generic [ref=e143]: B
+              - generic [ref=e144]:
+                - generic [ref=e145]: 5%
+                - generic [ref=e147]: "1"
+                - generic [ref=e149]: C
+              - generic [ref=e150]:
+                - generic [ref=e151]: 5%
+                - generic [ref=e153]: "1"
+                - generic [ref=e155]: F
+    - generic [ref=e159]:
+      - generic [ref=e160]:
+        - generic [ref=e161]:
+          - generic [ref=e162]: READY TO TAKE
+          - generic [ref=e163]: CONTROL?
+        - paragraph [ref=e164]: Start with one course, then let the semester get clearer from there.
+        - button "Start tracking" [ref=e166]:
+          - img
+          - text: Start tracking
+      - generic [ref=e167]:
+        - paragraph [ref=e168]: Made with ♥ by @aayanh7
+        - link "☕ buy me a coffee (if you want!)" [ref=e169] [cursor=pointer]:
+          - /url: https://www.buymeacoffee.com/aayanh7

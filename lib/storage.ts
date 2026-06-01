@@ -50,6 +50,7 @@ export const storage = {
       courses: [],
       background: apiSemester.background || background || DEFAULT_BACKGROUND,
       timelineDate: apiSemester.timeline_date ?? timelineDate ?? null,
+      ignored: apiSemester.ignored ?? false,
       createdAt: apiSemester.created_at,
       updatedAt: apiSemester.updated_at,
     }
@@ -57,16 +58,18 @@ export const storage = {
 
   async updateSemester(
     id: string,
-    updates: Partial<{ name: string; background: string; timelineDate: string | null }>,
+    updates: Partial<{ name: string; background: string; timelineDate: string | null; ignored: boolean }>,
   ): Promise<void> {
     const payload: {
       name?: string
       background?: string
       timeline_date?: string | null
+      ignored?: boolean
     } = {}
     if (typeof updates.name === "string") payload.name = updates.name
     if (typeof updates.background === "string") payload.background = updates.background
     if ("timelineDate" in updates) payload.timeline_date = updates.timelineDate ?? null
+    if (typeof updates.ignored === "boolean") payload.ignored = updates.ignored
     await semesterApi.update(id, payload)
   },
 

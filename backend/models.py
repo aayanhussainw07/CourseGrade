@@ -21,6 +21,7 @@ class Semester(TimestampMixin, db.Model):
     user_id = db.Column(db.String(255), nullable=False, default="default", index=True)
     background = db.Column(db.String(50), nullable=False, default="sunrise")
     timeline_date = db.Column(db.Date, nullable=True)
+    ignored = db.Column(db.Boolean, nullable=False, default=False, server_default="false")
 
     courses = db.relationship(
         "Course",

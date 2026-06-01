@@ -9,21 +9,21 @@ export const marketingFeatures: {
   icon: LucideIcon;
 }[] = [
   {
-    title: "Stop guessing your GPA.",
+    title: "Stop guessing your GPA",
     description:
-      "You have a 73.4 in MATH 2940. Is that bad? You probably don't want to know. But we'll help you find out anyway!",
+      "Weighted grades, credits, and letter cutoffs stay visible without a spreadsheet rescue mission.",
     icon: Layers,
   },
   {
-    title: "Time flies. Your grades may not.",
+    title: "Try the comeback math",
     description:
-      "Watch your grades soar up through the sky with some ol' timelines.",
+      "Use what-if scores to see whether the next quiz, lab, or final can move the needle.",
     icon: TrendingUp,
   },
   {
-    title: "We can parse it for you.",
+    title: "Skip the boring setup",
     description:
-      "Too tired to type it all out? Just send in your syllabus and we'll do the rest.",
+      "Import what you can, organize what matters, and keep the whole semester in one place.",
     icon: Sparkles,
   },
 ];

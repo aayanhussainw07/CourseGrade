@@ -16,6 +16,7 @@ export function FeedbackPanel() {
   const [rating, setRating] = useState(0);
   const [hoveredStar, setHoveredStar] = useState(0);
   const [comment, setComment] = useState("");
+  const [submitError, setSubmitError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
 
@@ -35,6 +36,7 @@ export function FeedbackPanel() {
     setRating(0);
     setHoveredStar(0);
     setComment("");
+    setSubmitError("");
     setSubmitting(false);
   }, []);
 
@@ -45,14 +47,18 @@ export function FeedbackPanel() {
 
   const handleSubmit = async () => {
     setSubmitting(true);
+    setSubmitError("");
     try {
-      await fetch("/api/feedback/items", {
+      const response = await fetch("/api/feedback/items", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ rating, comment: comment.trim() }),
       });
+      if (!response.ok) throw new Error("Failed to send feedback.");
     } catch {
-      // silently fail — feedback is best-effort
+      setSubmitting(false);
+      setSubmitError("Could not send feedback. Please try again.");
+      return;
     }
     setSubmitting(false);
     setPhase("thanks");
@@ -101,6 +107,7 @@ export function FeedbackPanel() {
               </h3>
               <button
                 type="button"
+                aria-label="Close feedback"
                 onClick={handleClose}
                 className="rounded-full p-1 text-primary/50 transition-colors hover:bg-primary/10 hover:text-primary"
               >
@@ -129,6 +136,8 @@ export function FeedbackPanel() {
                           <button
                             key={star}
                             type="button"
+                            aria-label={`Rate ${star} ${star === 1 ? "star" : "stars"}`}
+                            aria-pressed={rating === star}
                             onClick={() => setRating(star)}
                             onMouseEnter={() => setHoveredStar(star)}
                             onMouseLeave={() => setHoveredStar(0)}
@@ -201,6 +210,11 @@ export function FeedbackPanel() {
                         Submit
                       </Button>
                     </div>
+                    {submitError && (
+                      <p className="mt-3 rounded-md border border-destructive/25 bg-destructive/5 px-3 py-2 text-xs text-destructive">
+                        {submitError}
+                      </p>
+                    )}
                   </motion.div>
                 )}
 

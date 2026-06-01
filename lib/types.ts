@@ -59,6 +59,7 @@ export interface Semester {
   courses: Course[]
   background?: string
   timelineDate?: string | null
+  ignored?: boolean
   createdAt?: string
   updatedAt?: string
 }
@@ -68,6 +69,7 @@ export interface ApiSemester {
   name: string
   background?: string
   timeline_date?: string | null
+  ignored?: boolean
   courses: ApiCourse[]
   created_at: string
   updated_at: string
@@ -113,6 +115,7 @@ export function apiToFrontendSemester(apiSemester: ApiSemester): Semester {
     courses: apiSemester.courses.map(apiToFrontendCourse),
     background: apiSemester.background,
     timelineDate: apiSemester.timeline_date ?? null,
+    ignored: apiSemester.ignored ?? false,
     createdAt: apiSemester.created_at,
     updatedAt: apiSemester.updated_at,
   }
