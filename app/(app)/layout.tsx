@@ -16,6 +16,7 @@ import {
   ChevronsUp,
   ChevronsDown,
   Settings,
+  Loader2,
 } from "lucide-react";
 import Image from "next/image";
 import type { CoursePortableData } from "@/lib/csv";
@@ -98,6 +99,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     updateCourse,
     deleteCourse,
     duplicateCourse: duplicateCourseBase,
+    isDuplicatingCourse,
     importCourseFromSyllabus: importCourseFromSyllabusBase,
     collapseAllCourses,
     expandAllCourses,
@@ -253,6 +255,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-background">
+      {isDuplicatingCourse && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-background/40 backdrop-blur-sm">
+          <div className="flex flex-col items-center gap-3 rounded-xl border-2 border-primary/20 bg-[#fff8f1] px-8 py-6 shadow-[3px_4px_0_rgba(198,90,78,0.15)]">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <p className="text-sm font-semibold uppercase tracking-widest text-primary/80">
+              Duplicating…
+            </p>
+          </div>
+        </div>
+      )}
       <FeedbackPanel />
       {/* Top-right actions */}
       <div className="fixed right-4 top-4 z-50 flex items-center gap-2">

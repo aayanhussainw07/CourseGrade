@@ -60,6 +60,7 @@ export function useSemesterData({ appSettings }: { appSettings: AppSettings }) {
   const [loading, setLoading] = useState(true);
   const [serverOffline, setServerOffline] = useState(false);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [isDuplicatingCourse, setIsDuplicatingCourse] = useState(false);
   const saveStatusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dataLoadedRef = useRef(false);
 
@@ -598,6 +599,7 @@ export function useSemesterData({ appSettings }: { appSettings: AppSettings }) {
       if (!activeSemesterId) return null;
       const course = courses.find((c) => c.id === courseId);
       if (!course) return null;
+      setIsDuplicatingCourse(true);
       try {
         const duplicated = await importPortableCourse(courseToPortable(course), activeSemesterId);
         setSemesters((prev) =>
@@ -611,6 +613,8 @@ export function useSemesterData({ appSettings }: { appSettings: AppSettings }) {
         if (error instanceof ApiUnavailableError) setServerOffline(true);
         else console.error("[v0] Failed to duplicate course:", error);
         return null;
+      } finally {
+        setIsDuplicatingCourse(false);
       }
     },
     [activeSemesterId, courses, importPortableCourse],
@@ -910,6 +914,7 @@ export function useSemesterData({ appSettings }: { appSettings: AppSettings }) {
     updateCourse,
     deleteCourse,
     duplicateCourse,
+    isDuplicatingCourse,
     importCourseFromSyllabus,
     collapseAllCourses,
     expandAllCourses,
