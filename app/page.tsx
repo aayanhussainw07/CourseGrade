@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { MarketingPage } from "@/components/marketing-page";
+import { AdSenseLoader } from "@/components/adsense-loader";
 import Image from "next/image";
 
 export default function Home() {
@@ -44,5 +45,10 @@ export default function Home() {
     return null;
   }
 
-  return <MarketingPage />;
+  return (
+    <>
+      <AdSenseLoader />
+      <MarketingPage />
+    </>
+  );
 }
