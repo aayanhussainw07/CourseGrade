@@ -36,10 +36,6 @@ import { SyllabusImportDialog } from "@/components/syllabus-import-dialog";
 import { SettingsPage } from "@/components/settings-page";
 import { loadAppSettings, loadAppSettingsFromServer, type AppSettings } from "@/lib/app-settings";
 import { HIGHLIGHT_DURATION_MS, SCROLL_DELAY_MS } from "@/lib/constants";
-import {
-  readStoredDashboardMessage,
-  writeStoredDashboardMessage,
-} from "@/app/page-utils";
 import { useSemesterData } from "@/hooks/useSemesterData";
 import { FeedbackPanel } from "@/components/feedback-panel";
 import {
@@ -121,7 +117,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     string | null
   >(null);
   const courseRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
-  const [dashboardMessage, setDashboardMessage] = useState("");
   const [dashboardMessageDraft, setDashboardMessageDraft] = useState("");
   const [isEditingQuote, setIsEditingQuote] = useState(false);
 
@@ -135,6 +130,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     loading,
     serverOffline,
     saveStatus,
+    dashboardMessage,
+    saveDashboardMessage: persistDashboardMessage,
     activeSemester,
     courses,
     isDashboardView,
@@ -264,31 +261,24 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }, []);
 
   // ── Dashboard message ─────────────────────────────────────────────────────
-  const dashboardMessageScopeId = useMemo(
-    () => session?.user?.id || session?.user?.email || "default",
-    [session?.user?.id, session?.user?.email],
-  );
-
   useEffect(() => {
-    const stored = readStoredDashboardMessage(dashboardMessageScopeId);
-    setDashboardMessage(stored);
-    setDashboardMessageDraft(stored);
-  }, [dashboardMessageScopeId]);
+    if (!isEditingQuote) setDashboardMessageDraft(dashboardMessage);
+  }, [dashboardMessage, isEditingQuote]);
 
   const saveDashboardMessage = useCallback(() => {
     const value = dashboardMessageDraft.trim();
-    writeStoredDashboardMessage(dashboardMessageScopeId, value);
-    setDashboardMessage(value);
-    setDashboardMessageDraft(value);
-    setIsEditingQuote(false);
-  }, [dashboardMessageDraft, dashboardMessageScopeId]);
+    void persistDashboardMessage(value).then(() => {
+      setDashboardMessageDraft(value);
+      setIsEditingQuote(false);
+    }).catch(() => undefined);
+  }, [dashboardMessageDraft, persistDashboardMessage]);
 
   const clearDashboardMessage = useCallback(() => {
-    writeStoredDashboardMessage(dashboardMessageScopeId, "");
-    setDashboardMessage("");
-    setDashboardMessageDraft("");
-    setIsEditingQuote(false);
-  }, [dashboardMessageScopeId]);
+    void persistDashboardMessage("").then(() => {
+      setDashboardMessageDraft("");
+      setIsEditingQuote(false);
+    }).catch(() => undefined);
+  }, [persistDashboardMessage]);
 
   // ── Load settings from server on auth ──────────────────────────────────────
   useEffect(() => {
@@ -352,7 +342,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (serverOffline) {
+  if (serverOffline && semesters.length === 0) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-background px-4 text-center">
         <Image
@@ -399,7 +389,18 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen bg-background" data-nav-tone="light">
+    <div
+      className={`min-h-screen bg-background ${serverOffline ? "pointer-events-none" : ""}`}
+      data-nav-tone="light"
+    >
+      {serverOffline && (
+        <div className="pointer-events-auto fixed inset-x-0 top-11 z-[100] flex items-center justify-center gap-3 bg-primary px-4 py-2 text-sm text-primary-foreground">
+          <span>Offline — showing the last cloud snapshot in read-only mode.</span>
+          <button className="underline" onClick={() => loadSemesters()} type="button">
+            Retry
+          </button>
+        </div>
+      )}
       <FeedbackPanel />
       <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
         <AppTopBar

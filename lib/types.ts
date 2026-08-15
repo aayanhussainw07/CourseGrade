@@ -70,6 +70,7 @@ export interface ApiSemester {
   background?: string
   timeline_date?: string | null
   ignored?: boolean
+  sort_order?: number
   courses: ApiCourse[]
   created_at: string
   updated_at: string
@@ -83,6 +84,11 @@ export interface ApiCourse {
   is_pass_fail?: boolean
   percent_boost?: number
   header_color?: string | null
+  sort_order?: number
+  pass_label?: string
+  fail_label?: string
+  pass_threshold?: number
+  letter_grade_scale?: GradeScale[] | null
   assignments: ApiAssignment[]
   created_at: string
   updated_at: string
@@ -96,6 +102,10 @@ export interface ApiAssignment {
   earned: number
   total: number
   drop_lowest?: number
+  client_id?: string
+  sort_order?: number
+  extra_credit?: number
+  sub_items?: SubItem[]
   created_at: string
   updated_at: string
 }
@@ -127,6 +137,14 @@ const normalizePercentage = (value: number) => {
 }
 
 export function apiToFrontendCourse(apiCourse: ApiCourse): Course {
+  const letterGradeScale =
+    Array.isArray(apiCourse.letter_grade_scale) && apiCourse.letter_grade_scale.length > 0
+      ? apiCourse.letter_grade_scale.map((grade) => ({ ...grade }))
+      : DEFAULT_GRADE_SCALE.map((grade) => ({ ...grade }))
+  const isPassFail = apiCourse.is_pass_fail ?? false
+  const passLabel = apiCourse.pass_label || "P"
+  const failLabel = apiCourse.fail_label || "F"
+  const passThreshold = normalizePercentage(apiCourse.pass_threshold ?? 60)
   return {
     id: apiCourse.id.toString(),
     name: apiCourse.name,
@@ -134,19 +152,28 @@ export function apiToFrontendCourse(apiCourse: ApiCourse): Course {
     percentBoost: normalizePercentage(apiCourse.percent_boost ?? 0),
     criteria: apiCourse.assignments.map((assignment) => ({
       id: assignment.id.toString(),
-      clientId: assignment.id.toString(),
+      clientId: assignment.client_id || assignment.id.toString(),
       name: assignment.name,
       weight: assignment.weight,
       score: assignment.total > 0 ? normalizePercentage((assignment.earned / assignment.total) * 100) : 0,
       dropLowest: assignment.drop_lowest ?? 0,
-      extraCredit: 0,
+      extraCredit: normalizePercentage(assignment.extra_credit ?? 0),
+      subItems: Array.isArray(assignment.sub_items)
+        ? assignment.sub_items.map((item) => ({ ...item }))
+        : [],
     })),
-    gradeScale: DEFAULT_GRADE_SCALE.map((grade) => ({ ...grade })),
+    gradeScale: isPassFail
+      ? [
+          { letter: passLabel, min: passThreshold },
+          { letter: failLabel, min: 0 },
+        ]
+      : letterGradeScale,
+    gradeScaleSnapshot: isPassFail ? letterGradeScale : undefined,
     collapsed: false,
-    isPassFail: apiCourse.is_pass_fail ?? false,
-    passLabel: "P",
-    failLabel: "F",
-    passThreshold: 60,
+    isPassFail,
+    passLabel,
+    failLabel,
+    passThreshold,
     headerColor: apiCourse.header_color ?? null,
   }
 }

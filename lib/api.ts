@@ -13,11 +13,14 @@ type SemesterPayload = {
 }
 
 type CourseAssignmentPayload = {
+  client_id: string
   name: string
   weight: number
   earned: number
   total: number
   drop_lowest?: number
+  extra_credit?: number
+  sub_items?: Array<{ id: string; name: string; score: number; weight?: number }>
 }
 
 type CoursePayload = {
@@ -27,6 +30,10 @@ type CoursePayload = {
   is_pass_fail?: boolean
   percent_boost?: number
   header_color?: string | null
+  pass_label?: string
+  fail_label?: string
+  pass_threshold?: number
+  letter_grade_scale?: Array<{ letter: string; min: number }>
   assignments?: CourseAssignmentPayload[]
   criteria?: unknown
 }
@@ -171,6 +178,12 @@ export const semesterApi = {
     apiFetch<void>(`/semesters/${id}/`, {
       method: "DELETE",
     }),
+
+  reorder: (ids: string[]) =>
+    apiFetch<{ ids: number[] }>("/semesters/order/", {
+      method: "PUT",
+      body: JSON.stringify({ ids }),
+    }),
 }
 
 // Course API calls
@@ -197,6 +210,12 @@ export const courseApi = {
   delete: (id: string) =>
     apiFetch<void>(`/courses/${id}/`, {
       method: "DELETE",
+    }),
+
+  reorder: (semesterId: string, ids: string[]) =>
+    apiFetch<{ ids: number[] }>(`/semesters/${semesterId}/courses/order/`, {
+      method: "PUT",
+      body: JSON.stringify({ ids }),
     }),
 }
 
@@ -234,6 +253,33 @@ export const settingsApi = {
   save: (data: Record<string, unknown>) =>
     apiFetch<Record<string, unknown>>("/settings/", {
       method: "PUT",
+      body: JSON.stringify(data),
+    }),
+}
+
+export type ApiUserState = {
+  dashboard_message: string | null
+  last_active_semester_id: number | null
+  local_migration_version: number
+}
+
+export const userStateApi = {
+  get: () => apiFetch<ApiUserState>("/user-state/"),
+  update: (data: Partial<Pick<ApiUserState, "dashboard_message" | "last_active_semester_id">>) =>
+    apiFetch<ApiUserState>("/user-state/", {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
+}
+
+export const localMigrationApi = {
+  migrate: (data: {
+    scope: "user" | "course" | "finalize"
+    course_id?: string
+    payload?: Record<string, unknown>
+  }) =>
+    apiFetch<ApiUserState & { migrated: boolean }>("/migration/local-v1/", {
+      method: "POST",
       body: JSON.stringify(data),
     }),
 }

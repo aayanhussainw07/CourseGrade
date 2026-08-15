@@ -20,12 +20,30 @@ test("generic proxy exposes only supported user-facing routes", () => {
     true,
   );
   assert.equal(isAllowedBackendProxyRequest(["settings"], "PUT"), true);
+  assert.equal(isAllowedBackendProxyRequest(["user-state"], "PATCH"), true);
+  assert.equal(isAllowedBackendProxyRequest(["migration", "local-v1"], "POST"), true);
+  assert.equal(isAllowedBackendProxyRequest(["semesters", "order"], "PUT"), true);
+  assert.equal(
+    isAllowedBackendProxyRequest(["semesters", "12", "courses", "order"], "PUT"),
+    true,
+  );
   assert.equal(isAllowedBackendProxyRequest(["grade-scales", "2"], "PATCH"), true);
 
   assert.equal(isAllowedBackendProxyRequest(["ai-calls"], "POST"), false);
   assert.equal(isAllowedBackendProxyRequest(["admin", "stats"], "GET"), false);
   assert.equal(isAllowedBackendProxyRequest(["feedback"], "GET"), false);
   assert.equal(isAllowedBackendProxyRequest(["semesters"], "PUT"), false);
+});
+
+test("cloud persistence tables remain private to the Flask service", () => {
+  const sql = readFileSync(
+    join(repositoryRoot, "supabase/migrations/20260815144239_cloud_persistence.sql"),
+    "utf8",
+  ).toLowerCase();
+
+  assert.match(sql, /legacy_local_backups enable row level security/);
+  assert.match(sql, /revoke all on table public\.legacy_local_backups from anon, authenticated/);
+  assert.match(sql, /unique index if not exists ux_assignments_course_client_id/);
 });
 
 test("generic proxy rejects request bodies above its byte limit", async () => {

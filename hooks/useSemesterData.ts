@@ -19,19 +19,12 @@ import {
   parseCourseCsv,
   parseSemesterCsv,
 } from "@/lib/csv";
-import {
-  applyStoredSettingsToSemesters,
-  persistCourseSettings,
-  removeCourseSettings,
-} from "@/lib/course-settings";
+import { migrateLegacyBrowserState } from "@/lib/local-cloud-migration";
 import {
   buildDefaultCourseGrading,
   calculateGPA,
 } from "@/lib/grade-utils";
 import {
-  ACTIVE_SEMESTER_STORAGE_KEY,
-  COURSE_SETTINGS_STORAGE_KEY,
-  DASHBOARD_SENTINEL,
   type DashboardBackupPayload,
   courseToPortable,
   generateClientId,
@@ -39,11 +32,9 @@ import {
   gpaToLetterGrade,
   isServerResourceId,
   parseSemesterSortValue,
-  readStoredSemesterOrder,
   safeFilename,
   sanitizeSemesters,
   triggerFileDownload,
-  writeStoredSemesterOrder,
 } from "@/app/page-utils";
 import { useUndoRedo } from "./useUndoRedo";
 import type { AppSettings } from "@/lib/app-settings";
@@ -70,6 +61,7 @@ export function useSemesterData({ appSettings }: { appSettings: AppSettings }) {
   const [activeSemesterId, setActiveSemesterId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [serverOffline, setServerOffline] = useState(false);
+  const [dashboardMessage, setDashboardMessage] = useState("");
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const saveStatusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dataLoadedRef = useRef(false);
@@ -81,6 +73,7 @@ export function useSemesterData({ appSettings }: { appSettings: AppSettings }) {
   );
 
   const toggleSemesterIgnore = useCallback(async (semesterId: string) => {
+    if (serverOffline) return;
     const target = semesters.find((s) => s.id === semesterId);
     if (!target) return;
     const nextIgnored = !target.ignored;
@@ -99,7 +92,7 @@ export function useSemesterData({ appSettings }: { appSettings: AppSettings }) {
       if (error instanceof ApiUnavailableError) setServerOffline(true);
       else console.error("[v0] Failed to toggle semester ignore:", error);
     }
-  }, [semesters]);
+  }, [semesters, serverOffline]);
 
   const { handleUndo, handleRedo } = useUndoRedo({
     semesters,
@@ -123,19 +116,17 @@ export function useSemesterData({ appSettings }: { appSettings: AppSettings }) {
     });
   }, [semesters]);
 
-  // Persist semesterOrder to localStorage
   useEffect(() => {
-    if (semesterOrder.length === 0) return;
-    writeStoredSemesterOrder(semesterOrder);
-  }, [semesterOrder]);
-
-  // Persist activeSemesterId to localStorage
-  useEffect(() => {
-    localStorage.setItem(
-      ACTIVE_SEMESTER_STORAGE_KEY,
-      activeSemesterId === null ? DASHBOARD_SENTINEL : activeSemesterId,
-    );
-  }, [activeSemesterId]);
+    if (!dataLoadedRef.current || status !== "authenticated" || serverOffline) return;
+    void storage
+      .updateUserState({
+        last_active_semester_id: activeSemesterId === null ? null : Number(activeSemesterId),
+      })
+      .catch((error) => {
+        if (error instanceof ApiUnavailableError) setServerOffline(true);
+        else console.error("[v0] Failed to save active semester:", error);
+      });
+  }, [activeSemesterId, serverOffline, status]);
 
   // Update document title
   useEffect(() => {
@@ -152,24 +143,27 @@ export function useSemesterData({ appSettings }: { appSettings: AppSettings }) {
     if (status === "unauthenticated") router.replace("/");
   }, [status, router]);
 
-  const loadSemesters = useCallback(async (urlSemesterId?: string | null) => {
+  const loadSemesters = useCallback(async (
+    urlSemesterId?: string | null,
+    explicitScopeId?: string,
+  ) => {
     try {
       setLoading(true);
       setServerOffline(false);
-      const loadedSemesters = await storage.getSemesters();
-      const mergedSemesters = applyStoredSettingsToSemesters(loadedSemesters);
+      let loadedSemesters = await storage.getSemesters();
+      const scopeId = explicitScopeId || session?.user?.id || session?.user?.email || "default";
+      const migratedState = await migrateLegacyBrowserState(loadedSemesters, scopeId);
+      if (migratedState.migrated) {
+        loadedSemesters = await storage.getSemesters();
+      }
+      setDashboardMessage(migratedState.dashboardMessage ?? "");
       setSemesters(
-        mergedSemesters.map((s) => ({
+        loadedSemesters.map((s) => ({
           ...s,
           courses: s.courses.map((c) => ({ ...c, collapsed: true })),
         })),
       );
-
-      const savedOrder = readStoredSemesterOrder();
-      if (savedOrder.length > 0) {
-        const validOrder = savedOrder.filter((id) => mergedSemesters.some((s) => s.id === id));
-        if (validOrder.length > 0) setSemesterOrder(validOrder);
-      }
+      setSemesterOrder(loadedSemesters.map((semester) => semester.id));
 
       if (urlSemesterId !== undefined) {
         if (urlSemesterId === null) {
@@ -182,35 +176,44 @@ export function useSemesterData({ appSettings }: { appSettings: AppSettings }) {
           router.replace(`/semesters/${fallbackSemesterId}`);
         }
       } else {
-        const saved = localStorage.getItem(ACTIVE_SEMESTER_STORAGE_KEY);
-        if (saved === DASHBOARD_SENTINEL) {
-          setActiveSemesterId(null);
-        } else if (saved && loadedSemesters.find((s) => s.id === saved)) {
-          setActiveSemesterId(saved);
-        } else if (loadedSemesters.length > 0) {
-          setActiveSemesterId(loadedSemesters[0].id);
-        }
+        const saved = migratedState.activeSemesterId;
+        setActiveSemesterId(saved && loadedSemesters.some((s) => s.id === saved) ? saved : null);
       }
     } catch (error) {
       if (error instanceof ApiUnavailableError) {
         console.error("[v0] Server offline while loading semesters.");
         setServerOffline(true);
-        setSemesters([]);
-        setActiveSemesterId(null);
+        const cached = storage.getCachedSemesters();
+        const cachedUserState = storage.getCachedUserState();
+        setSemesters(cached);
+        setSemesterOrder(cached.map((semester) => semester.id));
+        setDashboardMessage(cachedUserState?.dashboard_message ?? "");
+        if (typeof urlSemesterId === "string" && cached.some((semester) => semester.id === urlSemesterId)) {
+          setActiveSemesterId(urlSemesterId);
+        } else if (urlSemesterId === null) {
+          setActiveSemesterId(null);
+        } else {
+          const cachedActiveId = cachedUserState?.last_active_semester_id?.toString() ?? null;
+          setActiveSemesterId(
+            cachedActiveId && cached.some((semester) => semester.id === cachedActiveId)
+              ? cachedActiveId
+              : null,
+          );
+        }
       } else {
         console.error("[v0] Failed to load semesters:", error);
       }
     } finally {
       setLoading(false);
     }
-  }, [router]);
+  }, [router, session?.user?.email, session?.user?.id]);
 
   // Load data on auth state change
   useEffect(() => {
     if (status === "authenticated") {
       const scopeId = session?.user?.id || session?.user?.email || "default";
       storage.setUserScope(scopeId);
-      loadSemesters(routeSemesterId);
+      loadSemesters(routeSemesterId, scopeId);
     } else if (status === "unauthenticated") {
       storage.setUserScope("default");
       setServerOffline(false);
@@ -354,6 +357,20 @@ export function useSemesterData({ appSettings }: { appSettings: AppSettings }) {
     [overallGpa, totalCredits, totalSemesters],
   );
 
+  const saveDashboardMessage = useCallback(async (value: string) => {
+    if (serverOffline) return;
+    const normalized = value.trim().slice(0, 240);
+    try {
+      const state = await storage.updateUserState({ dashboard_message: normalized || null });
+      setDashboardMessage(state.dashboard_message ?? "");
+      setServerOffline(false);
+    } catch (error) {
+      if (error instanceof ApiUnavailableError) setServerOffline(true);
+      else console.error("[v0] Failed to save dashboard message:", error);
+      throw error;
+    }
+  }, [serverOffline]);
+
   // ── importPortableCourse (shared by many operations) ──────────────────────
 
   const importPortableCourse = useCallback(
@@ -413,7 +430,6 @@ export function useSemesterData({ appSettings }: { appSettings: AppSettings }) {
       };
 
       const syncedCourse = await storage.updateCourse(semesterId, updatedCourse);
-      persistCourseSettings(syncedCourse);
       return syncedCourse;
     },
     [],
@@ -422,6 +438,7 @@ export function useSemesterData({ appSettings }: { appSettings: AppSettings }) {
   // ── Semester CRUD ─────────────────────────────────────────────────────────
 
   const addSemester = useCallback(async () => {
+    if (serverOffline) return;
     try {
       const newSemester = await storage.createSemester(`Semester ${semesters.length + 1}`);
       setSemesters((prev) => [...prev, newSemester]);
@@ -432,10 +449,11 @@ export function useSemesterData({ appSettings }: { appSettings: AppSettings }) {
       if (error instanceof ApiUnavailableError) setServerOffline(true);
       else console.error("[v0] Failed to create semester:", error);
     }
-  }, [semesters.length, router]);
+  }, [semesters.length, router, serverOffline]);
 
   const deleteSemester = useCallback(
     async (semesterId: string) => {
+      if (serverOffline) return;
       try {
         await storage.deleteSemester(semesterId);
         setSemesters((prev) => {
@@ -453,10 +471,11 @@ export function useSemesterData({ appSettings }: { appSettings: AppSettings }) {
         else console.error("[v0] Failed to delete semester:", error);
       }
     },
-    [activeSemesterId, router],
+    [activeSemesterId, router, serverOffline],
   );
 
   const editSemester = useCallback(async (semesterId: string, newName: string) => {
+    if (serverOffline) return;
     try {
       await storage.updateSemester(semesterId, { name: newName });
       setSemesters((prev) => prev.map((s) => (s.id === semesterId ? { ...s, name: newName } : s)));
@@ -465,9 +484,10 @@ export function useSemesterData({ appSettings }: { appSettings: AppSettings }) {
       if (error instanceof ApiUnavailableError) setServerOffline(true);
       else console.error("[v0] Failed to update semester:", error);
     }
-  }, []);
+  }, [serverOffline]);
 
   const clearAllData = useCallback(async () => {
+    if (serverOffline) return;
     let failedDeletes = 0;
     for (const s of semesters) {
       try {
@@ -486,14 +506,13 @@ export function useSemesterData({ appSettings }: { appSettings: AppSettings }) {
     }
     setSemesters([]);
     setActiveSemesterId(null);
-    localStorage.removeItem(COURSE_SETTINGS_STORAGE_KEY);
-  }, [loadSemesters, semesters]);
+  }, [loadSemesters, semesters, serverOffline]);
 
   // ── Course CRUD ───────────────────────────────────────────────────────────
 
   // Returns the created course so layout.tsx can scroll to it
   const addCourse = useCallback(async (): Promise<Course | null> => {
-    if (!activeSemesterId) return null;
+    if (!activeSemesterId || serverOffline) return null;
     try {
       const headerColor = getRandomHeaderColor();
       const newCourse = await storage.createCourse(
@@ -505,14 +524,15 @@ export function useSemesterData({ appSettings }: { appSettings: AppSettings }) {
       Object.assign(newCourse, buildDefaultCourseGrading(appSettings));
       newCourse.headerColor = headerColor;
       newCourse.collapsed = true;
-      persistCourseSettings(newCourse);
+      const syncedCourse = await storage.updateCourse(activeSemesterId, newCourse);
+      syncedCourse.collapsed = true;
       setSemesters((prev) =>
         prev.map((s) =>
-          s.id === activeSemesterId ? { ...s, courses: [...s.courses, newCourse] } : s,
+          s.id === activeSemesterId ? { ...s, courses: [...s.courses, syncedCourse] } : s,
         ),
       );
       setServerOffline(false);
-      return newCourse;
+      return syncedCourse;
     } catch (error) {
       if (error instanceof ApiUnavailableError) setServerOffline(true);
       else console.error("[v0] Failed to create course:", error);
@@ -527,11 +547,12 @@ export function useSemesterData({ appSettings }: { appSettings: AppSettings }) {
     appSettings.defaultIsPassFail,
     appSettings.defaultPassLabel,
     appSettings.defaultPassThreshold,
+    serverOffline,
   ]);
 
   const updateCourse = useCallback(
     async (id: string, updatedCourse: Course) => {
-      if (!activeSemesterId) return;
+      if (!activeSemesterId || serverOffline) return;
       const baseCriteria = Array.isArray(updatedCourse.criteria) ? updatedCourse.criteria : [];
       const normalizedPercentBoost = Math.max(
         0,
@@ -573,7 +594,6 @@ export function useSemesterData({ appSettings }: { appSettings: AppSettings }) {
       };
 
       applyCourseUpdate(stateCourse);
-      persistCourseSettings(sanitizedCourse);
 
       if (!isServerResourceId(id) || !isServerResourceId(activeSemesterId)) {
         console.warn("[v0] Skipping course sync until course and semester have server IDs.");
@@ -595,7 +615,6 @@ export function useSemesterData({ appSettings }: { appSettings: AppSettings }) {
               : s,
           ),
         );
-        persistCourseSettings(syncedCourse);
         setServerOffline(false);
         setSaveStatus("saved");
         if (saveStatusTimerRef.current) clearTimeout(saveStatusTimerRef.current);
@@ -614,17 +633,16 @@ export function useSemesterData({ appSettings }: { appSettings: AppSettings }) {
         else console.error("[v0] Failed to update course:", error);
       }
     },
-    [activeSemesterId],
+    [activeSemesterId, serverOffline],
   );
 
   const deleteCourse = useCallback(
     async (id: string) => {
-      if (!activeSemesterId) return;
+      if (!activeSemesterId || serverOffline) return;
       try {
         if (isServerResourceId(activeSemesterId) && isServerResourceId(id)) {
           await storage.deleteCourse(activeSemesterId, id);
         }
-        removeCourseSettings(id);
         setSemesters((prev) =>
           prev.map((s) =>
             s.id === activeSemesterId
@@ -638,7 +656,7 @@ export function useSemesterData({ appSettings }: { appSettings: AppSettings }) {
         else console.error("[v0] Failed to delete course:", error);
       }
     },
-    [activeSemesterId],
+    [activeSemesterId, serverOffline],
   );
 
   const collapseAllCourses = useCallback(() => {
@@ -664,7 +682,8 @@ export function useSemesterData({ appSettings }: { appSettings: AppSettings }) {
   }, [activeSemesterId]);
 
   const handleReorderSemesters = useCallback((orderedIds: string[]) => {
-    if (orderedIds.length === 0) return;
+    if (orderedIds.length === 0 || serverOffline) return;
+    const previousOrder = orderedSemesters.map((semester) => semester.id);
     setSemesterOrder(orderedIds);
     setSemesters((previous) => {
       const map = new Map(previous.map((s) => [s.id, s]));
@@ -672,10 +691,20 @@ export function useSemesterData({ appSettings }: { appSettings: AppSettings }) {
       if (reordered.length === previous.length) return reordered;
       return [...reordered, ...previous.filter((s) => !orderedIds.includes(s.id))];
     });
-  }, []);
+    void storage.reorderSemesters(orderedIds).catch((error) => {
+      setSemesterOrder(previousOrder);
+      setSemesters((previous) => {
+        const map = new Map(previous.map((semester) => [semester.id, semester]));
+        return previousOrder.map((id) => map.get(id)).filter((semester): semester is Semester => Boolean(semester));
+      });
+      if (error instanceof ApiUnavailableError) setServerOffline(true);
+      else console.error("[v0] Failed to reorder semesters:", error);
+    });
+  }, [orderedSemesters, serverOffline]);
 
   const handleReorderCourses = useCallback((semesterId: string, orderedCourseIds: string[]) => {
-    if (!semesterId || orderedCourseIds.length === 0) return;
+    if (!semesterId || orderedCourseIds.length === 0 || serverOffline) return;
+    const previousOrder = semesters.find((semester) => semester.id === semesterId)?.courses.map((course) => course.id) ?? [];
     setSemesters((previous) =>
       previous.map((semester) => {
         if (semester.id !== semesterId) return semester;
@@ -693,7 +722,21 @@ export function useSemesterData({ appSettings }: { appSettings: AppSettings }) {
         };
       }),
     );
-  }, []);
+    void storage.reorderCourses(semesterId, orderedCourseIds).catch((error) => {
+      setSemesters((previous) =>
+        previous.map((semester) => {
+          if (semester.id !== semesterId) return semester;
+          const map = new Map(semester.courses.map((course) => [course.id, course]));
+          return {
+            ...semester,
+            courses: previousOrder.map((id) => map.get(id)).filter((course): course is Course => Boolean(course)),
+          };
+        }),
+      );
+      if (error instanceof ApiUnavailableError) setServerOffline(true);
+      else console.error("[v0] Failed to reorder courses:", error);
+    });
+  }, [semesters, serverOffline]);
 
   const editCourse = useCallback(
     async (courseId: string, newName: string) => {
@@ -915,6 +958,8 @@ export function useSemesterData({ appSettings }: { appSettings: AppSettings }) {
     loading,
     serverOffline,
     saveStatus,
+    dashboardMessage,
+    saveDashboardMessage,
     // Computed
     activeSemester,
     courses,

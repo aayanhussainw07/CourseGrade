@@ -2,13 +2,17 @@ const MAX_BACKEND_BODY_BYTES = 1024 * 1024;
 
 const ROUTE_RULES: Array<{ pattern: RegExp; methods: ReadonlySet<string> }> = [
   { pattern: /^semesters$/, methods: new Set(["GET", "POST"]) },
+  { pattern: /^semesters\/order$/, methods: new Set(["PUT"]) },
   { pattern: /^semesters\/\d+$/, methods: new Set(["GET", "PATCH", "DELETE"]) },
   { pattern: /^semesters\/\d+\/duplicate$/, methods: new Set(["POST"]) },
+  { pattern: /^semesters\/\d+\/courses\/order$/, methods: new Set(["PUT"]) },
   { pattern: /^courses$/, methods: new Set(["GET", "POST"]) },
   { pattern: /^courses\/\d+$/, methods: new Set(["GET", "PATCH", "DELETE"]) },
   { pattern: /^assignments$/, methods: new Set(["GET", "POST"]) },
   { pattern: /^assignments\/\d+$/, methods: new Set(["GET", "PATCH", "DELETE"]) },
   { pattern: /^settings$/, methods: new Set(["GET", "PUT"]) },
+  { pattern: /^user-state$/, methods: new Set(["GET", "PATCH"]) },
+  { pattern: /^migration\/local-v1$/, methods: new Set(["POST"]) },
   { pattern: /^grade-scales$/, methods: new Set(["GET", "POST"]) },
   { pattern: /^grade-scales\/\d+$/, methods: new Set(["GET", "PATCH", "DELETE"]) },
   { pattern: /^grade-scales\/reset_default$/, methods: new Set(["POST"]) },
