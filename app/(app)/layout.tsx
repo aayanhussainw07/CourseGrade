@@ -411,6 +411,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             router.push("/dashboard");
           }}
           onSettings={() => router.push("/settings")}
+          overallGpa={overallGpa}
+          overallGpaLetter={overallGpaLetter}
           showOverview
         />
         {/* Mobile course overview */}
