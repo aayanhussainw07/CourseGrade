@@ -94,7 +94,7 @@ export function FeedbackPanel() {
         style={{ pointerEvents: open ? "auto" : "none" }}
       >
         <div
-          className="relative w-[300px] -translate-y-1/2 overflow-hidden rounded-l-xl border-2 border-r-0 border-primary/25 bg-[#fff8f1] shadow-[0_3px_0_rgba(198,90,78,0.20),0_10px_18px_rgba(77,31,26,0.08)]"
+          className="relative w-[300px] -translate-y-1/2 overflow-hidden rounded-l-xl border-2 border-r-0 border-primary/25 bg-[#fff8f1]"
         >
             {/* Tape decorations */}
             <div className={`${paperTapeClass} left-8 rotate-[-2deg]`} />

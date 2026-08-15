@@ -102,7 +102,7 @@ export default function SharePage() {
         </div>
 
         <div className="flex items-baseline justify-between">
-          <h1 className="text-2xl font-bold uppercase tracking-widest bg-primary text-white px-6 py-1.5 [box-shadow:4px_4px_0_rgba(77,31,26,0.45)]">
+          <h1 className="text-2xl font-bold uppercase tracking-widest bg-primary text-white px-6 py-1.5">
             {semester.name}
           </h1>
           <div className="text-right">
@@ -127,7 +127,7 @@ export default function SharePage() {
             const letter = getLetterGrade(numeric, gradeScale);
             const color = getLetterGradeColor(letter);
             return (
-              <div key={course.name} className="rounded-lg border-2 border-primary/30 bg-card p-4 shadow-sm">
+              <div key={course.name} className="rounded-lg border-2 border-primary/30 bg-card p-4">
                 <div className="flex items-start justify-between gap-2">
                   <div>
                     <p className="font-semibold text-foreground">{course.name}</p>

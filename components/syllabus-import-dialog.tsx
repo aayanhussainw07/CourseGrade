@@ -216,7 +216,7 @@ export function SyllabusImportDialog({
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
-        className="max-h-[88vh] w-[min(92vw,860px)] max-w-none gap-0 overflow-hidden border-2 border-primary/25 bg-[#fff8f1] p-0 text-foreground ![box-shadow:none] sm:rounded-xl [&_*]:![box-shadow:none]"
+        className="max-h-[88vh] w-[min(92vw,860px)] max-w-none gap-0 overflow-hidden border-2 border-primary/25 bg-[#fff8f1] p-0 text-foreground sm:rounded-xl"
         onOpenAutoFocus={(event) => event.preventDefault()}
       >
         <DialogHeader className="relative border-b border-primary/20 bg-[#fff3ea] px-5 pb-4 pt-5 text-left sm:px-7 sm:pt-6">

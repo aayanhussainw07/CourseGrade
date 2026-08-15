@@ -45,7 +45,7 @@ export function HeaderColorPicker({
       {open && (
         <div
           className={cn(
-            "absolute right-0 z-[80] min-w-[180px] rounded-xl border border-border/60 bg-card/95 p-3 shadow-[0_8px_18px_rgba(92,30,26,0.14)]",
+            "absolute right-0 z-[80] min-w-[180px] rounded-xl border border-border/60 bg-card/95 p-3",
             side === "top" ? "bottom-10" : "top-10",
           )}
         >

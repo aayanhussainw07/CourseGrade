@@ -8,7 +8,7 @@ export function UserInfoBar() {
   if (status !== "authenticated") return null;
   return (
     <div className="absolute top-3 right-3 z-50">
-      <div className="flex items-center gap-1 rounded-full border border-border/80 bg-card/95 px-4 py-2 shadow-under-white-soft">
+      <div className="flex items-center gap-1 rounded-full border border-border/80 bg-card/95 px-4 py-2">
         <div className="text-left">
           <p className="text-sm font-semibold text-foreground">
             {session?.user?.name || session?.user?.email || "Google User"}

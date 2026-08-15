@@ -111,7 +111,7 @@ const BlockHeading = ({
   border?: boolean;
 }) => (
   <span
-    className={`relative inline-flex items-center justify-center rounded-sm bg-[#fff8f1] px-6 py-2 font-futura-bold font-black uppercase tracking-widest text-foreground shadow-none ${border ? "border-2 border-primary/30" : ""} ${className}`}
+    className={`relative inline-flex items-center justify-center rounded-sm bg-[#fff8f1] px-6 py-2 font-futura-bold font-black uppercase tracking-widest text-foreground ${border ? "border-2 border-primary/30" : ""} ${className}`}
   >
     <Tape className="-top-3 left-1/2 -translate-x-1/2 rotate-[-2deg]" />
     {children}
@@ -124,9 +124,12 @@ export function MarketingPage() {
   const { ref: ctaRef, inView: ctaInView } = useInView(0.3);
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-background text-foreground">
+    <div
+      className="min-h-screen overflow-x-hidden bg-background text-foreground"
+      data-nav-tone="light"
+    >
       {/* HERO */}
-      <section className="relative bg-foreground text-white overflow-hidden">
+      <section data-nav-tone="dark" className="relative bg-foreground text-white overflow-hidden">
         <div
           className="absolute inset-0 opacity-[0.04]"
           style={{
@@ -179,8 +182,8 @@ export function MarketingPage() {
               <div className="flex flex-wrap justify-center gap-3 pt-2">
                 <Button
                   size="lg"
-                  className="gap-2 rounded-md bg-primary px-8 text-white ![box-shadow:none] transition-all hover:-translate-y-0.5 hover:bg-primary/90 hover:![box-shadow:none]"
-                  onClick={() => signIn("google")}
+                  className="gap-2 rounded-md bg-primary px-8 text-white transition-all hover:-translate-y-0.5 hover:bg-primary/90"
+                  onClick={() => void signIn("google")}
                 >
                   <GoogleIcon />
                   Start tracking
@@ -193,13 +196,14 @@ export function MarketingPage() {
 
         {/* Diagonal cut */}
         <div
+          data-nav-tone="light"
           className="relative h-14 bg-background"
           style={{ clipPath: "polygon(0 100%, 100% 0, 100% 100%)" }}
         />
       </section>
 
       {/* FEATURES */}
-      <section id="feature-grid" className="relative overflow-hidden bg-background py-20">
+      <section data-nav-tone="light" id="feature-grid" className="relative overflow-hidden bg-background py-20">
         <DoodleField />
         <div className="relative z-10 mx-auto max-w-[1400px] px-2 lg:px-4">
           <div className="mb-10 px-4 text-center md:text-left lg:px-10">
@@ -227,8 +231,9 @@ export function MarketingPage() {
 
               return (
                 <div
+                  data-nav-tone="dark"
                   key={feature.title}
-                  className={`${featuresInView ? "animate-fade-up-sm" : "opacity-0"} group relative rounded-lg text-center text-white shadow-none transition-all duration-300 hover:-translate-y-2 hover:rotate-0 ${layout}`}
+                  className={`${featuresInView ? "animate-fade-up-sm" : "opacity-0"} group relative rounded-lg text-center text-white transition-all duration-300 hover:-translate-y-2 hover:rotate-0 ${layout}`}
                   style={{
                     animationDelay: featuresInView ? `${i * 0.1}s` : undefined,
                     backgroundColor: ["#a8473d", "#c56b5e", "#8f3a32"][i] ?? "#b5564b",
@@ -268,7 +273,7 @@ export function MarketingPage() {
       </section>
 
       {/* CHARTS */}
-      <section className="relative overflow-hidden bg-background pb-16">
+      <section data-nav-tone="light" className="relative overflow-hidden bg-background pb-16">
         <DoodleField />
         <div className="relative z-10 mx-auto max-w-[1400px] px-2 lg:px-4">
           <div
@@ -284,7 +289,7 @@ export function MarketingPage() {
           </div>
           <div
             ref={chartsRef}
-            className={`relative mx-4 rounded-xl border-2 border-primary/20 bg-[#fff8f1] p-3 shadow-none transition-all duration-300 hover:-translate-y-1 hover:border-primary/35 sm:p-5 ${chartsInView ? "animate-fade-up" : "opacity-0"}`}
+            className={`relative mx-4 rounded-xl border-2 border-primary/20 bg-[#fff8f1] p-3 transition-all duration-300 hover:-translate-y-1 hover:border-primary/35 sm:p-5 ${chartsInView ? "animate-fade-up" : "opacity-0"}`}
           >
             <Tape className="-top-3 left-10 rotate-[-2deg]" />
             <Tape className="-top-3 right-10 rotate-[3deg]" />
@@ -298,7 +303,7 @@ export function MarketingPage() {
       </section>
 
       {/* CTA + FOOTER */}
-      <section className="relative bg-foreground text-white pb-8 overflow-hidden -mt-px">
+      <section data-nav-tone="dark" className="relative bg-foreground text-white pb-8 overflow-hidden -mt-px">
         <div
           className="absolute inset-0 opacity-[0.04]"
           style={{
@@ -307,13 +312,15 @@ export function MarketingPage() {
           }}
         />
         <div
+          data-nav-tone="light"
           className="h-12 bg-background"
           style={{ clipPath: "polygon(0 0, 100% 0, 0 100%)" }}
         />
         <div className="relative mx-auto max-w-4xl px-6 pt-10 text-center">
           <div
+            data-nav-tone="light"
             ref={ctaRef}
-            className={`${ctaInView ? "animate-fade-up" : "opacity-0"} relative mx-auto max-w-2xl rounded-xl bg-[#fff8f1] px-6 py-10 text-foreground shadow-none sm:px-10`}
+            className={`${ctaInView ? "animate-fade-up" : "opacity-0"} relative mx-auto max-w-2xl rounded-xl bg-[#fff8f1] px-6 py-10 text-foreground sm:px-10`}
           >
             <Tape className="-top-3 left-1/2 -translate-x-1/2 rotate-[-2deg]" />
             <div className="space-y-1">
@@ -335,8 +342,8 @@ export function MarketingPage() {
             <div className="mt-7 flex justify-center">
               <Button
                 size="lg"
-                className="gap-2 rounded-md bg-primary px-7 text-white ![box-shadow:none] transition-all hover:-translate-y-0.5 hover:bg-primary/90 hover:![box-shadow:none]"
-                onClick={() => signIn("google")}
+                className="gap-2 rounded-md bg-primary px-7 text-white transition-all hover:-translate-y-0.5 hover:bg-primary/90"
+                onClick={() => void signIn("google")}
               >
                 <GoogleIcon />
                 Start tracking
@@ -345,12 +352,12 @@ export function MarketingPage() {
           </div>
 
           <div className="mt-10 flex flex-col items-center gap-1.5">
-            <p className="text-xs text-white/40">Made with ♥ by @aayanh7</p>
+            <p className="text-xs text-white/65">Made with ♥ by @aayanh7</p>
             <a
               href="https://www.buymeacoffee.com/aayanh7"
               target="_blank"
               rel="noreferrer"
-              className="text-xs text-white/30 hover:text-white/60 transition-colors animate-coffee-bounce inline-block"
+              className="text-xs text-white/65 hover:text-white transition-colors animate-coffee-bounce inline-block"
             >
               ☕ buy me a coffee (if you want!)
             </a>

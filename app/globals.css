@@ -34,7 +34,7 @@
   --secondary: rgba(198, 90, 78, 0.14);
   --secondary-foreground: #4d1f1a;
   --muted: rgba(198, 90, 78, 0.1);
-  --muted-foreground: #82504a;
+  --muted-foreground: #6b3d37;
   --accent: rgba(198, 90, 78, 0.18);
   --accent-foreground: #4d1f1a;
   --destructive: #a64338;
@@ -56,17 +56,6 @@
   --sidebar-accent-foreground: #4d1f1a;
   --sidebar-border: rgba(198, 90, 78, 0.22);
   --sidebar-ring: rgba(198, 90, 78, 0.38);
-  --shadow-under-white-soft:
-    0 4px 0 rgba(206, 113, 102, 0.3),
-    0 10px 0 rgba(133, 54, 45, 0.18);
-  --shadow-under-white:
-    0 6px 0 rgba(207, 117, 105, 0.34),
-    0 14px 0 rgba(136, 57, 48, 0.22),
-    0 20px 0 rgba(224, 168, 154, 0.34);
-  --shadow-under-white-strong:
-    0 9px 0 rgba(203, 105, 93, 0.42),
-    0 18px 0 rgba(125, 45, 37, 0.26),
-    0 26px 0 rgba(220, 156, 142, 0.38);
 }
 
 /* Dark theme defaults already set on :root */
@@ -113,7 +102,14 @@
 
 @layer base {
   html {
-    font-size: 80%;
+    /* Was 80% (≈12.8px base) — too small, esp. on phones. Bumped for
+       legibility; mobile gets full 100% since that's the worst case. */
+    font-size: 87.5%;
+  }
+  @media (max-width: 640px) {
+    html {
+      font-size: 100%;
+    }
   }
   * {
     @apply border-border outline-ring/50;
@@ -156,29 +152,15 @@
     letter-spacing: 0;
   }
 
-  .shadow-under-white-soft {
-    box-shadow: var(--shadow-under-white-soft);
-  }
-
-  .shadow-under-white {
-    box-shadow: var(--shadow-under-white);
-  }
-
-  .shadow-under-white-strong {
-    box-shadow: var(--shadow-under-white-strong);
-  }
-
   .surface-contrast {
     border: 1px solid rgba(198, 90, 78, 0.3);
     background-color: rgba(255, 248, 245, 0.95);
-    box-shadow: var(--shadow-under-white);
     color: var(--foreground);
   }
 
   .surface-contrast-strong {
     border: 1px solid rgba(198, 90, 78, 0.46);
     background-color: rgba(255, 242, 238, 0.98);
-    box-shadow: var(--shadow-under-white-strong);
     color: var(--foreground);
   }
 }
@@ -246,11 +228,6 @@
   /* Expand all cards for printing */
   [class*="collapsed"] {
     display: block !important;
-  }
-
-  /* Remove shadows and fancy borders */
-  [class*="shadow"] {
-    box-shadow: none !important;
   }
 
   /* Ensure cards print cleanly */

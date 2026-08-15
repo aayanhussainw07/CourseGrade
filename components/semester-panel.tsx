@@ -195,9 +195,9 @@ function BarView({ data, maxCount, labelColor, textColor }: { data: ChartEntry[]
             <span className="text-[9px] font-medium" style={{ color: labelColor }}>{pct}%</span>
             <div
               className="w-full rounded-t-md transition-all duration-500 flex items-start justify-center pt-1"
-              style={{ height: `${barH}px`, backgroundColor: color, boxShadow: `0 -2px 8px ${color}55` }}
+              style={{ height: `${barH}px`, backgroundColor: color }}
             >
-              <span className="text-[9px] font-bold text-white/90 drop-shadow">{count}</span>
+              <span className="text-[9px] font-bold text-white/90">{count}</span>
             </div>
             <div className="h-px w-full" style={{ background: "rgba(255,255,255,0.12)" }} />
             <span className="text-[9px] font-semibold" style={{ color: textColor }}>{letter}</span>

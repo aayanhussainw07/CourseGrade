@@ -82,7 +82,7 @@ export function GpaTimelineChart({ data }: GpaTimelineChartProps) {
   const { points, linePath, areaPath, yTicks, toY, baseY } = chart
 
   return (
-    <Card className="border-2 border-primary/35 shadow-under-white-strong bg-white">
+    <Card className="border-2 border-primary/35 bg-white">
       <CardHeader className="pb-2 pt-4 px-4">
         <CardTitle className="text-base text-primary font-bold">GPA Timeline</CardTitle>
       </CardHeader>

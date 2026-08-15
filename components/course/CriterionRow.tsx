@@ -10,10 +10,10 @@ import {
   Plus,
   ChevronDown,
   ChevronRight,
-  Copy,
   X,
   ArrowRight,
   ArrowLeft,
+  IndentDecrease,
 } from "lucide-react";
 import type { Criterion, SubItem } from "@/lib/types";
 import {
@@ -50,41 +50,22 @@ function DropLine({ intent, position }: { intent: DragIntent; position: "before"
     >
       <div
         className={`flex h-[3px] w-full items-center rounded-full ${
-          isNest ? "bg-blue-500 ml-8" : isPromote ? "bg-emerald-500" : "bg-primary"
+          isNest ? "bg-primary ml-8" : isPromote ? "bg-emerald-500" : "bg-primary"
         }`}
       >
         {isNest && (
-          <span className="absolute -left-0 flex items-center gap-0.5 rounded bg-blue-500 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white shadow-sm">
+          <span className="absolute -left-0 flex items-center gap-0.5 rounded bg-primary px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
             <ArrowRight className="h-3 w-3" />
             Nest
           </span>
         )}
         {isPromote && (
-          <span className="absolute -left-0 flex items-center gap-0.5 rounded bg-emerald-500 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white shadow-sm">
+          <span className="absolute -left-0 flex items-center gap-0.5 rounded bg-emerald-500 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
             <ArrowLeft className="h-3 w-3" />
             Promote
           </span>
         )}
       </div>
-      <div
-        className={`absolute right-0 h-3 w-3 rounded-full border-2 ${
-          isNest
-            ? "border-blue-500 bg-blue-100"
-            : isPromote
-              ? "border-emerald-500 bg-emerald-100"
-              : "border-primary bg-primary/20"
-        }`}
-      />
-      <div
-        className={`absolute left-0 h-3 w-3 rounded-full border-2 ${
-          isNest
-            ? "border-blue-500 bg-blue-100"
-            : isPromote
-              ? "border-emerald-500 bg-emerald-100"
-              : "border-primary bg-primary/20"
-        }`}
-        style={isNest ? { left: "2rem" } : undefined}
-      />
     </div>
   );
 }
@@ -103,16 +84,14 @@ function SubItemDropLine({
         position === "before" ? "-top-[5px]" : "-bottom-[5px]"
       }`}
     >
-      <div className={`flex h-[2px] w-full items-center rounded-full ${isNest ? "bg-blue-500" : "bg-primary"}`}>
+      <div className={`flex h-[2px] w-full items-center rounded-full ${isNest ? "bg-primary" : "bg-primary"}`}>
         {isNest && (
-          <span className="absolute -left-0 flex items-center gap-0.5 rounded bg-blue-500 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white shadow-sm">
+          <span className="absolute -left-0 flex items-center gap-0.5 rounded bg-primary px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
             <ArrowRight className="h-3 w-3" />
             Nest
           </span>
         )}
       </div>
-      <div className={`absolute right-0 h-2.5 w-2.5 rounded-full border-2 ${isNest ? "border-blue-500 bg-blue-100" : "border-primary bg-primary/20"}`} />
-      <div className={`absolute left-0 h-2.5 w-2.5 rounded-full border-2 ${isNest ? "border-blue-500 bg-blue-100" : "border-primary bg-primary/20"}`} />
     </div>
   );
 }
@@ -121,18 +100,19 @@ export function CriterionRow({ criterion }: { criterion: Criterion }) {
   const {
     gradeScale,
     expandedCriteria,
+    criterionIds,
     draggingCriterionId,
     draggingSubItemId,
     draggingSubItemParentId,
     dropIndicator,
     updateCriterion,
+    convertToSubCriterion,
+    promoteSubItemToCriterion,
     deleteCriterion,
-    duplicateCriterion,
     toggleExpanded,
     addSubItem,
     updateSubItem,
     deleteSubItem,
-    duplicateSubItem,
     handleDragStart,
     handleDragOver,
     handleDragLeave,
@@ -143,12 +123,108 @@ export function CriterionRow({ criterion }: { criterion: Criterion }) {
     handleSubItemDragLeave,
     handleSubItemDrop,
     handleSubItemDragEnd,
+    handlePointerDragStart,
+    handlePointerDragMove,
+    handlePointerDragEnd,
+    handlePointerDragCancel,
   } = useCourseContext();
 
   const criterionKey = criterion.clientId ?? criterion.id;
+
   const isDragging = draggingCriterionId === criterion.id;
   const isDraggingAnything = !!(draggingCriterionId || draggingSubItemId);
   const isExpanded = expandedCriteria.has(criterionKey);
+
+  // Position among top-level criteria drives the column labels.
+  const criterionIndex = criterionIds.indexOf(criterion.id);
+  const isFirstCriterion = criterionIndex <= 0;
+
+  // Column labels render only on the first criterion (desktop) so they read
+  // like a single table header; suppressed on later rows to cut the repetition.
+  // Mobile (single-column grid) keeps a label per field for clarity.
+  const labelCls = isFirstCriterion
+    ? "text-xs text-muted-foreground"
+    : "text-xs text-muted-foreground sm:sr-only";
+
+  // ≥44px hit area on touch screens, compact on desktop (fault #6).
+  // transition-none: the Button base sets `transition-all`, which makes the
+  // hover/disabled background *fade*. When a click reorders the row out from
+  // under the cursor, that fade lingers and reads as a stuck/glitchy hover —
+  // snap instead. select-none stops text selection on rapid clicks.
+  const touchTarget =
+    "h-9 w-9 sm:h-8 sm:w-8 [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11 transition-none select-none";
+
+  // Row actions can shift the list or otherwise mutate this card. Blur them
+  // after activation and keep their pointer events out of the drag surface.
+  const runControl = (fn: () => void) => (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.currentTarget.blur();
+    fn();
+  };
+  const stopDragStart = (e: React.PointerEvent<HTMLButtonElement>) =>
+    e.stopPropagation();
+
+  // A row is only `draggable` while its grip handle is held. Otherwise the
+  // browser blocks text selection inside the row and treats any mousedown as
+  // the start of a card move. Arm on grip pointerdown, then disarm and clear
+  // pointer focus on release/end so focus-within styling does not linger.
+  const [dragArmed, setDragArmed] = useState(false);
+  const armDrag = () => setDragArmed(true);
+  const disarmDrag = () => {
+    setDragArmed(false);
+    const activeElement = document.activeElement;
+    if (
+      activeElement instanceof HTMLElement &&
+      activeElement.hasAttribute("data-grade-drag-grip")
+    ) {
+      activeElement.blur();
+    }
+  };
+
+  const dragGripPointerProps = (
+    source: { criterionId: string; subItemId?: string },
+  ) => ({
+    onPointerDown: (event: React.PointerEvent<HTMLButtonElement>) => {
+      event.stopPropagation();
+      if (event.pointerType === "mouse") {
+        armDrag();
+        return;
+      }
+      event.preventDefault();
+      event.currentTarget.setPointerCapture(event.pointerId);
+      handlePointerDragStart(source, event.clientX);
+    },
+    onPointerMove: (event: React.PointerEvent<HTMLButtonElement>) => {
+      if (
+        event.pointerType === "mouse" ||
+        !event.currentTarget.hasPointerCapture(event.pointerId)
+      ) {
+        return;
+      }
+      event.preventDefault();
+      handlePointerDragMove(event.clientX, event.clientY);
+    },
+    onPointerUp: (event: React.PointerEvent<HTMLButtonElement>) => {
+      if (event.pointerType === "mouse") {
+        disarmDrag();
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      handlePointerDragEnd();
+      if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+        event.currentTarget.releasePointerCapture(event.pointerId);
+      }
+      disarmDrag();
+    },
+    onPointerCancel: (event: React.PointerEvent<HTMLButtonElement>) => {
+      if (event.pointerType === "mouse") {
+        disarmDrag();
+        return;
+      }
+      handlePointerDragCancel();
+      disarmDrag();
+    },
+  });
 
   const showDropBefore =
     dropIndicator?.targetId === criterion.id && dropIndicator.position === "before";
@@ -342,28 +418,34 @@ export function CriterionRow({ criterion }: { criterion: Criterion }) {
 
       {/* Criterion row */}
       <div
-        className={`relative flex items-start gap-2 rounded-lg border-2 pt-3 px-3 pb-5 transition-all duration-150 ${
+        className={`group/criterion relative flex items-start gap-2 rounded-md px-2.5 py-2.5 transition-all duration-150 sm:px-1.5 sm:py-1 ${
           isDragging
-            ? "scale-[0.97] border-primary/40 bg-primary/5 opacity-50 shadow-lg"
+            ? "scale-[0.97] bg-primary/5 opacity-50 ring-1 ring-primary/40"
             : isNestTarget
-              ? "border-blue-400 bg-blue-50/60 ring-2 ring-blue-400/30"
+              ? "bg-primary/10 ring-1 ring-primary/30"
               : isPromoteTarget
-                ? "border-emerald-400 bg-emerald-50/50 ring-2 ring-emerald-400/25"
+                ? "bg-emerald-50/50 ring-1 ring-emerald-400/25"
               : isDraggingAnything
-                ? "border-primary/15 bg-muted/20"
-                : "border-primary/20 bg-muted/30"
+                ? "bg-muted/10"
+                : "bg-muted/20"
         }`}
-        draggable
+        data-grade-drop-kind="criterion"
+        data-criterion-id={criterion.id}
+        draggable={dragArmed}
         onDragStart={(e) => handleDragStart(e, criterion.id)}
         onDragOver={(e) => handleDragOver(e, criterion.id)}
         onDragLeave={(e) => handleDragLeave(e, criterion.id)}
         onDrop={(e) => handleDropOnCriterion(e, criterion.id)}
-        onDragEnd={handleDragEnd}
+        onDragEnd={() => {
+          handleDragEnd();
+          disarmDrag();
+        }}
       >
-        {/* Nest target label */}
+        {/* Nest target label — pinned to the left edge, vertical, so it
+            stays visible while the dragged row covers the card center */}
         {isNestTarget && (
-          <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-blue-500/10">
-            <span className="flex items-center gap-1.5 rounded-full bg-blue-500 px-3 py-1 text-xs font-bold uppercase tracking-wider text-white shadow-md">
+          <div className="pointer-events-none absolute inset-0 z-10 flex items-start justify-start rounded-lg bg-primary/10">
+            <span className="ml-2 mt-2 flex items-center gap-1.5 rounded-full bg-primary px-3 py-1 text-xs font-bold uppercase tracking-wider text-white">
               <ArrowRight className="h-3.5 w-3.5" />
               Nest as sub-item
             </span>
@@ -371,36 +453,49 @@ export function CriterionRow({ criterion }: { criterion: Criterion }) {
         )}
         {isPromoteTarget && (
           <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-emerald-500/10">
-            <span className="flex items-center gap-1.5 rounded-full bg-emerald-500 px-3 py-1 text-xs font-bold uppercase tracking-wider text-white shadow-md">
+            <span className="flex items-center gap-1.5 rounded-full bg-emerald-500 px-3 py-1 text-xs font-bold uppercase tracking-wider text-white">
               <ArrowLeft className="h-3.5 w-3.5" />
               Promote to criterion
             </span>
           </div>
         )}
 
-        {/* Drag handle */}
-        <div className="mt-6 flex shrink-0 cursor-grab items-center active:cursor-grabbing">
-          <GripVertical className="h-4 w-4 text-muted-foreground/40 transition-colors hover:text-muted-foreground" />
+        {/* Drag-only reorder control for mouse, touch, and pen input. */}
+        <div
+          className={`flex shrink-0 items-center justify-center ${
+            isFirstCriterion ? "sm:mt-4" : ""
+          }`}
+        >
+          <button
+            type="button"
+            data-grade-drag-grip
+            aria-label="Drag to move criterion"
+            title="Drag to move criterion"
+            className={`${touchTarget} touch-none cursor-grab rounded-md text-muted-foreground/45 opacity-0 transition-[opacity,color,background-color] group-hover/criterion:opacity-100 group-focus-within/criterion:opacity-100 hover:bg-muted hover:text-muted-foreground active:cursor-grabbing [@media(pointer:coarse)]:opacity-100 ${isDragging ? "opacity-100" : ""}`}
+            {...dragGripPointerProps({ criterionId: criterion.id })}
+          >
+            <GripVertical className="mx-auto h-5 w-5" aria-hidden="true" />
+          </button>
         </div>
 
         {/* Fields grid */}
-        <div className="grid flex-1 grid-cols-1 gap-3 sm:grid-cols-[2fr_1fr_1fr_1fr_1fr_auto]">
+        <div className="grid flex-1 grid-cols-1 gap-3 sm:grid-cols-[2fr_1fr_1fr_1fr_1fr_auto] sm:gap-2">
           {/* Name */}
           <div>
-            <Label className="text-xs text-muted-foreground">Name</Label>
+            <Label className={labelCls}>Name</Label>
             <Input
               value={nameDraft ?? criterion.name ?? ""}
               onChange={(e) => setNameDraft(e.target.value)}
               onBlur={commitName}
               onKeyDown={(e) => handleEnterCommit(e, commitName)}
-              className="border-primary/20"
+              className="border-primary/20 sm:h-8 sm:px-2"
               placeholder="e.g., Assignments"
             />
           </div>
 
           {/* Weight */}
           <div>
-            <Label className="text-xs text-muted-foreground">Weight (%)</Label>
+            <Label className={labelCls}>Weight (%)</Label>
             <Input
               type="text"
               inputMode="decimal"
@@ -409,17 +504,17 @@ export function CriterionRow({ criterion }: { criterion: Criterion }) {
               onBlur={() => commitField("weight")}
               onKeyDown={(e) => handleEnterCommit(e, () => commitField("weight"))}
               placeholder="0"
-              className="border-primary/20"
+              className="border-primary/20 sm:h-8 sm:px-2"
             />
           </div>
 
           {/* Score / Avg */}
           <div>
-            <Label className="text-xs text-muted-foreground">
+            <Label className={labelCls}>
               {hasSubItems ? "Avg Score (%)" : "Score (%)"}
             </Label>
             {hasSubItems ? (
-              <div className="flex h-10 items-center rounded-md border-2 border-primary/20 bg-muted px-3 text-sm font-medium">
+              <div className="flex h-9 items-center rounded-md border-2 border-primary/20 bg-muted px-3 text-sm font-medium sm:h-8 sm:px-2">
                 {displayScore.toFixed(1)}%
               </div>
             ) : (
@@ -431,14 +526,14 @@ export function CriterionRow({ criterion }: { criterion: Criterion }) {
                 onBlur={() => commitField("score")}
                 onKeyDown={(e) => handleEnterCommit(e, () => commitField("score"))}
                 placeholder="0"
-                className="border-primary/20"
+                className="border-primary/20 sm:h-8 sm:px-2"
               />
             )}
           </div>
 
           {/* Extra Credit */}
           <div>
-            <Label className="text-xs text-muted-foreground">Extra Credit (%)</Label>
+            <Label className={labelCls}>Extra Credit (%)</Label>
             <Input
               type="text"
               inputMode="decimal"
@@ -447,7 +542,7 @@ export function CriterionRow({ criterion }: { criterion: Criterion }) {
               onBlur={() => commitField("extraCredit")}
               onKeyDown={(e) => handleEnterCommit(e, () => commitField("extraCredit"))}
               placeholder="0"
-              className="border-primary/20"
+              className="border-primary/20 sm:h-8 sm:px-2"
               title="Adds to this criterion before weighting"
             />
           </div>
@@ -456,7 +551,7 @@ export function CriterionRow({ criterion }: { criterion: Criterion }) {
           <div>
             {hasSubItems ? (
               <>
-                <Label className="text-xs text-muted-foreground">Drop Lowest</Label>
+                <Label className={labelCls}>Drop Lowest</Label>
                 <Input
                   type="text"
                   inputMode="numeric"
@@ -465,23 +560,25 @@ export function CriterionRow({ criterion }: { criterion: Criterion }) {
                   onBlur={() => commitField("dropLowest")}
                   onKeyDown={(e) => handleEnterCommit(e, () => commitField("dropLowest"))}
                   placeholder="0"
-                  className="border-primary/20"
+                  className="border-primary/20 sm:h-8 sm:px-2"
                   title="Number of lowest scores to drop"
                 />
               </>
             ) : (
-              <div className="h-10" />
+              <div className="h-9 sm:h-8" />
             )}
           </div>
 
           {/* Action buttons */}
-          <div className="flex items-end gap-1">
+          <div className="flex flex-wrap items-end gap-0.5">
             <Button
               variant="ghost"
               size="icon"
               onClick={() => addSubItem(criterion.id)}
-              className="text-primary hover:bg-primary/10"
+              onPointerDown={stopDragStart}
+              className={`${touchTarget} text-primary hover:bg-primary/10`}
               title="Add sub-item"
+              aria-label="Add sub-item"
             >
               <Plus className="h-4 w-4" />
             </Button>
@@ -490,7 +587,10 @@ export function CriterionRow({ criterion }: { criterion: Criterion }) {
                 variant="ghost"
                 size="icon"
                 onClick={() => toggleExpanded(criterionKey)}
-                className="text-muted-foreground hover:bg-muted"
+                onPointerDown={stopDragStart}
+                className={`${touchTarget} text-muted-foreground hover:bg-muted`}
+                title={isExpanded ? "Collapse sub-items" : "Expand sub-items"}
+                aria-label={isExpanded ? "Collapse sub-items" : "Expand sub-items"}
               >
                 {isExpanded ? (
                   <ChevronDown className="h-4 w-4" />
@@ -502,17 +602,11 @@ export function CriterionRow({ criterion }: { criterion: Criterion }) {
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => duplicateCriterion(criterion.id)}
-              className="text-muted-foreground hover:bg-muted hover:text-foreground"
-              title="Duplicate criterion"
-            >
-              <Copy className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
               onClick={() => deleteCriterion(criterion.id)}
-              className="text-destructive hover:bg-destructive/10"
+              onPointerDown={stopDragStart}
+              className={`${touchTarget} text-destructive hover:bg-destructive/10`}
+              title="Delete criterion"
+              aria-label="Delete criterion"
             >
               <X className="h-4 w-4" />
             </Button>
@@ -529,6 +623,13 @@ export function CriterionRow({ criterion }: { criterion: Criterion }) {
       {hasSubItems && isExpanded && (
         <div className="ml-4 space-y-2 border-l-2 border-primary/20 pl-4">
           {criterion.subItems!.map((subItem) => {
+            const promoteSub = () =>
+              promoteSubItemToCriterion(
+                criterion.id,
+                subItem.id,
+                criterion.id,
+                "after",
+              );
             const isSubDragging = draggingSubItemId === subItem.id;
             const subIndicatorId = `sub:${criterion.id}:${subItem.id}`;
             const showSubBefore = dropIndicator?.targetId === subIndicatorId && dropIndicator.position === "before";
@@ -542,12 +643,11 @@ export function CriterionRow({ criterion }: { criterion: Criterion }) {
                   isPromoteTarget ? (
                     <div className="pointer-events-none absolute -top-[5px] -left-6 right-0 z-10 flex items-center">
                       <div className="flex h-[3px] w-[calc(100%+1.5rem)] items-center rounded-full bg-emerald-500">
-                        <span className="absolute -left-0 flex items-center gap-0.5 rounded bg-emerald-500 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white shadow-sm">
+                        <span className="absolute -left-0 flex items-center gap-0.5 rounded bg-emerald-500 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
                           <ArrowLeft className="h-3 w-3" />
                           Promote
                         </span>
                       </div>
-                      <div className="absolute right-0 h-2.5 w-2.5 rounded-full border-2 border-emerald-500 bg-emerald-100" />
                     </div>
                   ) : (
                     <SubItemDropLine
@@ -558,24 +658,42 @@ export function CriterionRow({ criterion }: { criterion: Criterion }) {
                 )}
 
                 <div
-                  draggable
+                  data-grade-drop-kind="subitem"
+                  data-criterion-id={criterion.id}
+                  data-sub-item-id={subItem.id}
+                  draggable={dragArmed}
                   onDragStart={(e) => handleSubItemDragStart(e, criterion.id, subItem.id)}
                   onDragOver={(e) => handleSubItemDragOver(e, criterion.id, subItem.id)}
                   onDragLeave={(e) => handleSubItemDragLeave(e, criterion.id, subItem.id)}
                   onDrop={(e) => handleSubItemDrop(e, criterion.id, subItem.id)}
-                  onDragEnd={handleSubItemDragEnd}
-                  className={`grid grid-cols-1 gap-2 rounded-md border p-3 transition-all duration-150 sm:grid-cols-[auto_2fr_1fr_1fr_auto] ${
+                  onDragEnd={() => {
+                    handleSubItemDragEnd();
+                    disarmDrag();
+                  }}
+                  className={`group/subitem grid grid-cols-1 gap-2 rounded-md p-3 transition-all duration-150 sm:grid-cols-[auto_2fr_1fr_1fr_auto] sm:p-2 ${
                     isSubDragging
-                      ? "scale-[0.97] border-primary/40 bg-primary/5 opacity-50 shadow-md"
+                      ? "scale-[0.97] bg-primary/5 opacity-50 ring-1 ring-primary/40"
                       : isNestSubTarget
-                        ? "border-blue-400 bg-blue-50/40 ring-1 ring-blue-400/30"
+                        ? "bg-primary/10 ring-1 ring-primary/30"
                       : isPromoteTarget
-                        ? "border-emerald-400 bg-emerald-50/40 ring-1 ring-emerald-400/30"
-                        : "border-primary/10 bg-card"
+                        ? "bg-emerald-50/40 ring-1 ring-emerald-400/30"
+                        : "bg-card"
                   }`}
                 >
-                  <div className="flex items-center pt-5">
-                    <GripVertical className="h-4 w-4 cursor-grab text-muted-foreground/40 hover:text-muted-foreground active:cursor-grabbing" />
+                  <div className="flex items-center justify-center sm:pt-3">
+                    <button
+                      type="button"
+                      data-grade-drag-grip
+                      aria-label="Drag to move sub-item"
+                      title="Drag to move sub-item"
+                      className={`${touchTarget} touch-none cursor-grab rounded-md text-muted-foreground/45 opacity-0 transition-[opacity,color,background-color] group-hover/subitem:opacity-100 group-focus-within/subitem:opacity-100 hover:bg-muted hover:text-muted-foreground active:cursor-grabbing [@media(pointer:coarse)]:opacity-100 ${isSubDragging ? "opacity-100" : ""}`}
+                      {...dragGripPointerProps({
+                        criterionId: criterion.id,
+                        subItemId: subItem.id,
+                      })}
+                    >
+                      <GripVertical className="mx-auto h-5 w-5" aria-hidden="true" />
+                    </button>
                   </div>
                   <div>
                     <Label className="text-xs text-muted-foreground">Name</Label>
@@ -586,7 +704,7 @@ export function CriterionRow({ criterion }: { criterion: Criterion }) {
                       }
                       onBlur={() => commitSubItemName(subItem.id)}
                       onKeyDown={(e) => handleEnterCommit(e, () => commitSubItemName(subItem.id))}
-                      className="h-9 border-primary/20"
+                      className="h-9 border-primary/20 sm:h-8 sm:px-2"
                       placeholder="e.g., Homework 1"
                     />
                   </div>
@@ -602,7 +720,7 @@ export function CriterionRow({ criterion }: { criterion: Criterion }) {
                       onBlur={() => commitSubItemScore(subItem.id)}
                       onKeyDown={(e) => handleEnterCommit(e, () => commitSubItemScore(subItem.id))}
                       placeholder="0"
-                      className="h-9 border-primary/20"
+                      className="h-9 border-primary/20 sm:h-8 sm:px-2"
                     />
                   </div>
                   <div>
@@ -617,27 +735,32 @@ export function CriterionRow({ criterion }: { criterion: Criterion }) {
                       onBlur={() => commitSubItemWeight(subItem)}
                       onKeyDown={(e) => handleEnterCommit(e, () => commitSubItemWeight(subItem))}
                       placeholder="equal"
-                      className="h-9 border-primary/20"
+                      className="h-9 border-primary/20 sm:h-8 sm:px-2"
                       title="Weight of this sub-item (100% = full criterion weight)"
                     />
                   </div>
-                  <div className="flex items-end gap-1">
+                  <div className="flex flex-wrap items-end gap-0.5">
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => duplicateSubItem(criterion.id, subItem.id)}
-                      className="h-9 w-9 text-muted-foreground hover:bg-muted hover:text-foreground"
-                      title="Duplicate sub-item"
+                      onClick={runControl(promoteSub)}
+                      onPointerDown={stopDragStart}
+                      className={`${touchTarget} text-muted-foreground hover:bg-muted hover:text-foreground`}
+                      title="Promote to its own criterion"
+                      aria-label="Promote to its own criterion"
                     >
-                      <Copy className="h-3 w-3" />
+                      <IndentDecrease className="h-4 w-4" />
                     </Button>
                     <Button
                       variant="ghost"
                       size="icon"
                       onClick={() => deleteSubItem(criterion.id, subItem.id)}
-                      className="h-9 w-9 text-destructive hover:bg-destructive/10"
+                      onPointerDown={stopDragStart}
+                      className={`${touchTarget} text-destructive hover:bg-destructive/10`}
+                      title="Delete sub-item"
+                      aria-label="Delete sub-item"
                     >
-                      <X className="h-3 w-3" />
+                      <X className="h-4 w-4" />
                     </Button>
                   </div>
                 </div>
@@ -646,12 +769,11 @@ export function CriterionRow({ criterion }: { criterion: Criterion }) {
                   isPromoteTarget ? (
                     <div className="pointer-events-none absolute -bottom-[5px] -left-6 right-0 z-10 flex items-center">
                       <div className="flex h-[3px] w-[calc(100%+1.5rem)] items-center rounded-full bg-emerald-500">
-                        <span className="absolute -left-0 flex items-center gap-0.5 rounded bg-emerald-500 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white shadow-sm">
+                        <span className="absolute -left-0 flex items-center gap-0.5 rounded bg-emerald-500 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
                           <ArrowLeft className="h-3 w-3" />
                           Promote
                         </span>
                       </div>
-                      <div className="absolute right-0 h-2.5 w-2.5 rounded-full border-2 border-emerald-500 bg-emerald-100" />
                     </div>
                   ) : (
                     <SubItemDropLine

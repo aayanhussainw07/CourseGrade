@@ -2,8 +2,6 @@
 
 import { useMemo, useState } from "react"
 import { CardContent } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { BarChart3, PieChart } from "lucide-react"
 import { calculateCourseGrade, getLetterGrade } from "@/lib/grade-utils"
 import type { Course } from "@/lib/types"
 
@@ -69,7 +67,6 @@ function catmullRom(pts: [number, number][]): string {
 // ── Main component ────────────────────────────────────────────────────────────
 
 export function DashboardPanel({ timelineData, courses, bare = false }: DashboardPanelProps) {
-  const [chartType, setChartType] = useState<"bar" | "pie">("bar")
   const [hovered, setHovered] = useState<number | null>(null)
 
   // Timeline chart data
@@ -128,11 +125,17 @@ export function DashboardPanel({ timelineData, courses, bare = false }: Dashboar
   const showDist = distData.length > 0
 
   const inner = (
-    <div className="flex min-h-0 flex-col lg:flex-row">
+    <div className="grid min-h-0 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
 
-          {/* ── Left: GPA timeline ── */}
-          <div className="flex flex-1 flex-col min-w-0 p-5 basis-1/2">
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-3">
+          {/* ── GPA timeline ── */}
+          <div
+            className={`flex min-w-0 flex-col p-4 md:p-6 ${
+              showDist
+                ? "border-b border-primary/20 md:col-span-2 xl:col-span-1 xl:border-b-0 xl:border-r"
+                : "md:col-span-2 xl:col-span-3"
+            }`}
+          >
+            <p className="mb-4 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
               GPA Timeline
             </p>
             {timeline ? (
@@ -198,32 +201,26 @@ export function DashboardPanel({ timelineData, courses, bare = false }: Dashboar
             )}
           </div>
 
-          {/* ── Divider ── */}
-          {showDist && <div className="h-px bg-primary/20 lg:h-auto lg:w-px lg:self-stretch" />}
-
-          {/* ── Right: grade distribution ── */}
+          {/* ── Bar distribution ── */}
           {showDist && (
-            <div className="flex flex-1 flex-col p-4 basis-1/2">
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-                  Distribution
-                </p>
-                <div className="relative z-20 flex gap-0.5">
-                  <Button variant={chartType === "bar" ? "default" : "ghost"} size="icon" className="h-6 w-6"
-                    type="button" onClick={() => setChartType("bar")} title="Bar chart">
-                    <BarChart3 className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button variant={chartType === "pie" ? "default" : "ghost"} size="icon" className="h-6 w-6"
-                    type="button" onClick={() => setChartType("pie")} title="Donut chart">
-                    <PieChart className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-              </div>
+            <div className="flex min-w-0 flex-col border-b border-primary/20 p-4 md:border-b-0 md:border-r md:p-6">
+              <p className="mb-4 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+                Bar Distribution
+              </p>
               <div className="flex-1 flex items-center">
-                {chartType === "bar"
-                  ? <BarView data={distData} maxCount={maxCount} />
-                  : <DonutView data={distData} total={distTotal} />
-                }
+                <BarView data={distData} maxCount={maxCount} />
+              </div>
+            </div>
+          )}
+
+          {/* ── Pie distribution ── */}
+          {showDist && (
+            <div className="flex min-w-0 flex-col p-4 md:p-6">
+              <p className="mb-4 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+                Pie Distribution
+              </p>
+              <div className="flex flex-1 items-center">
+                <DonutView data={distData} total={distTotal} />
               </div>
             </div>
           )}
@@ -233,7 +230,7 @@ export function DashboardPanel({ timelineData, courses, bare = false }: Dashboar
   if (bare) return inner
 
   return (
-    <div className="relative flex flex-col gap-6 overflow-hidden rounded-md border-2 border-primary/30 bg-[#fff8f1] py-0">
+    <div className="relative flex flex-col overflow-hidden rounded-md bg-[#fff8f1] py-0">
       <div className="pointer-events-none absolute -top-2 left-8 z-10 h-5 w-20 rotate-[-2deg] bg-primary/15" />
       <div className="pointer-events-none absolute -top-2 right-12 z-10 h-5 w-20 rotate-[3deg] bg-primary/15" />
       <CardContent className="p-0">{inner}</CardContent>
@@ -254,8 +251,8 @@ function BarView({ data, maxCount }: { data: ChartEntry[]; maxCount: number }) {
           <div key={letter} className="flex flex-1 flex-col items-center gap-0.5">
             <span className="text-[9px] font-medium text-muted-foreground">{pct}%</span>
             <div className="w-full rounded-t-md transition-all duration-500 flex items-start justify-center pt-1"
-              style={{ height: `${barH}px`, backgroundColor: color, boxShadow: `0 -2px 8px ${color}55` }}>
-              <span className="text-[9px] font-bold text-white/90 drop-shadow">{count}</span>
+              style={{ height: `${barH}px`, backgroundColor: color }}>
+              <span className="text-[9px] font-bold text-white/90">{count}</span>
             </div>
             <div className="h-px w-full bg-border/40" />
             <span className="text-[9px] font-semibold text-foreground">{letter}</span>

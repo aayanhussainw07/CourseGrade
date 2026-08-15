@@ -21,7 +21,7 @@ export default function Home() {
     if (status === "authenticated") {
       router.replace("/dashboard");
     }
-  }, [status, router]);
+  }, [router, status]);
 
   if (status === "loading") {
     if (!showLoading) return null;

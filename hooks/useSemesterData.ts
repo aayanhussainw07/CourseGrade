@@ -17,7 +17,10 @@ import {
   persistCourseSettings,
   removeCourseSettings,
 } from "@/lib/course-settings";
-import { calculateGPA } from "@/lib/grade-utils";
+import {
+  buildDefaultCourseGrading,
+  calculateGPA,
+} from "@/lib/grade-utils";
 import {
   ACTIVE_SEMESTER_STORAGE_KEY,
   COURSE_SETTINGS_STORAGE_KEY,
@@ -60,7 +63,6 @@ export function useSemesterData({ appSettings }: { appSettings: AppSettings }) {
   const [loading, setLoading] = useState(true);
   const [serverOffline, setServerOffline] = useState(false);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
-  const [isDuplicatingCourse, setIsDuplicatingCourse] = useState(false);
   const saveStatusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dataLoadedRef = useRef(false);
 
@@ -130,10 +132,11 @@ export function useSemesterData({ appSettings }: { appSettings: AppSettings }) {
   useEffect(() => {
     if (loading) return;
     const activeSemester = semesters.find((s) => s.id === activeSemesterId);
-    if (activeSemesterId === null) document.title = "Dashboard";
+    if (pathname === "/settings") document.title = "Settings | CourseGrade";
+    else if (activeSemesterId === null) document.title = "Dashboard";
     else if (activeSemester) document.title = activeSemester.name;
     else document.title = "CourseGrade";
-  }, [activeSemesterId, semesters, loading]);
+  }, [activeSemesterId, semesters, loading, pathname]);
 
   // Redirect unauthenticated users
   useEffect(() => {
@@ -425,13 +428,26 @@ export function useSemesterData({ appSettings }: { appSettings: AppSettings }) {
   }, []);
 
   const clearAllData = useCallback(async () => {
+    let failedDeletes = 0;
     for (const s of semesters) {
-      try { await storage.deleteSemester(s.id); } catch { /* best effort */ }
+      try {
+        await storage.deleteSemester(s.id);
+      } catch {
+        failedDeletes += 1;
+      }
+    }
+    if (failedDeletes > 0) {
+      await loadSemesters();
+      throw new Error(
+        failedDeletes === 1
+          ? "One semester could not be deleted. Please try again."
+          : `${failedDeletes} semesters could not be deleted. Please try again.`,
+      );
     }
     setSemesters([]);
     setActiveSemesterId(null);
     localStorage.removeItem(COURSE_SETTINGS_STORAGE_KEY);
-  }, [semesters]);
+  }, [loadSemesters, semesters]);
 
   // ── Course CRUD ───────────────────────────────────────────────────────────
 
@@ -446,14 +462,7 @@ export function useSemesterData({ appSettings }: { appSettings: AppSettings }) {
         appSettings.defaultCredits,
         headerColor,
       );
-      newCourse.gradeScale = appSettings.defaultGradeScale.map((g) => ({ ...g }));
-      newCourse.isPassFail = appSettings.defaultIsPassFail;
-      newCourse.passLabel = appSettings.defaultPassLabel;
-      newCourse.failLabel = appSettings.defaultFailLabel;
-      newCourse.passThreshold = appSettings.defaultPassThreshold;
-      newCourse.gradeScaleSnapshot = appSettings.defaultIsPassFail
-        ? appSettings.defaultGradeScaleSnapshot?.map((g) => ({ ...g }))
-        : undefined;
+      Object.assign(newCourse, buildDefaultCourseGrading(appSettings));
       newCourse.headerColor = headerColor;
       newCourse.collapsed = true;
       persistCourseSettings(newCourse);
@@ -475,7 +484,6 @@ export function useSemesterData({ appSettings }: { appSettings: AppSettings }) {
     appSettings.defaultCredits,
     appSettings.defaultFailLabel,
     appSettings.defaultGradeScale,
-    appSettings.defaultGradeScaleSnapshot,
     appSettings.defaultIsPassFail,
     appSettings.defaultPassLabel,
     appSettings.defaultPassThreshold,
@@ -591,33 +599,6 @@ export function useSemesterData({ appSettings }: { appSettings: AppSettings }) {
       }
     },
     [activeSemesterId],
-  );
-
-  // Returns duplicated course so layout.tsx can scroll to it
-  const duplicateCourse = useCallback(
-    async (courseId: string): Promise<Course | null> => {
-      if (!activeSemesterId) return null;
-      const course = courses.find((c) => c.id === courseId);
-      if (!course) return null;
-      setIsDuplicatingCourse(true);
-      try {
-        const duplicated = await importPortableCourse(courseToPortable(course), activeSemesterId);
-        setSemesters((prev) =>
-          prev.map((s) =>
-            s.id === activeSemesterId ? { ...s, courses: [...s.courses, duplicated] } : s,
-          ),
-        );
-        setServerOffline(false);
-        return duplicated;
-      } catch (error) {
-        if (error instanceof ApiUnavailableError) setServerOffline(true);
-        else console.error("[v0] Failed to duplicate course:", error);
-        return null;
-      } finally {
-        setIsDuplicatingCourse(false);
-      }
-    },
-    [activeSemesterId, courses, importPortableCourse],
   );
 
   const collapseAllCourses = useCallback(() => {
@@ -913,8 +894,6 @@ export function useSemesterData({ appSettings }: { appSettings: AppSettings }) {
     addCourse,
     updateCourse,
     deleteCourse,
-    duplicateCourse,
-    isDuplicatingCourse,
     importCourseFromSyllabus,
     collapseAllCourses,
     expandAllCourses,

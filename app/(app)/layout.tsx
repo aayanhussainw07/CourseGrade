@@ -10,19 +10,16 @@ import {
   Plus,
   Menu,
   Sparkles,
-  TrendingUp,
   Layers,
   Pencil,
   ChevronsUp,
   ChevronsDown,
-  Settings,
-  Loader2,
 } from "lucide-react";
 import Image from "next/image";
 import type { CoursePortableData } from "@/lib/csv";
 import { AnimatePresence, motion } from "framer-motion";
 import { signOut } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Sheet,
   SheetContent,
@@ -31,7 +28,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { SyllabusImportDialog } from "@/components/syllabus-import-dialog";
-import { SettingsDialog } from "@/components/settings-dialog";
+import { SettingsPage } from "@/components/settings-page";
 import { loadAppSettings, loadAppSettingsFromServer, type AppSettings } from "@/lib/app-settings";
 import { HIGHLIGHT_DURATION_MS, SCROLL_DELAY_MS } from "@/lib/constants";
 import {
@@ -40,17 +37,23 @@ import {
 } from "@/app/page-utils";
 import { useSemesterData } from "@/hooks/useSemesterData";
 import { FeedbackPanel } from "@/components/feedback-panel";
+import { COURSE_ROSTER_ENABLED } from "@/lib/feature-flags";
+import { AppTopBar } from "@/components/app-top-bar";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  const pathname = usePathname();
+  const isSettingsView = pathname === "/settings";
 
   // ── Pure UI state ─────────────────────────────────────────────────────────
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
   const [appSettings, setAppSettings] = useState<AppSettings>(loadAppSettings);
   const [syllabusImportOpen, setSyllabusImportOpen] = useState(false);
-  const [isEditingSemesterName, setIsEditingSemesterName] = useState(false);
+  const [editingSemesterNameId, setEditingSemesterNameId] = useState<
+    string | null
+  >(null);
   const [semesterNameDraft, setSemesterNameDraft] = useState("");
+  const semesterNameEditCancelledRef = useRef(false);
   const [highlightedCourseId, setHighlightedCourseId] = useState<string | null>(
     null,
   );
@@ -98,8 +101,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     addCourse: createCourse,
     updateCourse,
     deleteCourse,
-    duplicateCourse: duplicateCourseBase,
-    isDuplicatingCourse,
     importCourseFromSyllabus: importCourseFromSyllabusBase,
     collapseAllCourses,
     expandAllCourses,
@@ -109,6 +110,31 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     ignoredSemesterIds,
     toggleSemesterIgnore,
   } = useSemesterData({ appSettings });
+
+  const startEditingSemesterName = useCallback(() => {
+    if (!activeSemesterId) return;
+    semesterNameEditCancelledRef.current = false;
+    setSemesterNameDraft(activeSemester?.name ?? "");
+    setEditingSemesterNameId(activeSemesterId);
+  }, [activeSemester?.name, activeSemesterId]);
+
+  const commitSemesterName = useCallback(() => {
+    const semesterId = editingSemesterNameId;
+    const nextName = semesterNameDraft.trim();
+    const currentName = semesters.find(
+      (semester) => semester.id === semesterId,
+    )?.name;
+
+    setEditingSemesterNameId(null);
+    if (semesterId && nextName && nextName !== currentName) {
+      void editSemester(semesterId, nextName);
+    }
+  }, [editSemester, editingSemesterNameId, semesterNameDraft, semesters]);
+
+  const cancelSemesterNameEdit = useCallback(() => {
+    semesterNameEditCancelledRef.current = true;
+    setEditingSemesterNameId(null);
+  }, []);
 
   // ── Dashboard message ─────────────────────────────────────────────────────
   const dashboardMessageScopeId = useMemo(
@@ -172,14 +198,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     const course = await createCourse();
     if (course) setTimeout(() => scrollToCourse(course.id), SCROLL_DELAY_MS);
   }, [createCourse, scrollToCourse]);
-
-  const duplicateCourse = useCallback(
-    async (courseId: string) => {
-      const course = await duplicateCourseBase(courseId);
-      if (course) setTimeout(() => scrollToCourse(course.id), SCROLL_DELAY_MS);
-    },
-    [duplicateCourseBase, scrollToCourse],
-  );
 
   const importCourseFromSyllabus = useCallback(
     async (data: CoursePortableData, semesterId: string) => {
@@ -254,39 +272,31 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      {isDuplicatingCourse && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center backdrop-blur-sm">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-      )}
+    <div className="min-h-screen bg-background" data-nav-tone="light">
       <FeedbackPanel />
-      {/* Top-right actions */}
-      <div className="fixed right-4 top-4 z-50 flex items-center gap-2">
-        <Button
-          aria-label="Open settings"
-          title="Open settings"
-          variant="ghost"
-          size="icon"
-          onClick={() => setSettingsOpen(true)}
-          className="border border-white/10 bg-primary text-white hover:bg-primary/75 h-9 w-9"
-        >
-          <Settings className="h-4 w-4" />
-        </Button>
-      </div>
+      <AppTopBar
+        activeItem={
+          isSettingsView ? "settings" : isDashboardView ? "dashboard" : null
+        }
+        onDashboard={() => {
+          setActiveSemesterId(null);
+          router.push("/dashboard");
+        }}
+        onSettings={() => router.push("/settings")}
+      />
 
       {/* Mobile sidebar trigger */}
-      <div className="fixed left-4 top-6 z-50 md:hidden">
+      <div className="fixed left-4 top-12 z-50 flex items-center gap-2 md:hidden">
         <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
           <SheetTrigger asChild>
-            <Button className="flex items-center gap-2 border border-border/70 bg-card/90 px-3 py-2 text-sm text-foreground ![box-shadow:none] hover:bg-card hover:![box-shadow:none]">
+            <Button className="flex items-center gap-2 border border-border/70 bg-card/90 px-3 py-2 text-sm text-foreground hover:bg-card">
               <Menu className="h-4 w-4" />
               Overview
             </Button>
           </SheetTrigger>
           <SheetContent
             side="left"
-            className="w-[85vw] border-border/40 bg-background/95 p-0 text-foreground sm:w-96"
+            className="!bottom-0 !top-11 !h-auto w-[85vw] border-border/40 bg-background/95 p-0 text-foreground sm:w-96"
           >
             <SheetTitle className="sr-only">Course overview</SheetTitle>
             <SheetDescription className="sr-only">
@@ -308,6 +318,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               onAddSemester={addSemester}
               onDeleteSemester={deleteSemester}
               skipSemesterDeleteConfirm={appSettings.skipSemesterDeleteConfirm}
+              skipCourseDeleteConfirm={appSettings.skipCourseDeleteConfirm}
               onEditSemester={editSemester}
               onDeleteCourse={deleteCourse}
               onEditCourse={editCourse}
@@ -315,13 +326,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               onReorderCourses={handleReorderCourses}
               onToggleSemesterIgnore={toggleSemesterIgnore}
               ignoredSemesterIds={ignoredSemesterIds}
-              dashboardSummary={totalSemesters ? dashboardSummary : undefined}
-              onDashboardClick={() => {
-                setSidebarOpen(false);
-                setActiveSemesterId(null);
-                router.push("/dashboard");
-              }}
-              isDashboardActive={isDashboardView}
               userEmail={session?.user?.email ?? undefined}
               onSignOut={() => signOut()}
             />
@@ -341,6 +345,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         onAddSemester={addSemester}
         onDeleteSemester={deleteSemester}
         skipSemesterDeleteConfirm={appSettings.skipSemesterDeleteConfirm}
+        skipCourseDeleteConfirm={appSettings.skipCourseDeleteConfirm}
         onEditSemester={editSemester}
         onDeleteCourse={deleteCourse}
         onEditCourse={editCourse}
@@ -348,48 +353,38 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         onReorderCourses={handleReorderCourses}
         onToggleSemesterIgnore={toggleSemesterIgnore}
         ignoredSemesterIds={ignoredSemesterIds}
-        dashboardSummary={totalSemesters ? dashboardSummary : undefined}
-        onDashboardClick={() => {
-          setActiveSemesterId(null);
-          router.push("/dashboard");
-        }}
-        isDashboardActive={isDashboardView}
         userEmail={session?.user?.email ?? undefined}
         onSignOut={() => signOut()}
         variant="desktop"
-      />
-
-      <SettingsDialog
-        open={settingsOpen}
-        onClose={() => {
-          setSettingsOpen(false);
-          setAppSettings(loadAppSettings());
-        }}
-        onClearAllData={clearAllData}
-        userEmail={session?.user?.email ?? undefined}
-        userId={session?.user?.id ?? session?.user?.email ?? undefined}
       />
 
       <div
         className="w-full px-4 py-8 transition-all duration-300 md:pl-[14rem] lg:pl-[17rem]"
         style={{ paddingRight: "1rem" }}
       >
-        {isDashboardView ? (
+        {isSettingsView ? (
+          <SettingsPage
+            settings={appSettings}
+            onSettingsChange={setAppSettings}
+            onClearAllData={clearAllData}
+            userEmail={session?.user?.email ?? undefined}
+            userId={session?.user?.id ?? session?.user?.email ?? undefined}
+          />
+        ) : isDashboardView ? (
           <div className="-mx-4 -mt-8">
             <section
-              className="px-4 pb-8 pt-8"
+              data-nav-tone="dark"
+              className="px-4 pb-4 pt-14 md:pb-6"
               style={{
                 background: "#2d0008",
                 backgroundImage:
                   "repeating-linear-gradient(0deg, rgba(255,255,255,0.04) 0px, rgba(255,255,255,0.04) 1px, transparent 1px, transparent 40px), repeating-linear-gradient(90deg, rgba(255,255,255,0.04) 0px, rgba(255,255,255,0.04) 1px, transparent 1px, transparent 40px)",
               }}
             >
-              <h1 className="font-futura-bold mx-auto w-fit text-4xl uppercase text-white sm:text-5xl">
-                Dashboard
-              </h1>
+              <h1 className="sr-only">Dashboard</h1>
 
-              <div className="mx-auto mt-7 grid w-full max-w-[1500px] gap-5 lg:grid-cols-[minmax(320px,0.85fr)_minmax(0,1.65fr)] lg:items-stretch">
-                <div className="relative min-h-[210px] rotate-[-1deg] rounded-md border border-[#e0c678] bg-[#fff0a8] p-5 text-foreground shadow-[6px_8px_0_rgba(77,31,26,0.22)]">
+              <div className="mx-auto grid w-full max-w-[1500px] gap-4 md:gap-6 lg:grid-cols-[minmax(320px,0.85fr)_minmax(0,1.65fr)] lg:items-stretch">
+                <div className="relative min-h-[210px] rotate-[-1deg] rounded-md border border-[#e0c678] bg-[#fff0a8] p-5 text-foreground md:p-6">
                   <div className="absolute -top-3 left-1/2 h-7 w-28 -translate-x-1/2 rotate-2 border border-white/35 bg-white/45 backdrop-blur-[1px]" />
                   <div className="mb-4 flex items-center justify-between">
                     <p className="font-etna text-3xl leading-none text-primary">
@@ -455,9 +450,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   )}
                 </div>
 
-                <div className="grid gap-4 sm:grid-cols-3 sm:grid-rows-2">
+                <div className="grid gap-4 sm:grid-cols-3 sm:grid-rows-2 md:gap-6">
                   {/* Hero stat — GPA dominates */}
-                  <div className="relative flex flex-col rotate-[0.8deg] rounded-md border-2 border-primary/35 bg-[#fff8f1] p-6 text-foreground shadow-[7px_9px_0_rgba(0,0,0,0.20)] sm:col-span-2 sm:row-span-2">
+                  <div className="relative flex flex-col rotate-[0.8deg] rounded-md border-2 border-primary/35 bg-[#fff8f1] p-5 text-foreground sm:col-span-2 sm:row-span-2 md:p-6">
                     <div className="absolute -top-2.5 left-7 h-6 w-24 rotate-[-3deg] bg-primary/25" />
                     <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
                       Overall GPA
@@ -470,7 +465,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                         {overallGpaLetter}
                       </span>
                     </div>
-                    <TrendingUp className="absolute bottom-5 right-5 h-7 w-7 text-primary/40" />
                   </div>
 
                   {/* Secondary stats — demoted */}
@@ -490,7 +484,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   ].map(({ label, value, detail, rotate }) => (
                     <div
                       key={label}
-                      className={`relative flex min-h-[80px] flex-col justify-center rounded-md border border-primary/20 bg-[#fff8f1] px-4 py-3 text-foreground shadow-[4px_5px_0_rgba(0,0,0,0.13)] ${rotate}`}
+                      className={`relative flex min-h-[80px] flex-col justify-center rounded-md border border-primary/20 bg-[#fff8f1] p-5 text-foreground md:p-6 ${rotate}`}
                     >
                       <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
                         {label}
@@ -509,10 +503,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               </div>
             </section>
 
-            <section className="bg-background px-4 py-6">
-              <div className="mx-auto w-full max-w-[1500px] space-y-6">
+            <section data-nav-tone="light" className="bg-background px-4 py-4 md:py-6">
+              <div className="mx-auto flex w-full max-w-[1500px] flex-col gap-4 md:gap-6">
                 {semesters.length === 0 ? (
-                  <div className="relative flex flex-col items-center justify-center gap-5 rounded-md border-2 border-dashed border-primary/25 bg-[#fff8f1] py-20 text-center shadow-[7px_8px_0_rgba(198,90,78,0.18)]">
+                  <div className="relative flex flex-col items-center justify-center gap-5 rounded-md border-2 border-dashed border-primary/25 bg-[#fff8f1] py-20 text-center">
                     <div className="absolute -top-3 left-1/2 h-6 w-24 -translate-x-1/2 rotate-2 bg-primary/15" />
                     <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
                       <Layers className="h-8 w-8 text-primary/60" />
@@ -537,13 +531,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                       courses={allCourses}
                     />
 
-                    <div>
-                      <div className="mb-4 flex items-center justify-between">
+                    <div className="flex flex-col gap-4 md:gap-6">
+                      <div className="flex items-center justify-between">
                         <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
                           Semesters
                         </h2>
                       </div>
-                      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+                      <div className="grid gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-3 2xl:grid-cols-4">
                         {semesterSummaries.map((summary, i) => {
                           const rotate =
                             i % 3 === 0
@@ -554,7 +548,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                           return (
                             <div
                               key={summary.id}
-                              className={`relative rounded-md border border-primary/25 bg-[#fff8f1] p-5 text-left shadow-[5px_6px_0_rgba(198,90,78,0.18)] ${rotate}`}
+                              className={`relative rounded-md bg-[#fff8f1] p-5 text-left ${rotate}`}
                             >
                               <div className="absolute -top-2 right-8 h-5 w-16 rotate-3 bg-primary/15" />
                               <div className="flex items-start justify-between gap-4">
@@ -589,7 +583,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <>
             {/* Dark header */}
             <div
-              className="-mx-4 -mt-8 pb-1 px-4 pt-8 pb-0"
+              data-nav-tone="dark"
+              className="-mx-4 -mt-8 pb-1 px-4 pt-14 pb-0"
               style={{
                 background: "#2d0008",
                 backgroundImage:
@@ -597,72 +592,45 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               }}
             >
               {/* Semester title */}
-              <div className="mb-6">
-                {isEditingSemesterName ? (
-                  <div className="flex items-center justify-center gap-2">
+              <div className="mb-6 pl-7">
+                {editingSemesterNameId === activeSemesterId ? (
+                  <div className="flex min-w-0 items-center justify-start">
                     <input
                       autoFocus
+                      aria-label="Semester name"
+                      size={Math.max(1, semesterNameDraft.length)}
                       value={semesterNameDraft}
                       onChange={(e) => setSemesterNameDraft(e.target.value)}
+                      onFocus={(e) => e.currentTarget.select()}
+                      onBlur={() => {
+                        if (semesterNameEditCancelledRef.current) {
+                          semesterNameEditCancelledRef.current = false;
+                          return;
+                        }
+                        commitSemesterName();
+                      }}
                       onKeyDown={(e) => {
-                        if (
-                          e.key === "Enter" &&
-                          semesterNameDraft.trim() &&
-                          activeSemesterId
-                        ) {
-                          editSemester(
-                            activeSemesterId,
-                            semesterNameDraft.trim(),
-                          );
-                          setIsEditingSemesterName(false);
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          e.currentTarget.blur();
                         } else if (e.key === "Escape") {
-                          setIsEditingSemesterName(false);
+                          e.preventDefault();
+                          cancelSemesterNameEdit();
                         }
                       }}
-                      className="rounded-md border border-primary/35 bg-background/90 px-3 py-1 text-2xl font-semibold text-foreground outline-none focus:border-primary/60"
+                      className="font-futura-bold min-w-[1ch] max-w-full border-0 bg-transparent p-0 text-left text-5xl uppercase text-white outline-none [field-sizing:content]"
                     />
-                    <Button
-                      size="sm"
-                      onClick={() => {
-                        if (semesterNameDraft.trim() && activeSemesterId) {
-                          editSemester(
-                            activeSemesterId,
-                            semesterNameDraft.trim(),
-                          );
-                        }
-                        setIsEditingSemesterName(false);
-                      }}
-                    >
-                      Save
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="text-white/70 hover:text-white hover:bg-white/10"
-                      onClick={() => setIsEditingSemesterName(false)}
-                    >
-                      Cancel
-                    </Button>
                   </div>
                 ) : (
-                  <div className="flex items-center justify-center">
-                    <div className="group relative">
-                      <p className="font-futura-bold w-fit text-5xl uppercase text-white">
-                        {activeSemester?.name ?? "Semester"}
-                      </p>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="absolute top-1/2 -translate-y-1/2 left-full ml-4 h-7 w-7 opacity-0 transition-opacity group-hover:opacity-100 text-white/60 hover:text-white hover:bg-white/10"
-                        title="Edit name"
-                        onClick={() => {
-                          setSemesterNameDraft(activeSemester?.name ?? "");
-                          setIsEditingSemesterName(true);
-                        }}
-                      >
-                        <Pencil className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
+                  <div className="flex min-w-0 items-center justify-start">
+                    <button
+                      type="button"
+                      aria-label="Edit semester name"
+                      className="font-futura-bold max-w-full cursor-text truncate border-0 bg-transparent p-0 text-left text-5xl uppercase text-white"
+                      onClick={startEditingSemesterName}
+                    >
+                      {activeSemester?.name ?? "Semester"}
+                    </button>
                   </div>
                 )}
               </div>
@@ -678,7 +646,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             {/* Add / Import */}
             {activeSemesterId && (
               <>
-                <div className="-mx-4 -mt-px flex flex-wrap items-center justify-center gap-3 bg-primary px-4 py-5 shadow-[inset_0_-1px_0_rgba(95,0,0,0.28)] print:hidden">
+                <div data-nav-tone="dark" className="-mx-4 -mt-px flex flex-wrap items-center justify-center gap-3 bg-primary px-4 py-5 print:hidden">
                   {courses.length > 0 && (
                     <>
                       <Button
@@ -725,23 +693,25 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
             {/* Course cards */}
             {activeSemesterId && (
-              <AnimatePresence mode="popLayout">
-                <div className="space-y-4 mt-8">
-                  {courses.map((course, index) => (
+              <div className="space-y-4 mt-8">
+                <AnimatePresence initial={false}>
+                  {courses.map((course, i) => (
                     <motion.div
-                      key={`${course.id}-${index}`}
+                      key={course.id}
                       ref={(el) => {
                         courseRefs.current[course.id] = el;
                       }}
-                      initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      initial={{ y: 60 }}
+                      animate={{ y: 0 }}
                       exit={{
                         opacity: 0,
-                        scale: 0.85,
-                        y: -20,
-                        transition: { duration: 0.25, ease: "easeInOut" },
+                        transition: { duration: 0.12 },
                       }}
-                      transition={{ duration: 0.3, ease: "easeOut" }}
+                      transition={{
+                        duration: 0.2,
+                        ease: "easeOut",
+                        delay: Math.min(i, 10) * 0.035,
+                      }}
                     >
                       <div
                         draggable
@@ -807,17 +777,21 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                         <CourseCard
                           course={course}
                           highlighted={highlightedCourseId === course.id}
+                          cornellMode={
+                            COURSE_ROSTER_ENABLED &&
+                            appSettings.school === "cornell"
+                          }
                           onUpdate={(courseId, nextCourse) =>
                             updateCourse(courseId, nextCourse)
                           }
                           onDelete={deleteCourse}
-                          onDuplicate={() => duplicateCourse(course.id)}
+                          skipDeleteConfirm={appSettings.skipCourseDeleteConfirm}
                         />
                       </div>
                     </motion.div>
                   ))}
-                </div>
-              </AnimatePresence>
+                </AnimatePresence>
+              </div>
             )}
 
             {activeSemesterId && courses.length === 0 && (

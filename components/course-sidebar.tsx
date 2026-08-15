@@ -18,8 +18,6 @@ import {
   Trash2,
   Check,
   X,
-  TrendingUp,
-  ChevronRight,
   Eye,
   EyeOff,
 } from "lucide-react";
@@ -41,15 +39,9 @@ interface CourseSidebarProps {
   onToggleSemesterIgnore?: (semesterId: string) => void;
   ignoredSemesterIds?: Set<string>;
   skipSemesterDeleteConfirm?: boolean;
+  skipCourseDeleteConfirm?: boolean;
   userEmail?: string;
   onSignOut?: () => void;
-  dashboardSummary?: {
-    overallGpa: number;
-    totalCredits: number;
-    totalSemesters: number;
-  };
-  onDashboardClick?: () => void;
-  isDashboardActive?: boolean;
   variant?: "desktop" | "overlay";
 }
 
@@ -68,9 +60,7 @@ export function CourseSidebar({
   onToggleSemesterIgnore,
   ignoredSemesterIds,
   skipSemesterDeleteConfirm,
-  dashboardSummary,
-  onDashboardClick,
-  isDashboardActive,
+  skipCourseDeleteConfirm,
   userEmail,
   onSignOut,
   variant = "desktop",
@@ -196,7 +186,7 @@ export function CourseSidebar({
     }
     if (itemType === "course") {
       const course = activeSemester?.courses.find((c) => c.id === itemId);
-      if (course && isCourseDefault(course)) {
+      if ((course && isCourseDefault(course)) || skipCourseDeleteConfirm) {
         onDeleteCourse(itemId);
         return;
       }
@@ -215,7 +205,7 @@ export function CourseSidebar({
   const containerClass = cn(
     "overflow-hidden border-r border-white/10 bg-foreground text-white flex flex-col",
     variant === "desktop"
-      ? "fixed left-0 top-0 hidden h-screen w-52 md:flex lg:w-64"
+      ? "fixed inset-y-0 left-0 hidden w-52 md:flex lg:w-64"
       : "h-full w-full rounded-none border-0",
   );
 
@@ -260,107 +250,7 @@ export function CourseSidebar({
 
         <div className="flex-1 overflow-y-auto">
           <div className="space-y-2 p-2 border-primary/20">
-            {dashboardSummary &&
-              Number.isFinite(dashboardSummary.overallGpa) && (
-                <div className="text-xs text-white/50">
-                  {onDashboardClick ? (
-                    <button
-                      type="button"
-                      onClick={onDashboardClick}
-                      className={cn(
-                        "group w-full rounded-lg px-3 py-3 text-left transition-colors hover:bg-white/12 active:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30",
-                        isDashboardActive &&
-                          "bg-white/15 text-white hover:bg-white/20",
-                      )}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <TrendingUp
-                            className={cn(
-                              "h-4 w-4",
-                              isDashboardActive ? "text-primary" : "text-white/45",
-                            )}
-                          />
-                          <span className="text-xs font-semibold uppercase tracking-wide text-white/50 group-hover:text-white/70">
-                            Dashboard
-                          </span>
-                        </div>
-                        <ChevronRight className="h-4 w-4 text-white/35 transition-transform group-hover:translate-x-0.5 group-hover:text-white/70" />
-                      </div>
-                      <div className="mt-2">
-                        <div className="text-lg font-bold leading-none text-white">
-                          {dashboardSummary.overallGpa.toFixed(2)} GPA
-                        </div>
-                        <div className="mt-1 text-[10px] uppercase tracking-wide text-white/40">
-                          Overall
-                        </div>
-                      </div>
-                      <div className="mt-3 grid grid-cols-2 gap-2">
-                        <div>
-                          <div className="text-[10px] uppercase tracking-wide text-white/40">
-                            Credits
-                          </div>
-                          <div className="text-sm font-semibold text-white">
-                            {Number.isFinite(dashboardSummary.totalCredits)
-                              ? dashboardSummary.totalCredits
-                              : "-"}
-                          </div>
-                        </div>
-                        <div>
-                          <div className="text-[10px] uppercase tracking-wide text-white/40">
-                            Terms
-                          </div>
-                          <div className="text-sm font-semibold text-white">
-                            {Number.isFinite(dashboardSummary.totalSemesters)
-                              ? dashboardSummary.totalSemesters
-                              : "-"}
-                          </div>
-                        </div>
-                      </div>
-                    </button>
-                  ) : (
-                    <div className="rounded-lg px-3 py-3">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-semibold uppercase tracking-wide text-white/50">
-                          Dashboard
-                        </span>
-                        <TrendingUp className="h-4 w-4 text-white/45" />
-                      </div>
-                      <div className="mt-2">
-                        <div className="text-lg font-bold leading-none text-white">
-                          {dashboardSummary.overallGpa.toFixed(2)} GPA
-                        </div>
-                        <div className="mt-1 text-[10px] uppercase tracking-wide text-white/40">
-                          Overall
-                        </div>
-                      </div>
-                      <div className="mt-3 grid grid-cols-2 gap-2">
-                        <div>
-                          <div className="text-[10px] uppercase tracking-wide text-white/40">
-                            Credits
-                          </div>
-                          <div className="text-sm font-semibold text-white">
-                            {Number.isFinite(dashboardSummary.totalCredits)
-                              ? dashboardSummary.totalCredits
-                              : "-"}
-                          </div>
-                        </div>
-                        <div>
-                          <div className="text-[10px] uppercase tracking-wide text-white/40">
-                            Terms
-                          </div>
-                          <div className="text-sm font-semibold text-white">
-                            {Number.isFinite(dashboardSummary.totalSemesters)
-                              ? dashboardSummary.totalSemesters
-                              : "-"}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-            <div className="mt-4 mb-2 flex items-center justify-between">
+            <div className="mb-2 flex items-center justify-between">
               <h3 className="text-xs font-semibold uppercase tracking-wide text-white/50">
                 Semesters
               </h3>

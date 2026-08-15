@@ -19,7 +19,7 @@ export function GpaSummary({ courses }: GpaSummaryProps) {
     safeCourses.reduce((sum, c) => sum + c.credits, 0).toFixed(2),
   )
   return (
-    <Card className="border-2 border-primary/35 shadow-under-white-strong">
+    <Card className="border-2 border-primary/35">
       <CardHeader>
         <CardTitle className="text-center text-xl text-primary">GPA Summary</CardTitle>
       </CardHeader>

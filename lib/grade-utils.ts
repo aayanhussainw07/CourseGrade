@@ -3,6 +3,56 @@ import { DEFAULT_GRADE_SCALE } from "./types"
 
 export const cloneGradeScale = (scale: GradeScale[]): GradeScale[] => scale.map((grade) => ({ ...grade }))
 
+export function buildPassFailScale(settings: {
+  passLabel?: string
+  failLabel?: string
+  threshold?: number
+}): GradeScale[] {
+  const passLabel = settings.passLabel?.trim() || "P"
+  const failLabel = settings.failLabel?.trim() || "F"
+  const rawThreshold = typeof settings.threshold === "number" ? settings.threshold : 60
+  const threshold = Math.min(100, Math.max(0, rawThreshold))
+
+  return [
+    { letter: passLabel, min: threshold },
+    { letter: failLabel, min: 0 },
+  ]
+}
+
+export function buildDefaultCourseGrading(settings: {
+  defaultGradeScale: GradeScale[]
+  defaultIsPassFail: boolean
+  defaultPassLabel: string
+  defaultFailLabel: string
+  defaultPassThreshold: number
+}): Pick<
+  Course,
+  | "gradeScale"
+  | "gradeScaleSnapshot"
+  | "isPassFail"
+  | "passLabel"
+  | "failLabel"
+  | "passThreshold"
+> {
+  const letterScale = cloneGradeScale(settings.defaultGradeScale)
+  const passFailSettings = {
+    passLabel: settings.defaultPassLabel,
+    failLabel: settings.defaultFailLabel,
+    threshold: settings.defaultPassThreshold,
+  }
+
+  return {
+    isPassFail: settings.defaultIsPassFail,
+    passLabel: passFailSettings.passLabel,
+    failLabel: passFailSettings.failLabel,
+    passThreshold: passFailSettings.threshold,
+    gradeScale: settings.defaultIsPassFail
+      ? buildPassFailScale(passFailSettings)
+      : letterScale,
+    gradeScaleSnapshot: settings.defaultIsPassFail ? letterScale : undefined,
+  }
+}
+
 // Helper function to calculate criterion score from sub-items if they exist
 const normalizeCriteria = (criteria?: Criterion[] | null): Criterion[] => (Array.isArray(criteria) ? criteria : [])
 
@@ -177,4 +227,3 @@ export function isCourseDefault(course: Course): boolean {
 
   return !!(isDefaultName && hasDefaultScores)
 }
-

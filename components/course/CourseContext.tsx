@@ -12,21 +12,48 @@ export interface DropIndicator {
   intent: DragIntent;
 }
 
+export interface PointerDragSource {
+  criterionId: string;
+  subItemId?: string;
+}
+
 export interface CourseContextValue {
   gradeScale: GradeScale[];
   expandedCriteria: Set<string>;
+  criterionIds: string[];
   draggingCriterionId: string | null;
   draggingSubItemId: string | null;
   draggingSubItemParentId: string | null;
   dropIndicator: DropIndicator | null;
   updateCriterion: (id: string, updates: Partial<Criterion>) => void;
+  moveCriterion: (
+    sourceId: string,
+    targetId: string | null,
+    position?: "before" | "after",
+  ) => void;
+  convertToSubCriterion: (
+    sourceId: string,
+    targetId: string,
+    adjacentSubItemId?: string | null,
+    position?: "before" | "after",
+  ) => void;
+  moveSubItemWithinParent: (
+    criterionId: string,
+    sourceId: string,
+    targetId: string,
+    after: boolean,
+  ) => void;
+  promoteSubItemToCriterion: (
+    parentCriterionId: string,
+    subItemId: string,
+    adjacentCriterionId: string | null,
+    position: "before" | "after",
+  ) => void;
   deleteCriterion: (id: string) => void;
-  duplicateCriterion: (id: string) => void;
   toggleExpanded: (criterionKey: string) => void;
   addSubItem: (criterionId: string) => void;
   updateSubItem: (criterionId: string, subItemId: string, updates: Partial<SubItem>) => void;
   deleteSubItem: (criterionId: string, subItemId: string) => void;
-  duplicateSubItem: (criterionId: string, subItemId: string) => void;
   handleDragStart: (e: React.DragEvent<HTMLDivElement>, criterionId: string) => void;
   handleDragOver: (e: React.DragEvent<HTMLDivElement>, criterionId: string) => void;
   handleDragLeave: (e: React.DragEvent<HTMLDivElement>, targetId: string) => void;
@@ -37,6 +64,10 @@ export interface CourseContextValue {
   handleSubItemDragLeave: (e: React.DragEvent<HTMLDivElement>, criterionId: string, subItemId: string) => void;
   handleSubItemDrop: (e: React.DragEvent<HTMLDivElement>, criterionId: string, targetSubItemId: string) => void;
   handleSubItemDragEnd: () => void;
+  handlePointerDragStart: (source: PointerDragSource, clientX: number) => void;
+  handlePointerDragMove: (clientX: number, clientY: number) => void;
+  handlePointerDragEnd: () => void;
+  handlePointerDragCancel: () => void;
 }
 
 const CourseContext = createContext<CourseContextValue | null>(null);

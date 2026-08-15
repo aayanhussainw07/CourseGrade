@@ -52,7 +52,7 @@ export function CourseColorPicker({ currentColor, onChange }: CourseColorPickerP
       {open && (
         <div
           ref={ref}
-          className="absolute right-0 top-10 z-20 min-w-[160px] rounded-xl border border-border/60 bg-card/95 p-3 shadow-under-white"
+          className="absolute right-0 top-10 z-20 min-w-[160px] rounded-xl border border-border/60 bg-card/95 p-3"
         >
           <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
             Card Color

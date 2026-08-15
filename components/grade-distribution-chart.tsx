@@ -85,7 +85,7 @@ export function GradeDistributionChart({
   const maxCount = Math.max(...data.map((d) => d.count), 1);
 
   return (
-    <Card className="border-2 border-primary/35 shadow-under-white-strong">
+    <Card className="border-2 border-primary/35">
       <CardHeader className="pb-2 pt-4 px-4">
         <div className="flex items-center justify-between">
           <CardTitle className="text-base text-primary">{title}</CardTitle>
@@ -143,10 +143,9 @@ function BarView({ data, maxCount }: { data: ChartEntry[]; maxCount: number }) {
                 style={{
                   height: `${heightPct}%`,
                   backgroundColor: color,
-                  boxShadow: `0 -3px 10px ${color}66`,
                 }}
               >
-                <span className="flex w-full justify-center pt-1.5 text-[11px] font-bold text-white/90 drop-shadow">
+                <span className="flex w-full justify-center pt-1.5 text-[11px] font-bold text-white/90">
                   {count}
                 </span>
               </div>
