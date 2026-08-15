@@ -75,7 +75,7 @@ export function SemesterPanel({ courses }: SemesterPanelProps) {
     <div className="flex min-h-0 flex-col sm:flex-row">
 
           {/* ── Left: stats + course list ── */}
-          <div className="flex flex-1 flex-col min-w-0 p-5">
+          <div className="flex min-w-0 flex-1 flex-col py-5 pr-5">
 
             {/* Stat row */}
             <div className="flex items-center gap-6 pb-4 mb-4" style={{ borderBottom: `1px solid ${DIVIDER}` }}>

@@ -709,7 +709,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             {/* Dark header */}
             <div
               data-nav-tone="dark"
-              className="-mx-4 -mt-8 pb-1 px-4 pt-14 pb-0"
+              className="-mx-4 -mt-8 px-3 pb-0 pt-14"
               style={{
                 background: "#2d0008",
                 backgroundImage:
@@ -717,7 +717,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               }}
             >
               {/* Semester title */}
-              <div className="mb-6 pl-7">
+              <div className="mb-6">
                 {editingSemesterNameId === activeSemesterId ? (
                   <div className="flex min-w-0 items-center justify-start">
                     <input
@@ -761,7 +761,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
               {/* Semester summary */}
               {courses.length > 0 && (
-                <div className="pb-8 px-2">
+                <div className="pb-8">
                   <SemesterPanel courses={courses} />
                 </div>
               )}
