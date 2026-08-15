@@ -8,6 +8,7 @@ import {
   getBackendInternalApiSecret,
 } from "@/lib/server-auth";
 import { computeAiCostUsd, type AiUsage } from "@/lib/ai-pricing";
+import { SYLLABUS_IMPORT_ENABLED } from "@/lib/feature-flags";
 
 const ALLOWED_TYPES = [
   "application/pdf",
@@ -242,6 +243,16 @@ function getProviderErrorMessage(err: unknown): string {
 }
 
 export async function POST(req: NextRequest) {
+  if (!SYLLABUS_IMPORT_ENABLED) {
+    return NextResponse.json(
+      {
+        error: "Syllabus import is currently deprecated.",
+        code: "FEATURE_DEPRECATED",
+      },
+      { status: 410 },
+    );
+  }
+
   // Auth
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {

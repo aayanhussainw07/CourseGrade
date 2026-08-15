@@ -42,7 +42,10 @@ import {
 } from "@/app/page-utils";
 import { useSemesterData } from "@/hooks/useSemesterData";
 import { FeedbackPanel } from "@/components/feedback-panel";
-import { COURSE_ROSTER_ENABLED } from "@/lib/feature-flags";
+import {
+  COURSE_ROSTER_ENABLED,
+  SYLLABUS_IMPORT_ENABLED,
+} from "@/lib/feature-flags";
 import { AppTopBar } from "@/components/app-top-bar";
 import { AppScreenLoader } from "@/components/app-screen-loader";
 
@@ -794,15 +797,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     <Plus className="h-5 w-5" />
                     Add Course
                   </Button>
-                  <Button
-                    onClick={() => setSyllabusImportOpen(true)}
-                    size="lg"
-                    variant="ghost"
-                    className="gap-2 border border-white/70 bg-white text-[#7b0707] hover:bg-white/70 hover:text-[#7b0707]"
-                  >
-                    <Sparkles className="h-5 w-5" />
-                    Import Syllabus
-                  </Button>
+                  {SYLLABUS_IMPORT_ENABLED && (
+                    <Button
+                      onClick={() => setSyllabusImportOpen(true)}
+                      size="lg"
+                      variant="ghost"
+                      className="gap-2 border border-white/70 bg-white text-[#7b0707] hover:bg-white/70 hover:text-[#7b0707]"
+                    >
+                      <Sparkles className="h-5 w-5" />
+                      Import Syllabus
+                    </Button>
+                  )}
                 </div>
               </>
             )}
@@ -922,7 +927,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         )}
       </div>
 
-      {activeSemesterId && (
+      {SYLLABUS_IMPORT_ENABLED && activeSemesterId && (
         <SyllabusImportDialog
           open={syllabusImportOpen}
           onOpenChange={setSyllabusImportOpen}
