@@ -47,3 +47,9 @@ graphify-out/
 
 # claude
 # .claude
+
+# cornell backfill checkpoint
+scripts/.cornell-backfill-checkpoint.json
+
+# cache
+.playwright-mcp/
