@@ -1,0 +1,32 @@
+name: CI
+
+# Merge gate: typecheck + production build must pass before code lands on main.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # `lint` is `tsc --noEmit` — the hard typecheck gate.
+      - name: Typecheck
+        run: npm run lint
+
+      # Catches build-time breakage (bad imports, server component misuse, etc).
+      # Server-side env (Supabase/NextAuth) is read at runtime, so no secrets
+      # are needed here; if a build step ever requires a NEXT_PUBLIC_* var, add
+      # it under `env:` below.
+      - name: Build
+        run: npm run build

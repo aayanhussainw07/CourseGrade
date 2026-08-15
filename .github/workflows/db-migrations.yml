@@ -1,0 +1,48 @@
+name: DB Migrations
+
+# Applies every migration in order to a throwaway Postgres so broken SQL
+# (bad RPCs, materialized views, syntax) is caught in CI — before `db push`
+# ever touches the live Supabase database. All migrations are plain public
+# SQL, so a bare Postgres container is enough (no Supabase CLI needed).
+on:
+  push:
+    branches: [main]
+    paths: ["supabase/migrations/**"]
+  pull_request:
+    branches: [main]
+    paths: ["supabase/migrations/**"]
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Apply migrations in order
+        env:
+          PGPASSWORD: postgres
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
+        run: |
+          set -euo pipefail
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          create role anon nologin;
+          create role authenticated nologin;
+          create role service_role nologin bypassrls;
+          SQL
+          for f in $(ls supabase/migrations/*.sql | sort); do
+            echo "── applying $f"
+            psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$f"
+          done
+          echo "All migrations applied cleanly."
