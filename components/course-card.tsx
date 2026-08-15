@@ -1169,10 +1169,10 @@ export function CourseCard({
         >
           <div className="flex flex-wrap items-center gap-3 sm:gap-4">
             <span
-              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md border bg-white/45 text-foreground/75 transition-all ${
+              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-foreground/75 transition-colors ${
                 highlighted
-                  ? "animate-pulse border-primary bg-primary/15 text-primary ring-2 ring-primary/35"
-                  : "border-primary/20"
+                  ? "animate-pulse text-primary"
+                  : ""
               }`}
               title="Expand course"
             >
@@ -1203,7 +1203,7 @@ export function CourseCard({
             ) : courseCriteria.length === 0 ? (
               <button
                 type="button"
-                className="shrink-0 cursor-text rounded-md border border-primary/20 bg-white/55 px-2.5 py-1 text-sm font-bold tabular-nums text-primary transition-colors hover:border-primary/40 hover:bg-white/75"
+                className="shrink-0 cursor-text px-2.5 py-1 text-sm font-bold tabular-nums text-primary"
                 onClick={(e) => {
                   e.stopPropagation();
                   startDirectGradeEdit();
@@ -1214,17 +1214,17 @@ export function CourseCard({
                 {numericGrade.toFixed(2)}%
               </button>
             ) : (
-              <span className="shrink-0 rounded-md border border-primary/20 bg-white/55 px-2.5 py-1 text-sm font-bold tabular-nums text-primary">
+              <span className="shrink-0 px-2.5 py-1 text-sm font-bold tabular-nums text-primary">
                 {numericGrade.toFixed(2)}%
               </span>
             )}
             <span
-              className="shrink-0 rounded-md border border-primary/20 bg-white/55 px-2.5 py-1 text-lg font-bold leading-none"
+              className="shrink-0 px-2.5 py-1 text-lg font-bold leading-none"
               style={{ color: displayColor }}
             >
               {displayGrade}
             </span>
-            <span className="shrink-0 rounded-md border border-primary/15 bg-white/45 px-2.5 py-1 text-xs font-semibold text-muted-foreground">
+            <span className="shrink-0 px-2.5 py-1 text-xs font-semibold text-muted-foreground">
               {course.credits || 0} cr
             </span>
             <div
@@ -1269,7 +1269,7 @@ export function CourseCard({
       )}
       <CardHeader className="px-5 pb-4 pt-6 sm:px-4 sm:pb-2 sm:pt-3">
         <div
-          className="relative cursor-pointer rounded-lg border border-primary/10 bg-white/40 p-4 sm:p-2.5"
+          className="relative cursor-pointer p-4 sm:p-2.5"
           onClick={(event) => {
             if ((event.target as HTMLElement).closest(interactiveDragSelector))
               return;
@@ -1283,7 +1283,7 @@ export function CourseCard({
               size="sm"
               onClick={toggleCollapse}
               title="Collapse course"
-              className="mt-1.5 h-8 w-8 shrink-0 border border-primary/15 bg-[#fff8f1]/80 p-0 sm:mt-0"
+              className="mt-1.5 h-8 w-8 shrink-0 p-0 hover:bg-transparent sm:mt-0"
             >
               <ChevronUp className="h-4 w-4" />
             </Button>

@@ -15,7 +15,6 @@ import { DashboardPanel } from "@/components/dashboard-panel";
 import { Button } from "@/components/ui/button";
 import {
   Plus,
-  Menu,
   Sparkles,
   Layers,
   Pencil,
@@ -32,7 +31,6 @@ import {
   SheetContent,
   SheetDescription,
   SheetTitle,
-  SheetTrigger,
 } from "@/components/ui/sheet";
 import { SyllabusImportDialog } from "@/components/syllabus-import-dialog";
 import { SettingsPage } from "@/components/settings-page";
@@ -49,6 +47,44 @@ import { AppTopBar } from "@/components/app-top-bar";
 import { AppScreenLoader } from "@/components/app-screen-loader";
 
 const SCREEN_TRANSITION_DURATION_MS = 300;
+
+type CaretDocument = Document & {
+  caretPositionFromPoint?: (
+    x: number,
+    y: number,
+  ) => { offsetNode: Node; offset: number } | null;
+  caretRangeFromPoint?: (x: number, y: number) => Range | null;
+};
+
+function getTextOffsetAtPoint(
+  element: HTMLElement,
+  clientX: number,
+  clientY: number,
+) {
+  const documentWithCaret = element.ownerDocument as CaretDocument;
+  const caretPosition = documentWithCaret.caretPositionFromPoint?.(
+    clientX,
+    clientY,
+  );
+  const fallbackRange = caretPosition
+    ? null
+    : documentWithCaret.caretRangeFromPoint?.(clientX, clientY);
+  const offsetNode = caretPosition?.offsetNode ?? fallbackRange?.startContainer;
+  const offset = caretPosition?.offset ?? fallbackRange?.startOffset;
+
+  if (!offsetNode || offset === undefined || !element.contains(offsetNode)) {
+    return null;
+  }
+
+  try {
+    const range = element.ownerDocument.createRange();
+    range.selectNodeContents(element);
+    range.setEnd(offsetNode, offset);
+    return Math.min(element.textContent?.length ?? 0, range.toString().length);
+  } catch {
+    return null;
+  }
+}
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -69,6 +105,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   >(null);
   const [semesterNameDraft, setSemesterNameDraft] = useState("");
   const semesterNameEditCancelledRef = useRef(false);
+  const semesterNameInputRef = useRef<HTMLInputElement>(null);
+  const pendingSemesterNameCaretRef = useRef<number | null>(null);
   const [highlightedCourseId, setHighlightedCourseId] = useState<string | null>(
     null,
   );
@@ -166,12 +204,42 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   );
 
 
-  const startEditingSemesterName = useCallback(() => {
-    if (!activeSemesterId) return;
-    semesterNameEditCancelledRef.current = false;
-    setSemesterNameDraft(activeSemester?.name ?? "");
-    setEditingSemesterNameId(activeSemesterId);
-  }, [activeSemester?.name, activeSemesterId]);
+  const startEditingSemesterName = useCallback(
+    (event: React.MouseEvent<HTMLButtonElement>) => {
+      if (!activeSemesterId) return;
+      const semesterName = activeSemester?.name ?? "";
+      pendingSemesterNameCaretRef.current =
+        event.detail > 0
+          ? getTextOffsetAtPoint(
+              event.currentTarget,
+              event.clientX,
+              event.clientY,
+            )
+          : semesterName.length;
+      semesterNameEditCancelledRef.current = false;
+      setSemesterNameDraft(semesterName);
+      setEditingSemesterNameId(activeSemesterId);
+    },
+    [activeSemester?.name, activeSemesterId],
+  );
+
+  useLayoutEffect(() => {
+    if (!editingSemesterNameId || editingSemesterNameId !== activeSemesterId) {
+      return;
+    }
+
+    const input = semesterNameInputRef.current;
+    if (!input) return;
+
+    input.focus({ preventScroll: true });
+    const requestedCaret = pendingSemesterNameCaretRef.current;
+    const caret = Math.max(
+      0,
+      Math.min(input.value.length, requestedCaret ?? input.value.length),
+    );
+    input.setSelectionRange(caret, caret);
+    pendingSemesterNameCaretRef.current = null;
+  }, [activeSemesterId, editingSemesterNameId]);
 
   const commitSemesterName = useCallback(() => {
     const semesterId = editingSemesterNameId;
@@ -329,64 +397,56 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-background" data-nav-tone="light">
       <FeedbackPanel />
-      <AppTopBar
-        activeItem={
-          isSettingsView ? "settings" : isDashboardView ? "dashboard" : null
-        }
-        onDashboard={() => {
-          setActiveSemesterId(null);
-          router.push("/dashboard");
-        }}
-        onSettings={() => router.push("/settings")}
-      />
-
-      {/* Mobile sidebar trigger */}
-      <div className="fixed left-4 top-12 z-50 flex items-center gap-2 md:hidden">
-        <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
-          <SheetTrigger asChild>
-            <Button className="flex items-center gap-2 border border-border/70 bg-card/90 px-3 py-2 text-sm text-foreground hover:bg-card">
-              <Menu className="h-4 w-4" />
-              Overview
-            </Button>
-          </SheetTrigger>
-          <SheetContent
-            side="left"
-            className="!bottom-0 !top-11 !h-auto w-[85vw] border-border/40 bg-background/95 p-0 text-foreground sm:w-96"
-          >
-            <SheetTitle className="sr-only">Course overview</SheetTitle>
-            <SheetDescription className="sr-only">
-              Navigate dashboards, semesters, courses, and account actions.
-            </SheetDescription>
-            <CourseSidebar
-              variant="overlay"
-              semesters={orderedSemesters}
-              activeSemesterId={activeSemesterId}
-              onSemesterClick={(id) => {
-                setSidebarOpen(false);
-                setActiveSemesterId(id);
-                router.push("/semesters/" + id);
-              }}
-              onCourseClick={(id) => {
-                setSidebarOpen(false);
-                scrollToCourse(id);
-              }}
-              onAddSemester={addSemester}
-              onDeleteSemester={deleteSemester}
-              skipSemesterDeleteConfirm={appSettings.skipSemesterDeleteConfirm}
-              skipCourseDeleteConfirm={appSettings.skipCourseDeleteConfirm}
-              onEditSemester={editSemester}
-              onDeleteCourse={deleteCourse}
-              onEditCourse={editCourse}
-              onReorderSemesters={handleReorderSemesters}
-              onReorderCourses={handleReorderCourses}
-              onToggleSemesterIgnore={toggleSemesterIgnore}
-              ignoredSemesterIds={ignoredSemesterIds}
-              userEmail={session?.user?.email ?? undefined}
-              onSignOut={() => signOut()}
-            />
-          </SheetContent>
-        </Sheet>
-      </div>
+      <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
+        <AppTopBar
+          activeItem={
+            isSettingsView ? "settings" : isDashboardView ? "dashboard" : null
+          }
+          onDashboard={() => {
+            setActiveSemesterId(null);
+            router.push("/dashboard");
+          }}
+          onSettings={() => router.push("/settings")}
+          showOverview
+        />
+        {/* Mobile course overview */}
+        <SheetContent
+          side="left"
+          className="!bottom-0 !top-11 !h-auto w-[85vw] border-border/40 bg-background/95 p-0 text-foreground sm:w-96"
+        >
+          <SheetTitle className="sr-only">Course overview</SheetTitle>
+          <SheetDescription className="sr-only">
+            Navigate dashboards, semesters, courses, and account actions.
+          </SheetDescription>
+          <CourseSidebar
+            variant="overlay"
+            semesters={orderedSemesters}
+            activeSemesterId={activeSemesterId}
+            onSemesterClick={(id) => {
+              setSidebarOpen(false);
+              setActiveSemesterId(id);
+              router.push("/semesters/" + id);
+            }}
+            onCourseClick={(id) => {
+              setSidebarOpen(false);
+              scrollToCourse(id);
+            }}
+            onAddSemester={addSemester}
+            onDeleteSemester={deleteSemester}
+            skipSemesterDeleteConfirm={appSettings.skipSemesterDeleteConfirm}
+            skipCourseDeleteConfirm={appSettings.skipCourseDeleteConfirm}
+            onEditSemester={editSemester}
+            onDeleteCourse={deleteCourse}
+            onEditCourse={editCourse}
+            onReorderSemesters={handleReorderSemesters}
+            onReorderCourses={handleReorderCourses}
+            onToggleSemesterIgnore={toggleSemesterIgnore}
+            ignoredSemesterIds={ignoredSemesterIds}
+            userEmail={session?.user?.email ?? undefined}
+            onSignOut={() => signOut()}
+          />
+        </SheetContent>
+      </Sheet>
 
       {/* Desktop sidebar */}
       <CourseSidebar
@@ -653,12 +713,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 {editingSemesterNameId === activeSemesterId ? (
                   <div className="flex min-w-0 items-center justify-start">
                     <input
-                      autoFocus
+                      ref={semesterNameInputRef}
                       aria-label="Semester name"
                       size={Math.max(1, semesterNameDraft.length)}
                       value={semesterNameDraft}
                       onChange={(e) => setSemesterNameDraft(e.target.value)}
-                      onFocus={(e) => e.currentTarget.select()}
                       onBlur={() => {
                         if (semesterNameEditCancelledRef.current) {
                           semesterNameEditCancelledRef.current = false;
@@ -683,7 +742,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     <button
                       type="button"
                       aria-label="Edit semester name"
-                      className="font-futura-bold max-w-full cursor-text truncate border-0 bg-transparent p-0 text-left text-5xl uppercase text-white"
+                      className="font-futura-bold max-w-full cursor-text truncate border-0 bg-transparent p-0 text-left text-5xl uppercase text-white transition-colors duration-150 hover:text-white/75"
                       onClick={startEditingSemesterName}
                     >
                       {activeSemester?.name ?? "Semester"}

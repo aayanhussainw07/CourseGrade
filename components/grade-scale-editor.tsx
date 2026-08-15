@@ -214,9 +214,6 @@ export function GradeScaleEditor(props: GradeScaleEditorProps) {
 
   return (
     <div className="space-y-4">
-      <p className="rounded-lg border border-primary/15 bg-white/45 px-4 py-3 text-sm text-muted-foreground">
-        Define the minimum percentage required for each letter grade. Grades are automatically sorted by minimum score.
-      </p>
       {combinedProps && (
         <div className="relative space-y-3 overflow-hidden rounded-lg border border-primary/25 bg-[#fff8f1]/70 p-4">
           <div className="pointer-events-none absolute -top-2 right-8 h-5 w-16 rotate-2 bg-primary/12" />

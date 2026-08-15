@@ -17,20 +17,18 @@ export const marketingFeatures: {
 }[] = [
   {
     title: "Stop guessing your GPA",
-    description:
-      "Weighted grades, credits, and letter cutoffs stay visible without a spreadsheet rescue mission.",
+    description: "Don't worry, it won't bite... hopefully.",
     icon: Layers,
   },
   {
     title: "Bend the curve your way",
-    description:
-      "Set your own letter cutoffs, setting on grade scales for yourself.",
+    description: "Customize letter cutoffs to your will!",
     icon: SlidersHorizontal,
   },
   {
     title: "Skip the boring setup",
     description:
-      "Import what you can, organize what matters, and keep the whole semester in one place.",
+      "Parse syllabi to easily create grading schemes for your courses.",
     icon: Sparkles,
   },
 ];

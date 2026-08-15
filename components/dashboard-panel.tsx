@@ -24,6 +24,7 @@ interface DashboardPanelProps {
   timelineData: TimelinePoint[]
   courses: Course[]
   bare?: boolean
+  separated?: boolean
 }
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -66,7 +67,12 @@ function catmullRom(pts: [number, number][]): string {
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export function DashboardPanel({ timelineData, courses, bare = false }: DashboardPanelProps) {
+export function DashboardPanel({
+  timelineData,
+  courses,
+  bare = false,
+  separated = false,
+}: DashboardPanelProps) {
   const [hovered, setHovered] = useState<number | null>(null)
 
   // Timeline chart data
@@ -123,18 +129,29 @@ export function DashboardPanel({ timelineData, courses, bare = false }: Dashboar
   const maxCount = Math.max(...distData.map((d) => d.count), 1)
 
   const showDist = distData.length > 0
+  const separatedPanelClass =
+    "relative border border-primary/20 bg-[#fff8f1] transition-all duration-300 hover:-translate-y-1 hover:border-primary/35"
+  const timelineLayoutClass = separated
+    ? `${separatedPanelClass} ${showDist ? "md:col-span-2 xl:col-span-1" : "md:col-span-2 xl:col-span-3"}`
+    : showDist
+      ? "border-b border-primary/20 md:col-span-2 xl:col-span-1 xl:border-b-0 xl:border-r"
+      : "md:col-span-2 xl:col-span-3"
+  const barLayoutClass = separated
+    ? separatedPanelClass
+    : "border-b border-primary/20 md:border-b-0 md:border-r"
 
   const inner = (
-    <div className="grid min-h-0 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
+    <div
+      className={`grid min-h-0 grid-cols-1 md:grid-cols-2 xl:grid-cols-3 ${separated ? "gap-4" : ""}`}
+    >
 
           {/* ── GPA timeline ── */}
           <div
-            className={`flex min-w-0 flex-col p-4 md:p-6 ${
-              showDist
-                ? "border-b border-primary/20 md:col-span-2 xl:col-span-1 xl:border-b-0 xl:border-r"
-                : "md:col-span-2 xl:col-span-3"
-            }`}
+            className={`flex min-w-0 flex-col p-4 md:p-6 ${timelineLayoutClass}`}
           >
+            {separated && (
+              <div className="pointer-events-none absolute -top-2 left-8 z-10 h-5 w-20 rotate-[-2deg] bg-primary/15" />
+            )}
             <p className="mb-4 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
               GPA Timeline
             </p>
@@ -203,7 +220,10 @@ export function DashboardPanel({ timelineData, courses, bare = false }: Dashboar
 
           {/* ── Bar distribution ── */}
           {showDist && (
-            <div className="flex min-w-0 flex-col border-b border-primary/20 p-4 md:border-b-0 md:border-r md:p-6">
+            <div className={`flex min-w-0 flex-col p-4 md:p-6 ${barLayoutClass}`}>
+              {separated && (
+                <div className="pointer-events-none absolute -top-2 left-1/2 z-10 h-5 w-20 -translate-x-1/2 rotate-[1deg] bg-primary/15" />
+              )}
               <p className="mb-4 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
                 Bar Distribution
               </p>
@@ -215,7 +235,12 @@ export function DashboardPanel({ timelineData, courses, bare = false }: Dashboar
 
           {/* ── Pie distribution ── */}
           {showDist && (
-            <div className="flex min-w-0 flex-col p-4 md:p-6">
+            <div
+              className={`flex min-w-0 flex-col p-4 md:p-6 ${separated ? separatedPanelClass : ""}`}
+            >
+              {separated && (
+                <div className="pointer-events-none absolute -top-2 right-8 z-10 h-5 w-20 rotate-[3deg] bg-primary/15" />
+              )}
               <p className="mb-4 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
                 Pie Distribution
               </p>

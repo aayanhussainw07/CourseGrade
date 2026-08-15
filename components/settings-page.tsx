@@ -323,15 +323,9 @@ export function SettingsPage({
               </div>
 
               <div className="border-t border-primary/15 pt-5">
-                <div className="mb-4">
-                  <p className="text-sm font-medium">
-                    Default letter-grade scale
-                  </p>
-                  <p className="mt-0.5 text-xs text-muted-foreground">
-                    Used by new letter-grade courses and kept ready if you
-                    switch modes.
-                  </p>
-                </div>
+                <p className="mb-4 text-sm font-medium">
+                  Default letter-grade scale
+                </p>
                 <GradeScaleEditor
                   mode="letter-only"
                   gradeScale={localSettings.defaultGradeScale}

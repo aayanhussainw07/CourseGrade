@@ -57,8 +57,22 @@ const DOODLES: {
   { Icon: Star, top: "4%", left: "72%", size: 26, rotate: 14, hideSm: true },
   { Icon: TrendingUp, top: "18%", left: "88%", size: 40, rotate: -8 },
   { Icon: Sparkles, top: "30%", left: "2%", size: 30, rotate: 10 },
-  { Icon: BookOpen, top: "26%", left: "60%", size: 34, rotate: -6, hideSm: true },
-  { Icon: Calculator, top: "44%", left: "92%", size: 30, rotate: 12, hideSm: true },
+  {
+    Icon: BookOpen,
+    top: "26%",
+    left: "60%",
+    size: 34,
+    rotate: -6,
+    hideSm: true,
+  },
+  {
+    Icon: Calculator,
+    top: "44%",
+    left: "92%",
+    size: 30,
+    rotate: 12,
+    hideSm: true,
+  },
   { Icon: Pencil, top: "52%", left: "6%", size: 28, rotate: -18 },
   { Icon: Award, top: "62%", left: "48%", size: 36, rotate: 6, hideSm: true },
   { Icon: BarChart3, top: "70%", left: "90%", size: 38, rotate: -10 },
@@ -67,9 +81,30 @@ const DOODLES: {
   { Icon: NotebookPen, top: "84%", left: "70%", size: 34, rotate: 8 },
   { Icon: Plus, top: "58%", left: "30%", size: 20, rotate: -8, hideSm: true },
   { Icon: Star, top: "16%", left: "20%", size: 18, rotate: 20, hideSm: true },
-  { Icon: Sparkles, top: "48%", left: "70%", size: 24, rotate: -14, hideSm: true },
-  { Icon: GraduationCap, top: "74%", left: "56%", size: 30, rotate: 10, hideSm: true },
-  { Icon: TrendingUp, top: "38%", left: "36%", size: 26, rotate: 6, hideSm: true },
+  {
+    Icon: Sparkles,
+    top: "48%",
+    left: "70%",
+    size: 24,
+    rotate: -14,
+    hideSm: true,
+  },
+  {
+    Icon: GraduationCap,
+    top: "74%",
+    left: "56%",
+    size: 30,
+    rotate: 10,
+    hideSm: true,
+  },
+  {
+    Icon: TrendingUp,
+    top: "38%",
+    left: "36%",
+    size: 26,
+    rotate: 6,
+    hideSm: true,
+  },
   { Icon: BookOpen, top: "92%", left: "88%", size: 28, rotate: -8 },
   { Icon: Pencil, top: "12%", left: "62%", size: 22, rotate: 16, hideSm: true },
   { Icon: Award, top: "22%", left: "30%", size: 24, rotate: -10, hideSm: true },
@@ -129,7 +164,10 @@ export function MarketingPage() {
       data-nav-tone="light"
     >
       {/* HERO */}
-      <section data-nav-tone="dark" className="relative bg-foreground text-white overflow-hidden">
+      <section
+        data-nav-tone="dark"
+        className="relative bg-foreground text-white overflow-hidden"
+      >
         <div
           className="absolute inset-0 opacity-[0.04]"
           style={{
@@ -175,8 +213,8 @@ export function MarketingPage() {
               </div>
 
               <p className="text-lg text-white/70 max-w-lg mx-auto text-center">
-                Track weighted grades on your own curve, and see your GPA
-                before the final has a chance to surprise you.
+                Track those grades before they end up tracking you. <br></br>{" "}
+                (or whatever that means)
               </p>
 
               <div className="flex flex-wrap justify-center gap-3 pt-2">
@@ -189,7 +227,6 @@ export function MarketingPage() {
                   Start tracking
                 </Button>
               </div>
-
             </div>
           </div>
         </div>
@@ -203,7 +240,11 @@ export function MarketingPage() {
       </section>
 
       {/* FEATURES */}
-      <section data-nav-tone="light" id="feature-grid" className="relative overflow-hidden bg-background py-20">
+      <section
+        data-nav-tone="light"
+        id="feature-grid"
+        className="relative overflow-hidden bg-background py-20"
+      >
         <DoodleField />
         <div className="relative z-10 mx-auto max-w-[1400px] px-2 lg:px-4">
           <div className="mb-10 px-4 text-center md:text-left lg:px-10">
@@ -236,7 +277,8 @@ export function MarketingPage() {
                   className={`${featuresInView ? "animate-fade-up-sm" : "opacity-0"} group relative rounded-lg text-center text-white transition-all duration-300 hover:-translate-y-2 hover:rotate-0 ${layout}`}
                   style={{
                     animationDelay: featuresInView ? `${i * 0.1}s` : undefined,
-                    backgroundColor: ["#a8473d", "#c56b5e", "#8f3a32"][i] ?? "#b5564b",
+                    backgroundColor:
+                      ["#a8473d", "#c56b5e", "#8f3a32"][i] ?? "#b5564b",
                   }}
                 >
                   <div className="mb-5 flex items-center justify-center transition-transform duration-300 group-hover:scale-110">
@@ -273,7 +315,10 @@ export function MarketingPage() {
       </section>
 
       {/* CHARTS */}
-      <section data-nav-tone="light" className="relative overflow-hidden bg-background pb-16">
+      <section
+        data-nav-tone="light"
+        className="relative overflow-hidden bg-background pb-16"
+      >
         <DoodleField />
         <div className="relative z-10 mx-auto max-w-[1400px] px-2 lg:px-4">
           <div
@@ -289,21 +334,23 @@ export function MarketingPage() {
           </div>
           <div
             ref={chartsRef}
-            className={`relative mx-4 rounded-xl border-2 border-primary/20 bg-[#fff8f1] p-3 transition-all duration-300 hover:-translate-y-1 hover:border-primary/35 sm:p-5 ${chartsInView ? "animate-fade-up" : "opacity-0"}`}
+            className={`relative mx-4 ${chartsInView ? "animate-fade-up" : "opacity-0"}`}
           >
-            <Tape className="-top-3 left-10 rotate-[-2deg]" />
-            <Tape className="-top-3 right-10 rotate-[3deg]" />
             <DashboardPanel
               timelineData={marketingTimelineData}
               courses={marketingCourses}
               bare
+              separated
             />
           </div>
         </div>
       </section>
 
       {/* CTA + FOOTER */}
-      <section data-nav-tone="dark" className="relative bg-foreground text-white pb-8 overflow-hidden -mt-px">
+      <section
+        data-nav-tone="dark"
+        className="relative bg-foreground text-white pb-8 overflow-hidden -mt-px"
+      >
         <div
           className="absolute inset-0 opacity-[0.04]"
           style={{
@@ -336,8 +383,7 @@ export function MarketingPage() {
               </div>
             </div>
             <p className="mx-auto mt-8 max-w-md text-muted-foreground">
-              Start with one course, then let the semester get clearer from
-              there.
+              You can do great. Believe in yourself!
             </p>
             <div className="mt-7 flex justify-center">
               <Button
