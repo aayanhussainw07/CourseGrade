@@ -5,7 +5,7 @@ export function AppScreenLoader() {
     <div
       role="status"
       aria-live="polite"
-      className="-mx-4 -my-8 flex min-h-screen flex-col items-center justify-center gap-3 bg-foreground"
+      className="-mx-4 -my-8 flex min-h-screen flex-col items-center justify-center gap-3 bg-[#f5edea]"
     >
       <Image
         src="/coursegrade.png"
