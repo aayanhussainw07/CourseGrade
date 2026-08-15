@@ -288,13 +288,7 @@ export function GradeScaleEditor(props: GradeScaleEditorProps) {
         </div>
       )}
 
-      {isPassFail ? (
-        <div className="relative overflow-hidden rounded-lg border border-primary/20 bg-white/45 px-4 py-3 text-sm text-muted-foreground">
-          <div className="pointer-events-none absolute -top-2 left-8 h-5 w-16 rotate-[-2deg] bg-primary/12" />
-          Letter grades are hidden while pass/fail mode is enabled. The pass label, fail label, and threshold above
-          control how scores are interpreted.
-        </div>
-      ) : (
+      {!isPassFail && (
         <>
           {/* Visual threshold bar */}
           <div className="select-none space-y-1">

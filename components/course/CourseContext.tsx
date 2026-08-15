@@ -4,12 +4,9 @@ import { createContext, useContext } from "react";
 import type React from "react";
 import type { Criterion, SubItem, GradeScale } from "@/lib/types";
 
-export type DragIntent = "reorder" | "nest" | "promote";
-
 export interface DropIndicator {
   targetId: string;
   position: "before" | "after";
-  intent: DragIntent;
 }
 
 export interface PointerDragSource {
@@ -23,32 +20,8 @@ export interface CourseContextValue {
   criterionIds: string[];
   draggingCriterionId: string | null;
   draggingSubItemId: string | null;
-  draggingSubItemParentId: string | null;
   dropIndicator: DropIndicator | null;
   updateCriterion: (id: string, updates: Partial<Criterion>) => void;
-  moveCriterion: (
-    sourceId: string,
-    targetId: string | null,
-    position?: "before" | "after",
-  ) => void;
-  convertToSubCriterion: (
-    sourceId: string,
-    targetId: string,
-    adjacentSubItemId?: string | null,
-    position?: "before" | "after",
-  ) => void;
-  moveSubItemWithinParent: (
-    criterionId: string,
-    sourceId: string,
-    targetId: string,
-    after: boolean,
-  ) => void;
-  promoteSubItemToCriterion: (
-    parentCriterionId: string,
-    subItemId: string,
-    adjacentCriterionId: string | null,
-    position: "before" | "after",
-  ) => void;
   deleteCriterion: (id: string) => void;
   toggleExpanded: (criterionKey: string) => void;
   addSubItem: (criterionId: string) => void;
@@ -64,7 +37,7 @@ export interface CourseContextValue {
   handleSubItemDragLeave: (e: React.DragEvent<HTMLDivElement>, criterionId: string, subItemId: string) => void;
   handleSubItemDrop: (e: React.DragEvent<HTMLDivElement>, criterionId: string, targetSubItemId: string) => void;
   handleSubItemDragEnd: () => void;
-  handlePointerDragStart: (source: PointerDragSource, clientX: number) => void;
+  handlePointerDragStart: (source: PointerDragSource) => void;
   handlePointerDragMove: (clientX: number, clientY: number) => void;
   handlePointerDragEnd: () => void;
   handlePointerDragCancel: () => void;

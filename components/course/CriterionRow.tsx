@@ -11,9 +11,6 @@ import {
   ChevronDown,
   ChevronRight,
   X,
-  ArrowRight,
-  ArrowLeft,
-  IndentDecrease,
 } from "lucide-react";
 import type { Criterion, SubItem } from "@/lib/types";
 import {
@@ -23,7 +20,6 @@ import {
   formatNumberValue,
 } from "@/lib/score-input";
 import { useCourseContext } from "@/components/course/CourseContext";
-import type { DragIntent } from "@/components/course/CourseContext";
 
 type NumericField = "weight" | "score" | "dropLowest" | "extraCredit";
 
@@ -39,59 +35,26 @@ function handleEnterCommit(
   requestAnimationFrame(() => target.blur());
 }
 
-function DropLine({ intent, position }: { intent: DragIntent; position: "before" | "after" }) {
-  const isNest = intent === "nest";
-  const isPromote = intent === "promote";
+function DropLine({ position }: { position: "before" | "after" }) {
   return (
     <div
       className={`pointer-events-none absolute left-0 right-0 z-10 flex items-center ${
         position === "before" ? "-top-[5px]" : "-bottom-[5px]"
       }`}
     >
-      <div
-        className={`flex h-[3px] w-full items-center rounded-full ${
-          isNest ? "bg-primary ml-8" : isPromote ? "bg-emerald-500" : "bg-primary"
-        }`}
-      >
-        {isNest && (
-          <span className="absolute -left-0 flex items-center gap-0.5 rounded bg-primary px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
-            <ArrowRight className="h-3 w-3" />
-            Nest
-          </span>
-        )}
-        {isPromote && (
-          <span className="absolute -left-0 flex items-center gap-0.5 rounded bg-emerald-500 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
-            <ArrowLeft className="h-3 w-3" />
-            Promote
-          </span>
-        )}
-      </div>
+      <div className="flex h-[3px] w-full items-center rounded-full bg-primary" />
     </div>
   );
 }
 
-function SubItemDropLine({
-  intent = "reorder",
-  position,
-}: {
-  intent?: Extract<DragIntent, "reorder" | "nest">;
-  position: "before" | "after";
-}) {
-  const isNest = intent === "nest";
+function SubItemDropLine({ position }: { position: "before" | "after" }) {
   return (
     <div
       className={`pointer-events-none absolute left-0 right-0 z-10 flex items-center ${
         position === "before" ? "-top-[5px]" : "-bottom-[5px]"
       }`}
     >
-      <div className={`flex h-[2px] w-full items-center rounded-full ${isNest ? "bg-primary" : "bg-primary"}`}>
-        {isNest && (
-          <span className="absolute -left-0 flex items-center gap-0.5 rounded bg-primary px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
-            <ArrowRight className="h-3 w-3" />
-            Nest
-          </span>
-        )}
-      </div>
+      <div className="flex h-[2px] w-full items-center rounded-full bg-primary" />
     </div>
   );
 }
@@ -103,11 +66,8 @@ export function CriterionRow({ criterion }: { criterion: Criterion }) {
     criterionIds,
     draggingCriterionId,
     draggingSubItemId,
-    draggingSubItemParentId,
     dropIndicator,
     updateCriterion,
-    convertToSubCriterion,
-    promoteSubItemToCriterion,
     deleteCriterion,
     toggleExpanded,
     addSubItem,
@@ -154,12 +114,6 @@ export function CriterionRow({ criterion }: { criterion: Criterion }) {
   const touchTarget =
     "h-9 w-9 sm:h-8 sm:w-8 [@media(pointer:coarse)]:h-11 [@media(pointer:coarse)]:w-11 transition-none select-none";
 
-  // Row actions can shift the list or otherwise mutate this card. Blur them
-  // after activation and keep their pointer events out of the drag surface.
-  const runControl = (fn: () => void) => (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.currentTarget.blur();
-    fn();
-  };
   const stopDragStart = (e: React.PointerEvent<HTMLButtonElement>) =>
     e.stopPropagation();
 
@@ -191,7 +145,7 @@ export function CriterionRow({ criterion }: { criterion: Criterion }) {
       }
       event.preventDefault();
       event.currentTarget.setPointerCapture(event.pointerId);
-      handlePointerDragStart(source, event.clientX);
+      handlePointerDragStart(source);
     },
     onPointerMove: (event: React.PointerEvent<HTMLButtonElement>) => {
       if (
@@ -230,10 +184,6 @@ export function CriterionRow({ criterion }: { criterion: Criterion }) {
     dropIndicator?.targetId === criterion.id && dropIndicator.position === "before";
   const showDropAfter =
     dropIndicator?.targetId === criterion.id && dropIndicator.position === "after";
-  const isNestTarget =
-    dropIndicator?.targetId === criterion.id && dropIndicator.intent === "nest";
-  const isPromoteTarget =
-    dropIndicator?.targetId === criterion.id && dropIndicator.intent === "promote";
 
   // Local draft state — undefined means "no active edit, show persisted value"
   const [nameDraft, setNameDraft] = useState<string | undefined>(undefined);
@@ -413,7 +363,7 @@ export function CriterionRow({ criterion }: { criterion: Criterion }) {
     <div className="relative space-y-2">
       {/* Drop indicator: before */}
       {showDropBefore && !isDragging && (
-        <DropLine intent={dropIndicator!.intent} position="before" />
+        <DropLine position="before" />
       )}
 
       {/* Criterion row */}
@@ -421,13 +371,9 @@ export function CriterionRow({ criterion }: { criterion: Criterion }) {
         className={`group/criterion relative flex items-start gap-2 rounded-md px-2.5 py-2.5 transition-all duration-150 sm:px-1.5 sm:py-1 ${
           isDragging
             ? "scale-[0.97] bg-primary/5 opacity-50 ring-1 ring-primary/40"
-            : isNestTarget
-              ? "bg-primary/10 ring-1 ring-primary/30"
-              : isPromoteTarget
-                ? "bg-emerald-50/50 ring-1 ring-emerald-400/25"
-              : isDraggingAnything
-                ? "bg-muted/10"
-                : "bg-muted/20"
+            : isDraggingAnything
+              ? "bg-muted/10"
+              : "bg-muted/20"
         }`}
         data-grade-drop-kind="criterion"
         data-criterion-id={criterion.id}
@@ -441,25 +387,6 @@ export function CriterionRow({ criterion }: { criterion: Criterion }) {
           disarmDrag();
         }}
       >
-        {/* Nest target label — pinned to the left edge, vertical, so it
-            stays visible while the dragged row covers the card center */}
-        {isNestTarget && (
-          <div className="pointer-events-none absolute inset-0 z-10 flex items-start justify-start rounded-lg bg-primary/10">
-            <span className="ml-2 mt-2 flex items-center gap-1.5 rounded-full bg-primary px-3 py-1 text-xs font-bold uppercase tracking-wider text-white">
-              <ArrowRight className="h-3.5 w-3.5" />
-              Nest as sub-item
-            </span>
-          </div>
-        )}
-        {isPromoteTarget && (
-          <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-emerald-500/10">
-            <span className="flex items-center gap-1.5 rounded-full bg-emerald-500 px-3 py-1 text-xs font-bold uppercase tracking-wider text-white">
-              <ArrowLeft className="h-3.5 w-3.5" />
-              Promote to criterion
-            </span>
-          </div>
-        )}
-
         {/* Drag-only reorder control for mouse, touch, and pen input. */}
         <div
           className={`flex shrink-0 items-center justify-center ${
@@ -615,46 +542,23 @@ export function CriterionRow({ criterion }: { criterion: Criterion }) {
       </div>
 
       {/* Drop indicator: after (only when no sub-items expanded, otherwise it goes between criterion and sub-items) */}
-      {showDropAfter && !isDragging && !isNestTarget && !(hasSubItems && isExpanded) && (
-        <DropLine intent={dropIndicator!.intent} position="after" />
+      {showDropAfter && !isDragging && !(hasSubItems && isExpanded) && (
+        <DropLine position="after" />
       )}
 
       {/* Sub-items */}
       {hasSubItems && isExpanded && (
         <div className="ml-4 space-y-2 border-l-2 border-primary/20 pl-4">
           {criterion.subItems!.map((subItem) => {
-            const promoteSub = () =>
-              promoteSubItemToCriterion(
-                criterion.id,
-                subItem.id,
-                criterion.id,
-                "after",
-              );
             const isSubDragging = draggingSubItemId === subItem.id;
             const subIndicatorId = `sub:${criterion.id}:${subItem.id}`;
             const showSubBefore = dropIndicator?.targetId === subIndicatorId && dropIndicator.position === "before";
             const showSubAfter = dropIndicator?.targetId === subIndicatorId && dropIndicator.position === "after";
-            const isPromoteTarget = dropIndicator?.targetId === subIndicatorId && dropIndicator.intent === "promote";
-            const isNestSubTarget = dropIndicator?.targetId === subIndicatorId && dropIndicator.intent === "nest";
 
             return (
               <div key={subItem.id} className="relative">
                 {showSubBefore && !isSubDragging && (
-                  isPromoteTarget ? (
-                    <div className="pointer-events-none absolute -top-[5px] -left-6 right-0 z-10 flex items-center">
-                      <div className="flex h-[3px] w-[calc(100%+1.5rem)] items-center rounded-full bg-emerald-500">
-                        <span className="absolute -left-0 flex items-center gap-0.5 rounded bg-emerald-500 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
-                          <ArrowLeft className="h-3 w-3" />
-                          Promote
-                        </span>
-                      </div>
-                    </div>
-                  ) : (
-                    <SubItemDropLine
-                      intent={isNestSubTarget ? "nest" : "reorder"}
-                      position="before"
-                    />
-                  )
+                  <SubItemDropLine position="before" />
                 )}
 
                 <div
@@ -673,11 +577,7 @@ export function CriterionRow({ criterion }: { criterion: Criterion }) {
                   className={`group/subitem grid grid-cols-1 gap-2 rounded-md p-3 transition-all duration-150 sm:grid-cols-[auto_2fr_1fr_1fr_auto] sm:p-2 ${
                     isSubDragging
                       ? "scale-[0.97] bg-primary/5 opacity-50 ring-1 ring-primary/40"
-                      : isNestSubTarget
-                        ? "bg-primary/10 ring-1 ring-primary/30"
-                      : isPromoteTarget
-                        ? "bg-emerald-50/40 ring-1 ring-emerald-400/30"
-                        : "bg-card"
+                      : "bg-card"
                   }`}
                 >
                   <div className="flex items-center justify-center sm:pt-3">
@@ -743,17 +643,6 @@ export function CriterionRow({ criterion }: { criterion: Criterion }) {
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={runControl(promoteSub)}
-                      onPointerDown={stopDragStart}
-                      className={`${touchTarget} text-muted-foreground hover:bg-muted hover:text-foreground`}
-                      title="Promote to its own criterion"
-                      aria-label="Promote to its own criterion"
-                    >
-                      <IndentDecrease className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
                       onClick={() => deleteSubItem(criterion.id, subItem.id)}
                       onPointerDown={stopDragStart}
                       className={`${touchTarget} text-destructive hover:bg-destructive/10`}
@@ -766,21 +655,7 @@ export function CriterionRow({ criterion }: { criterion: Criterion }) {
                 </div>
 
                 {showSubAfter && !isSubDragging && (
-                  isPromoteTarget ? (
-                    <div className="pointer-events-none absolute -bottom-[5px] -left-6 right-0 z-10 flex items-center">
-                      <div className="flex h-[3px] w-[calc(100%+1.5rem)] items-center rounded-full bg-emerald-500">
-                        <span className="absolute -left-0 flex items-center gap-0.5 rounded bg-emerald-500 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
-                          <ArrowLeft className="h-3 w-3" />
-                          Promote
-                        </span>
-                      </div>
-                    </div>
-                  ) : (
-                    <SubItemDropLine
-                      intent={isNestSubTarget ? "nest" : "reorder"}
-                      position="after"
-                    />
-                  )
+                  <SubItemDropLine position="after" />
                 )}
               </div>
             );
@@ -789,8 +664,8 @@ export function CriterionRow({ criterion }: { criterion: Criterion }) {
       )}
 
       {/* Drop indicator: after when sub-items are expanded */}
-      {showDropAfter && !isDragging && !isNestTarget && hasSubItems && isExpanded && (
-        <DropLine intent={dropIndicator!.intent} position="after" />
+      {showDropAfter && !isDragging && hasSubItems && isExpanded && (
+        <DropLine position="after" />
       )}
     </div>
   );

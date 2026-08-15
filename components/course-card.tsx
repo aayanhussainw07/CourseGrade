@@ -42,10 +42,7 @@ import { parseScoreInput } from "@/lib/score-input";
 import { CriterionRow } from "@/components/course/CriterionRow";
 import { HeaderColorPicker } from "@/components/course/HeaderColorPicker";
 import { CourseContext } from "@/components/course/CourseContext";
-import type {
-  DragIntent,
-  DropIndicator,
-} from "@/components/course/CourseContext";
+import type { DropIndicator } from "@/components/course/CourseContext";
 import { DeleteConfirmationDialog } from "@/components/delete-confirmation-dialog";
 
 const COLLAPSED_PAPER_ROTATIONS = [
@@ -110,15 +107,11 @@ export function CourseCard({
   const [draggingSubItemId, setDraggingSubItemId] = useState<string | null>(
     null,
   );
-  const [draggingSubItemParentId, setDraggingSubItemParentId] = useState<
-    string | null
-  >(null);
   const [dropIndicator, setDropIndicator] = useState<DropIndicator | null>(
     null,
   );
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const draggingIdRef = useRef<string | null>(null);
-  const dragStartXRef = useRef<number>(0);
   const pointerDropIndicatorRef = useRef<DropIndicator | null>(null);
   const [directGradeEditing, setDirectGradeEditing] = useState(false);
   const [directGradeDraft, setDirectGradeDraft] = useState("");
@@ -355,54 +348,6 @@ export function CourseCard({
     updateCourse({ criteria: courseCriteria.filter((c) => c.id !== id) });
   };
 
-  const convertToSubCriterion = (
-    sourceId: string,
-    targetId: string,
-    adjacentSubItemId?: string | null,
-    position: "before" | "after" = "after",
-  ) => {
-    if (sourceId === targetId) return;
-    const source = courseCriteria.find((c) => c.id === sourceId);
-    const target = courseCriteria.find((c) => c.id === targetId);
-    if (!source || !target) return;
-    const sourceScore =
-      source.subItems && source.subItems.length > 0
-        ? source.subItems.reduce((sum, si) => sum + si.score, 0) /
-          source.subItems.length
-        : source.score;
-    const newSubItem: SubItem = {
-      id: crypto.randomUUID(),
-      name: source.name || "Item",
-      score: sourceScore,
-    };
-    const targetSubItems = [...(target.subItems ?? [])];
-    if (adjacentSubItemId) {
-      const adjacentIndex = targetSubItems.findIndex(
-        (item) => item.id === adjacentSubItemId,
-      );
-      const insertIndex =
-        adjacentIndex === -1
-          ? targetSubItems.length
-          : position === "after"
-            ? adjacentIndex + 1
-            : adjacentIndex;
-      targetSubItems.splice(insertIndex, 0, newSubItem);
-    } else {
-      targetSubItems.push(newSubItem);
-    }
-    const updatedTarget: Criterion = {
-      ...target,
-      subItems: targetSubItems,
-    };
-    const targetKey = target.clientId ?? target.id;
-    setExpandedCriteria((prev) => new Set(prev).add(targetKey));
-    updateCourse({
-      criteria: courseCriteria
-        .filter((c) => c.id !== sourceId)
-        .map((c) => (c.id === targetId ? updatedTarget : c)),
-    });
-  };
-
   const addSubItem = (criterionId: string) => {
     const criterion = courseCriteria.find((c) => c.id === criterionId);
     if (!criterion) return;
@@ -458,80 +403,20 @@ export function CourseCard({
     updateCriterion(criterionId, { subItems: items });
   };
 
-  const promoteSubItemToCriterion = (
-    parentCriterionId: string,
-    subItemId: string,
-    adjacentCriterionId: string | null,
-    position: "before" | "after",
-  ) => {
-    const parent = courseCriteria.find((c) => c.id === parentCriterionId);
-    if (!parent?.subItems) return;
-    const subItem = parent.subItems.find((si) => si.id === subItemId);
-    if (!subItem) return;
-    const subItemWeight = subItem.weight ?? 100 / parent.subItems.length;
-    const criterionWeight = Number(
-      ((subItemWeight * parent.weight) / 100).toFixed(2),
-    );
-    const newId = crypto.randomUUID();
-    const newCriterion: Criterion = {
-      id: newId,
-      clientId: newId,
-      name: subItem.name || "Item",
-      weight: criterionWeight,
-      score: subItem.score,
-      dropLowest: 0,
-      extraCredit: 0,
-    };
-    const updatedParent: Criterion = {
-      ...parent,
-      subItems: parent.subItems.filter((si) => si.id !== subItemId),
-    };
-    let updated = courseCriteria.map((c) =>
-      c.id === parentCriterionId ? updatedParent : c,
-    );
-    if (!adjacentCriterionId) {
-      updated = [...updated, newCriterion];
-    } else {
-      const tIdx = updated.findIndex((c) => c.id === adjacentCriterionId);
-      const insertIdx =
-        tIdx === -1 ? updated.length : position === "after" ? tIdx + 1 : tIdx;
-      updated = [
-        ...updated.slice(0, insertIdx),
-        newCriterion,
-        ...updated.slice(insertIdx),
-      ];
-    }
-    updateCourse({ criteria: updated });
-  };
-
-  const NEST_THRESHOLD_PX = 60;
-
-  const computeIntent = (
+  const computeDropIndicator = (
     e: React.DragEvent<HTMLDivElement>,
     targetId: string,
   ): DropIndicator | null => {
     const sourceId = draggingIdRef.current;
-    if (!sourceId || sourceId === targetId) return null;
+    if (!sourceId || sourceId === targetId || sourceId.startsWith("subitem:")) {
+      return null;
+    }
     const rect = e.currentTarget.getBoundingClientRect();
     const yRatio = (e.clientY - rect.top) / rect.height;
-    const isSubItem = sourceId.startsWith("subitem:");
-
-    if (isSubItem) {
-      // Sub-item dragged onto a criterion: a left drag promotes it, otherwise
-      // it reorders relative to the criterion.
-      const horizontalShift = e.clientX - dragStartXRef.current;
-      const position: "before" | "after" = yRatio < 0.5 ? "before" : "after";
-      const intent: DragIntent =
-        horizontalShift < -NEST_THRESHOLD_PX ? "promote" : "reorder";
-      return { targetId, position, intent };
-    }
-
-    // Criterion onto criterion — zone based, so nesting is discoverable
-    // without a sideways drag: hover the top/bottom edge to reorder, hover
-    // the middle to nest as a sub-item.
-    if (yRatio < 0.28) return { targetId, position: "before", intent: "reorder" };
-    if (yRatio > 0.72) return { targetId, position: "after", intent: "reorder" };
-    return { targetId, position: "after", intent: "nest" };
+    return {
+      targetId,
+      position: yRatio < 0.5 ? "before" : "after",
+    };
   };
 
   const handleDragStart = (
@@ -549,7 +434,6 @@ export function CourseCard({
     }
     event.stopPropagation();
     draggingIdRef.current = criterionId;
-    dragStartXRef.current = event.clientX;
     setDraggingCriterionId(criterionId);
     event.dataTransfer.effectAllowed = "move";
     event.dataTransfer.setData("text/plain", criterionId);
@@ -572,9 +456,7 @@ export function CourseCard({
     event.stopPropagation();
     const key = `subitem:${criterionId}:${subItemId}`;
     draggingIdRef.current = key;
-    dragStartXRef.current = event.clientX;
     setDraggingSubItemId(subItemId);
-    setDraggingSubItemParentId(criterionId);
     event.dataTransfer.effectAllowed = "move";
     event.dataTransfer.setData("text/plain", key);
   };
@@ -582,7 +464,6 @@ export function CourseCard({
   const handleSubItemDragEnd = () => {
     draggingIdRef.current = null;
     setDraggingSubItemId(null);
-    setDraggingSubItemParentId(null);
     setDropIndicator(null);
   };
 
@@ -592,11 +473,9 @@ export function CourseCard({
   ) => {
     event.preventDefault();
     event.stopPropagation();
-    event.dataTransfer.dropEffect = "move";
-    const indicator = computeIntent(event, targetId);
-    if (indicator) {
-      setDropIndicator(indicator);
-    }
+    const indicator = computeDropIndicator(event, targetId);
+    event.dataTransfer.dropEffect = indicator ? "move" : "none";
+    setDropIndicator(indicator);
   };
 
   const handleDragLeave = (
@@ -619,24 +498,28 @@ export function CourseCard({
     event.stopPropagation();
     event.dataTransfer.dropEffect = "move";
     const sourceId = draggingIdRef.current;
-    if (!sourceId) return;
+    if (!sourceId?.startsWith("subitem:")) {
+      event.dataTransfer.dropEffect = "none";
+      setDropIndicator(null);
+      return;
+    }
+
+    const [, sourceParentId, sourceSubItemId] = sourceId.split(":");
+    if (
+      sourceParentId !== parentCriterionId ||
+      sourceSubItemId === subItemId
+    ) {
+      event.dataTransfer.dropEffect = "none";
+      setDropIndicator(null);
+      return;
+    }
 
     const rect = event.currentTarget.getBoundingClientRect();
     const position: "before" | "after" =
       (event.clientY - rect.top) / rect.height < 0.5 ? "before" : "after";
-    const horizontalShift = event.clientX - dragStartXRef.current;
-
-    const isSubItemSource = sourceId.startsWith("subitem:");
-    let intent: DragIntent;
-    if (isSubItemSource) {
-      intent = horizontalShift < -NEST_THRESHOLD_PX ? "promote" : "reorder";
-    } else {
-      intent = "nest";
-    }
     setDropIndicator({
       targetId: `sub:${parentCriterionId}:${subItemId}`,
       position,
-      intent,
     });
   };
 
@@ -662,53 +545,23 @@ export function CourseCard({
     event.stopPropagation();
     const raw =
       draggingIdRef.current || event.dataTransfer.getData("text/plain");
-    if (!raw) return;
+    if (!raw?.startsWith("subitem:")) return;
 
     const indicator = dropIndicator;
     clearDragState();
-
-    if (!raw.startsWith("subitem:")) {
-      if (raw === parentCriterionId) return;
-      convertToSubCriterion(
-        raw,
-        parentCriterionId,
-        targetSubItemId,
-        indicator?.position ?? "after",
-      );
+    const [, sourceParentId, sourceSubItemId] = raw.split(":");
+    if (
+      sourceParentId !== parentCriterionId ||
+      sourceSubItemId === targetSubItemId
+    )
       return;
-    }
 
-    if (raw.startsWith("subitem:")) {
-      const [, srcParentId, srcSubItemId] = raw.split(":");
-      if (srcSubItemId === targetSubItemId) return;
-
-      if (indicator?.intent === "promote") {
-        promoteSubItemToCriterion(
-          srcParentId,
-          srcSubItemId,
-          parentCriterionId,
-          indicator.position,
-        );
-        return;
-      }
-
-      if (srcParentId === parentCriterionId) {
-        const after = indicator?.position === "after";
-        moveSubItemWithinParent(
-          parentCriterionId,
-          srcSubItemId,
-          targetSubItemId,
-          after,
-        );
-      } else {
-        promoteSubItemToCriterion(
-          srcParentId,
-          srcSubItemId,
-          parentCriterionId,
-          indicator?.position ?? "before",
-        );
-      }
-    }
+    moveSubItemWithinParent(
+      parentCriterionId,
+      sourceSubItemId,
+      targetSubItemId,
+      indicator?.position === "after",
+    );
   };
 
   const handleDropOnCriterion = (
@@ -719,31 +572,14 @@ export function CourseCard({
     event.stopPropagation();
     const raw =
       draggingIdRef.current || event.dataTransfer.getData("text/plain");
-    if (!raw) return;
+    if (!raw || raw.startsWith("subitem:")) return;
 
     const indicator = dropIndicator;
     clearDragState();
 
-    if (raw.startsWith("subitem:")) {
-      const [, parentId, subItemId] = raw.split(":");
-      if (parentId === targetId && indicator?.intent !== "promote") return;
-      promoteSubItemToCriterion(
-        parentId,
-        subItemId,
-        targetId,
-        indicator?.position ?? "after",
-      );
-      return;
-    }
-
     const sourceId = raw;
     if (sourceId === targetId) return;
-
-    if (indicator?.intent === "nest") {
-      convertToSubCriterion(sourceId, targetId);
-    } else {
-      moveCriterion(sourceId, targetId, indicator?.position ?? "after");
-    }
+    moveCriterion(sourceId, targetId, indicator?.position ?? "after");
   };
 
   const clearDragState = () => {
@@ -751,7 +587,6 @@ export function CourseCard({
     pointerDropIndicatorRef.current = null;
     setDraggingCriterionId(null);
     setDraggingSubItemId(null);
-    setDraggingSubItemParentId(null);
     setDropIndicator(null);
   };
 
@@ -766,10 +601,7 @@ export function CourseCard({
       draggingIdRef.current || event.dataTransfer.getData("text/plain");
     if (!raw) return;
     clearDragState();
-    if (raw.startsWith("subitem:")) {
-      const [, parentId, subItemId] = raw.split(":");
-      promoteSubItemToCriterion(parentId, subItemId, null, "after");
-    } else {
+    if (!raw.startsWith("subitem:")) {
       moveCriterion(raw, null, "after");
     }
   };
@@ -779,26 +611,23 @@ export function CourseCard({
     setDropIndicator(indicator);
   };
 
-  const handlePointerDragStart = (
-    source: { criterionId: string; subItemId?: string },
-    clientX: number,
-  ) => {
+  const handlePointerDragStart = (source: {
+    criterionId: string;
+    subItemId?: string;
+  }) => {
     const raw = source.subItemId
       ? `subitem:${source.criterionId}:${source.subItemId}`
       : source.criterionId;
     draggingIdRef.current = raw;
-    dragStartXRef.current = clientX;
     pointerDropIndicatorRef.current = null;
     setDropIndicator(null);
 
     if (source.subItemId) {
       setDraggingSubItemId(source.subItemId);
-      setDraggingSubItemParentId(source.criterionId);
       setDraggingCriterionId(null);
     } else {
       setDraggingCriterionId(source.criterionId);
       setDraggingSubItemId(null);
-      setDraggingSubItemParentId(null);
     }
   };
 
@@ -816,11 +645,11 @@ export function CourseCard({
       '[data-grade-drop-kind="end"]',
     );
     if (endTarget) {
-      setPointerDropIndicator({
-        targetId: "__end__",
-        position: "after",
-        intent: "reorder",
-      });
+      setPointerDropIndicator(
+        raw.startsWith("subitem:")
+          ? null
+          : { targetId: "__end__", position: "after" },
+      );
       return;
     }
 
@@ -835,10 +664,15 @@ export function CourseCard({
         return;
       }
 
-      const sourceParts = raw.split(":");
+      if (!raw.startsWith("subitem:")) {
+        setPointerDropIndicator(null);
+        return;
+      }
+
+      const [, sourceParentId, sourceSubItemId] = raw.split(":");
       if (
-        (raw === parentCriterionId && !raw.startsWith("subitem:")) ||
-        (raw.startsWith("subitem:") && sourceParts[2] === subItemId)
+        sourceParentId !== parentCriterionId ||
+        sourceSubItemId === subItemId
       ) {
         setPointerDropIndicator(null);
         return;
@@ -847,15 +681,9 @@ export function CourseCard({
       const rect = subItemTarget.getBoundingClientRect();
       const position: "before" | "after" =
         (clientY - rect.top) / rect.height < 0.5 ? "before" : "after";
-      const intent: DragIntent = raw.startsWith("subitem:")
-        ? clientX - dragStartXRef.current < -NEST_THRESHOLD_PX
-          ? "promote"
-          : "reorder"
-        : "nest";
       setPointerDropIndicator({
         targetId: `sub:${parentCriterionId}:${subItemId}`,
         position,
-        intent,
       });
       return;
     }
@@ -864,41 +692,22 @@ export function CourseCard({
       '[data-grade-drop-kind="criterion"]',
     );
     const targetId = criterionTarget?.dataset.criterionId;
-    if (!criterionTarget || !targetId || raw === targetId) {
+    if (
+      !criterionTarget ||
+      !targetId ||
+      raw === targetId ||
+      raw.startsWith("subitem:")
+    ) {
       setPointerDropIndicator(null);
       return;
     }
 
     const rect = criterionTarget.getBoundingClientRect();
     const yRatio = (clientY - rect.top) / rect.height;
-    if (raw.startsWith("subitem:")) {
-      setPointerDropIndicator({
-        targetId,
-        position: yRatio < 0.5 ? "before" : "after",
-        intent:
-          clientX - dragStartXRef.current < -NEST_THRESHOLD_PX
-            ? "promote"
-            : "reorder",
-      });
-    } else if (yRatio < 0.28) {
-      setPointerDropIndicator({
-        targetId,
-        position: "before",
-        intent: "reorder",
-      });
-    } else if (yRatio > 0.72) {
-      setPointerDropIndicator({
-        targetId,
-        position: "after",
-        intent: "reorder",
-      });
-    } else {
-      setPointerDropIndicator({
-        targetId,
-        position: "after",
-        intent: "nest",
-      });
-    }
+    setPointerDropIndicator({
+      targetId,
+      position: yRatio < 0.5 ? "before" : "after",
+    });
   };
 
   const handlePointerDragEnd = () => {
@@ -908,10 +717,7 @@ export function CourseCard({
     if (!raw || !indicator) return;
 
     if (indicator.targetId === "__end__") {
-      if (raw.startsWith("subitem:")) {
-        const [, parentId, subItemId] = raw.split(":");
-        promoteSubItemToCriterion(parentId, subItemId, null, "after");
-      } else {
+      if (!raw.startsWith("subitem:")) {
         moveCriterion(raw, null, "after");
       }
       return;
@@ -920,61 +726,27 @@ export function CourseCard({
     if (indicator.targetId.startsWith("sub:")) {
       const [, parentCriterionId, targetSubItemId] =
         indicator.targetId.split(":");
-      if (!raw.startsWith("subitem:")) {
-        if (raw !== parentCriterionId) {
-          convertToSubCriterion(
-            raw,
-            parentCriterionId,
-            targetSubItemId,
-            indicator.position,
-          );
-        }
-        return;
-      }
+      if (!raw.startsWith("subitem:")) return;
 
       const [, sourceParentId, sourceSubItemId] = raw.split(":");
-      if (sourceSubItemId === targetSubItemId) return;
-      if (indicator.intent === "promote") {
-        promoteSubItemToCriterion(
-          sourceParentId,
-          sourceSubItemId,
-          parentCriterionId,
-          indicator.position,
-        );
-      } else if (sourceParentId === parentCriterionId) {
-        moveSubItemWithinParent(
-          parentCriterionId,
-          sourceSubItemId,
-          targetSubItemId,
-          indicator.position === "after",
-        );
-      } else {
-        promoteSubItemToCriterion(
-          sourceParentId,
-          sourceSubItemId,
-          parentCriterionId,
-          indicator.position,
-        );
-      }
+      if (
+        sourceParentId !== parentCriterionId ||
+        sourceSubItemId === targetSubItemId
+      )
+        return;
+
+      moveSubItemWithinParent(
+        parentCriterionId,
+        sourceSubItemId,
+        targetSubItemId,
+        indicator.position === "after",
+      );
       return;
     }
 
     const targetId = indicator.targetId;
-    if (raw.startsWith("subitem:")) {
-      const [, parentId, subItemId] = raw.split(":");
-      if (parentId === targetId && indicator.intent !== "promote") return;
-      promoteSubItemToCriterion(
-        parentId,
-        subItemId,
-        targetId,
-        indicator.position,
-      );
-    } else if (raw !== targetId) {
-      if (indicator.intent === "nest") {
-        convertToSubCriterion(raw, targetId);
-      } else {
-        moveCriterion(raw, targetId, indicator.position);
-      }
+    if (!raw.startsWith("subitem:") && raw !== targetId) {
+      moveCriterion(raw, targetId, indicator.position);
     }
   };
 
@@ -1012,8 +784,6 @@ export function CourseCard({
         : passFailSettings.failLabel,
     [numericGrade, passFailSettings],
   );
-  const isDraggingGradeItem = Boolean(draggingCriterionId || draggingSubItemId);
-
   const handlePassFailToggle = useCallback(
     (value: boolean) => {
       if (value) {
@@ -1041,11 +811,8 @@ export function CourseCard({
 
   const gradeSummary = (collapsed: boolean) => (
     <div
-      className={`relative flex items-center justify-between rounded-lg bg-[#fff8f1] ${collapsed ? "p-4" : "p-6 sm:p-3"}`}
+      className={`flex items-center justify-between rounded-lg bg-[#fff8f1] ${collapsed ? "p-4" : "p-6 sm:p-3"}`}
     >
-      {!collapsed && (
-        <div className="pointer-events-none absolute -top-2 right-8 h-5 w-16 rotate-3 bg-primary/15" />
-      )}
       <div>
         <p className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground sm:text-xs">
           Numeric Grade
@@ -1359,7 +1126,7 @@ export function CourseCard({
                 />
               </div>
 
-              {/* Credits + boost */}
+              {/* Credits */}
               <div className="flex shrink-0 flex-wrap items-center gap-4 sm:gap-3">
                 <div className="flex items-center gap-2">
                   <Label
@@ -1390,39 +1157,6 @@ export function CourseCard({
                     className="w-20 rounded-md border-2 border-primary/20 bg-[#fff8f1]/80 px-3 py-2 text-sm outline-none placeholder:text-muted-foreground/60 focus-visible:ring-2 focus-visible:ring-primary/50 sm:h-8 sm:w-16 sm:px-2 sm:py-1"
                   />
                 </div>
-                {courseCriteria.length > 0 && (
-                  <div className="flex items-center gap-2">
-                    <Label
-                      htmlFor={`boost-${course.id}`}
-                      className="text-sm font-medium"
-                      title="Extra points added to your final course grade (e.g. a 2% participation curve)"
-                    >
-                      Bonus (+%):
-                    </Label>
-                    <input
-                      id={`boost-${course.id}`}
-                      type="text"
-                      inputMode="decimal"
-                      value={percentBoostDraft}
-                      onFocus={() => setPercentBoostFocused(true)}
-                      onChange={(e) => setPercentBoostDraft(e.target.value)}
-                      onBlur={() => {
-                        setPercentBoostFocused(false);
-                        commitPercentBoost();
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          setPercentBoostFocused(false);
-                          commitPercentBoost();
-                          e.currentTarget.blur();
-                        }
-                      }}
-                      placeholder="0"
-                      className="w-24 rounded-md border-2 border-primary/20 bg-[#fff8f1]/80 px-3 py-2 text-sm outline-none placeholder:text-muted-foreground/60 focus-visible:ring-2 focus-visible:ring-primary/50 sm:h-8 sm:w-20 sm:px-2 sm:py-1"
-                      title="Extra points added to your final course grade (e.g. a 2% participation curve)"
-                    />
-                  </div>
-                )}
               </div>
             </div>
 
@@ -1497,13 +1231,8 @@ export function CourseCard({
               criterionIds: courseCriteria.map((c) => c.id),
               draggingCriterionId,
               draggingSubItemId,
-              draggingSubItemParentId,
               dropIndicator,
               updateCriterion,
-              moveCriterion,
-              convertToSubCriterion,
-              moveSubItemWithinParent,
-              promoteSubItemToCriterion,
               deleteCriterion,
               toggleExpanded,
               addSubItem,
@@ -1535,14 +1264,10 @@ export function CourseCard({
             </div>
           </CourseContext.Provider>
 
-          {courseCriteria.length > 0 && isDraggingGradeItem && (
+          {courseCriteria.length > 0 && draggingCriterionId && (
             <div
               data-grade-drop-kind="end"
-              className={`flex h-9 items-center justify-center rounded border-2 border-dashed text-xs font-semibold uppercase tracking-widest transition-all ${
-                isDraggingGradeItem
-                  ? "border-primary/25 bg-primary/5 text-primary/70"
-                  : "border-transparent text-transparent"
-              } ${
+              className={`flex h-9 items-center justify-center rounded border-2 border-dashed border-primary/25 bg-primary/5 text-xs font-semibold uppercase tracking-widest text-primary/70 transition-all ${
                 dropIndicator?.targetId === "__end__"
                   ? "border-primary/60 bg-primary/10 text-primary"
                   : ""
@@ -1553,7 +1278,6 @@ export function CourseCard({
                 setDropIndicator({
                   targetId: "__end__",
                   position: "after",
-                  intent: "reorder",
                 });
               }}
               onDragLeave={() => {
@@ -1566,6 +1290,65 @@ export function CourseCard({
             </div>
           )}
 
+          {courseCriteria.length > 0 && (
+            <div
+              className="flex flex-col gap-2 rounded-md bg-muted/20 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-end sm:px-2 sm:py-2"
+              onDragOver={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                e.dataTransfer.dropEffect = "none";
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+              }}
+            >
+              <Label
+                htmlFor={`boost-${course.id}`}
+                className="text-sm font-medium"
+                title="Extra points added to your final course grade (e.g. a 2% participation curve)"
+              >
+                Course Bonus:
+              </Label>
+              <div className="flex w-full items-center rounded-md border-2 border-primary/20 bg-[#fff8f1]/80 text-sm focus-within:ring-2 focus-within:ring-primary/50 sm:h-8 sm:w-20">
+                <span
+                  aria-hidden="true"
+                  className="pointer-events-none pl-3 text-muted-foreground sm:pl-2"
+                >
+                  +
+                </span>
+                <input
+                  id={`boost-${course.id}`}
+                  type="text"
+                  inputMode="decimal"
+                  value={percentBoostDraft}
+                  onFocus={() => setPercentBoostFocused(true)}
+                  onChange={(e) => setPercentBoostDraft(e.target.value)}
+                  onBlur={() => {
+                    setPercentBoostFocused(false);
+                    commitPercentBoost();
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      setPercentBoostFocused(false);
+                      commitPercentBoost();
+                      e.currentTarget.blur();
+                    }
+                  }}
+                  placeholder="0"
+                  className="min-w-0 flex-1 bg-transparent px-1 py-2 text-sm outline-none placeholder:text-muted-foreground/60 sm:py-1"
+                  title="Extra points added to your final course grade (e.g. a 2% participation curve)"
+                />
+                <span
+                  aria-hidden="true"
+                  className="pointer-events-none pr-3 text-muted-foreground sm:pr-2"
+                >
+                  %
+                </span>
+              </div>
+            </div>
+          )}
+
           {courseCriteria.length === 0 && (
             <div className="rounded-lg border-2 border-dashed border-primary/20 bg-[#fff8f1]/70 py-8 text-center text-muted-foreground sm:py-4">
               <p className="text-sm">
@@ -1575,8 +1358,7 @@ export function CourseCard({
           )}
         </div>
 
-        <div className="relative mt-1 rounded-lg bg-white/35 p-5 sm:p-2">
-          <div className="pointer-events-none absolute -top-2 left-1/2 h-5 w-20 -translate-x-1/2 rotate-2 bg-primary/15" />
+        <div className="mt-1 rounded-lg bg-white/35 p-5 sm:p-2">
           {gradeSummary(false)}
         </div>
       </CardContent>
