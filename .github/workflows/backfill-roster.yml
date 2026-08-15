@@ -1,0 +1,37 @@
+name: Backfill Cornell Roster
+
+# Refreshes the Cornell course mirror + the grouped materialized view the
+# roster page reads from. Runs weekly, or on demand from the Actions tab.
+on:
+  schedule:
+    # Mondays 09:00 UTC.
+    - cron: "0 9 * * 1"
+  workflow_dispatch: {}
+
+# Never run two backfills at once (they write the same tables).
+concurrency:
+  group: backfill-roster
+  cancel-in-progress: false
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    # Roster crawl (<=1 req/sec to Cornell) plus MV refresh can take a while.
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # Run the script directly (the npm script uses --env-file=.env.local,
+      # which doesn't exist in CI). Secrets come in via `env:` instead.
+      - name: Run backfill + refresh materialized view
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node --import tsx scripts/backfill-cornell-roster.ts
