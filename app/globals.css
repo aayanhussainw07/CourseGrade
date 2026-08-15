@@ -190,6 +190,11 @@
   50% { transform: rotate(4deg); }
 }
 
+@keyframes logo-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
 @layer utilities {
   .animate-pulse-scale {
     animation: pulse-scale 0.3s ease-out;
@@ -205,6 +210,9 @@
   }
   .animate-logo-wiggle {
     animation: logo-wiggle 6s ease-in-out infinite;
+  }
+  .animate-logo-float {
+    animation: logo-float 1.8s ease-in-out infinite;
   }
 }
 
