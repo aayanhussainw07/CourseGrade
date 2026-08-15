@@ -1,0 +1,21 @@
+import Image from "next/image";
+
+export function AppScreenLoader() {
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      className="-mx-4 -my-8 flex min-h-screen items-center justify-center bg-foreground"
+    >
+      <Image
+        src="/coursegrade.png"
+        alt=""
+        width={56}
+        height={56}
+        priority
+        className="h-14 w-14 animate-spin motion-reduce:animate-none"
+      />
+      <span className="sr-only">Loading screen</span>
+    </div>
+  );
+}

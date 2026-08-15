@@ -1,6 +1,13 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import {
+  useState,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useCallback,
+  useMemo,
+} from "react";
 import { CourseCard } from "@/components/course-card";
 import { CourseSidebar } from "@/components/course-sidebar";
 import { SemesterPanel } from "@/components/semester-panel";
@@ -39,6 +46,9 @@ import { useSemesterData } from "@/hooks/useSemesterData";
 import { FeedbackPanel } from "@/components/feedback-panel";
 import { COURSE_ROSTER_ENABLED } from "@/lib/feature-flags";
 import { AppTopBar } from "@/components/app-top-bar";
+import { AppScreenLoader } from "@/components/app-screen-loader";
+
+const SCREEN_TRANSITION_DURATION_MS = 300;
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -47,6 +57,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   // ── Pure UI state ─────────────────────────────────────────────────────────
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isScreenTransitioning, setIsScreenTransitioning] = useState(false);
+  const previousScreenRef = useRef<string | null>(null);
+  const screenTransitionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
   const [appSettings, setAppSettings] = useState<AppSettings>(loadAppSettings);
   const [syllabusImportOpen, setSyllabusImportOpen] = useState(false);
   const [editingSemesterNameId, setEditingSemesterNameId] = useState<
@@ -110,6 +125,46 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     ignoredSemesterIds,
     toggleSemesterIgnore,
   } = useSemesterData({ appSettings });
+  const screenKey = isSettingsView
+    ? "settings"
+    : activeSemesterId
+      ? `semester:${activeSemesterId}`
+      : "dashboard";
+
+  useLayoutEffect(() => {
+    if (status !== "authenticated" || loading) {
+      previousScreenRef.current = screenKey;
+      return;
+    }
+
+    if (previousScreenRef.current === null) {
+      previousScreenRef.current = screenKey;
+      return;
+    }
+
+    if (previousScreenRef.current === screenKey) return;
+
+    previousScreenRef.current = screenKey;
+    if (screenTransitionTimerRef.current) {
+      clearTimeout(screenTransitionTimerRef.current);
+    }
+
+    setIsScreenTransitioning(true);
+    screenTransitionTimerRef.current = setTimeout(() => {
+      setIsScreenTransitioning(false);
+      screenTransitionTimerRef.current = null;
+    }, SCREEN_TRANSITION_DURATION_MS);
+  }, [loading, screenKey, status]);
+
+  useEffect(
+    () => () => {
+      if (screenTransitionTimerRef.current) {
+        clearTimeout(screenTransitionTimerRef.current);
+      }
+    },
+    [],
+  );
+
 
   const startEditingSemesterName = useCallback(() => {
     if (!activeSemesterId) return;
@@ -362,7 +417,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         className="w-full px-4 py-8 transition-all duration-300 md:pl-[14rem] lg:pl-[17rem]"
         style={{ paddingRight: "1rem" }}
       >
-        {isSettingsView ? (
+        {isScreenTransitioning ? (
+          <AppScreenLoader />
+        ) : isSettingsView ? (
           <SettingsPage
             settings={appSettings}
             onSettingsChange={setAppSettings}
