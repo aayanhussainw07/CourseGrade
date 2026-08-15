@@ -9,6 +9,7 @@ import {
   Calculator,
   GraduationCap,
   Layers,
+  Mouse,
   NotebookPen,
   Pencil,
   Plus,
@@ -17,10 +18,13 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { CourseCard } from "@/components/course-card";
 import { DashboardPanel } from "@/components/dashboard-panel";
 import { useInView } from "@/hooks/use-in-view";
 import {
   marketingCourses,
+  marketingCourseCard,
+  marketingDashboardStats,
   marketingFeatures,
   marketingTimelineData,
 } from "@/app/page-marketing-data";
@@ -153,10 +157,156 @@ const BlockHeading = ({
   </span>
 );
 
+const revealClass = (
+  isHydrated: boolean,
+  inView: boolean,
+  animationClass: string,
+) => {
+  if (!isHydrated) return "";
+  return inView ? animationClass : "opacity-0";
+};
+
+const marketingOverallGpa =
+  marketingDashboardStats.find((stat) => stat.label === "Overall GPA")
+    ?.value ?? "3.91";
+const marketingSemesters =
+  marketingDashboardStats.find((stat) => stat.label === "Semesters Tracked")
+    ?.value ?? "6";
+const marketingCredits =
+  marketingDashboardStats.find((stat) => stat.label === "Total Credits")
+    ?.value ?? "0";
+
+function MarketingDashboardMock() {
+  return (
+    <div
+      role="img"
+      aria-label={`Example dashboard showing a ${marketingOverallGpa} overall GPA, ${marketingSemesters} semesters tracked, and ${marketingCredits} total credits`}
+      className="relative overflow-hidden rounded-xl bg-[#2d0008] p-4 sm:p-6 lg:p-8"
+      style={{
+        backgroundImage:
+          "repeating-linear-gradient(0deg, rgba(255,255,255,0.04) 0px, rgba(255,255,255,0.04) 1px, transparent 1px, transparent 40px), repeating-linear-gradient(90deg, rgba(255,255,255,0.04) 0px, rgba(255,255,255,0.04) 1px, transparent 1px, transparent 40px)",
+      }}
+    >
+      <div className="grid gap-4 md:gap-6 lg:grid-cols-[minmax(260px,0.85fr)_minmax(0,1.65fr)]">
+        <div className="relative min-h-[190px] rotate-[-1deg] rounded-md border border-[#e0c678] bg-[#fff0a8] p-5 text-foreground sm:p-6">
+          <div className="absolute -top-3 left-1/2 h-7 w-28 -translate-x-1/2 rotate-2 border border-white/35 bg-white/45" />
+          <p className="font-etna text-3xl leading-none text-primary">
+            QUOTE IT!
+          </p>
+          <p className="mt-8 text-xl italic leading-relaxed text-foreground/85">
+            “Small progress is still progress.”
+          </p>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-3 sm:grid-rows-2 md:gap-6">
+          <div className="relative flex min-h-[190px] rotate-[0.8deg] flex-col rounded-md border-2 border-primary/35 bg-[#fff8f1] p-5 text-foreground sm:col-span-2 sm:row-span-2 sm:p-6">
+            <div className="absolute -top-2.5 left-7 h-6 w-24 rotate-[-3deg] bg-primary/25" />
+            <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+              Overall GPA
+            </p>
+            <p className="mt-auto text-6xl font-black leading-none text-primary sm:text-8xl">
+              {marketingOverallGpa}
+            </p>
+          </div>
+
+          {[
+            {
+              label: "Semesters",
+              value: marketingSemesters,
+              detail: "tracked",
+              rotate: "rotate-[0.6deg]",
+            },
+            {
+              label: "Total Credits",
+              value: marketingCredits,
+              detail: "credits",
+              rotate: "rotate-[-0.9deg]",
+            },
+          ].map(({ label, value, detail, rotate }) => (
+            <div
+              key={label}
+              className={`relative flex min-h-[82px] flex-col justify-center rounded-md border border-primary/20 bg-[#fff8f1] p-5 text-foreground ${rotate}`}
+            >
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+                {label}
+              </p>
+              <div className="mt-1.5 flex items-baseline gap-2">
+                <p className="text-3xl font-bold leading-none text-primary">
+                  {value}
+                </p>
+                <span className="text-xs font-semibold uppercase text-foreground/45">
+                  {detail}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MarketingCourseMock() {
+  return (
+    <div className="mt-14 grid gap-8 lg:grid-cols-[minmax(240px,0.65fr)_minmax(0,1.35fr)] lg:items-center lg:gap-12">
+      <div className="max-w-xl">
+        <p className="text-xs font-bold uppercase tracking-[0.24em] text-primary">
+          Inside every course
+        </p>
+        <h3 className="mt-3 font-futura-bold text-3xl font-black uppercase leading-none tracking-widest text-foreground sm:text-4xl">
+          Know exactly where you stand
+        </h3>
+        <p className="mt-5 text-base leading-7 text-muted-foreground sm:text-lg">
+          Add each part of your grading scheme, update a score, and watch your
+          numeric and letter grade respond instantly. No spreadsheet formulas
+          required.
+        </p>
+      </div>
+
+      <div
+        role="img"
+        aria-label="Example Data Structures course card with weighted grade categories and a 92.30 percent A-minus grade"
+        className="relative rotate-[0.4deg]"
+      >
+        <div inert aria-hidden="true">
+          <CourseCard
+            course={marketingCourseCard}
+            onUpdate={() => undefined}
+            onDelete={() => undefined}
+            skipDeleteConfirm
+          />
+        </div>
+        <Mouse
+          aria-hidden="true"
+          className="pointer-events-none absolute right-[9%] top-[43%] z-20 h-11 w-11 fill-[#fff8f1] text-primary drop-shadow-[0_4px_5px_rgba(45,0,8,0.35)] motion-safe:animate-pulse sm:h-14 sm:w-14"
+          strokeWidth={2.25}
+        />
+      </div>
+    </div>
+  );
+}
+
 export function MarketingPage() {
-  const { ref: featuresRef, inView: featuresInView } = useInView(0.3);
-  const { ref: chartsRef, inView: chartsInView } = useInView(0.2);
-  const { ref: ctaRef, inView: ctaInView } = useInView(0.3);
+  const {
+    ref: featuresRef,
+    inView: featuresInView,
+    isHydrated: featuresHydrated,
+  } = useInView(0.3);
+  const {
+    ref: dashboardRef,
+    inView: dashboardInView,
+    isHydrated: dashboardHydrated,
+  } = useInView(0.2);
+  const {
+    ref: chartsRef,
+    inView: chartsInView,
+    isHydrated: chartsHydrated,
+  } = useInView(0.2);
+  const {
+    ref: ctaRef,
+    inView: ctaInView,
+    isHydrated: ctaHydrated,
+  } = useInView(0.3);
 
   return (
     <div
@@ -256,7 +406,7 @@ export function MarketingPage() {
           </div>
           <div
             ref={featuresRef}
-            className={`grid gap-6 px-4 md:grid-cols-3 md:grid-rows-2 ${featuresInView ? "animate-fade-up" : "opacity-0"}`}
+            className={`grid gap-6 px-4 md:grid-cols-3 md:grid-rows-2 ${revealClass(featuresHydrated, featuresInView, "animate-fade-up")}`}
           >
             {marketingFeatures.map((feature, i) => {
               const isHero = i === 0;
@@ -274,7 +424,7 @@ export function MarketingPage() {
                 <div
                   data-nav-tone="dark"
                   key={feature.title}
-                  className={`${featuresInView ? "animate-fade-up-sm" : "opacity-0"} group relative rounded-lg text-center text-white transition-all duration-300 hover:-translate-y-2 hover:rotate-0 ${layout}`}
+                  className={`${revealClass(featuresHydrated, featuresInView, "animate-fade-up-sm")} group relative rounded-lg text-center text-white transition-all duration-300 hover:-translate-y-2 hover:rotate-0 ${layout}`}
                   style={{
                     animationDelay: featuresInView ? `${i * 0.1}s` : undefined,
                     backgroundColor:
@@ -314,6 +464,39 @@ export function MarketingPage() {
         </div>
       </section>
 
+      {/* DASHBOARD MOCK */}
+      <section
+        data-nav-tone="light"
+        className="relative overflow-hidden bg-background pb-20"
+      >
+        <DoodleField />
+        <div className="relative z-10 mx-auto max-w-[1400px] px-6 lg:px-14">
+          <div
+            ref={dashboardRef}
+            className={revealClass(
+              dashboardHydrated,
+              dashboardInView,
+              "animate-fade-up",
+            )}
+          >
+            <div className="mb-8 grid gap-4 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] lg:items-end">
+              <div>
+                <h2 className="font-futura-bold text-3xl font-black uppercase leading-none tracking-widest text-foreground sm:text-4xl">
+                  Track the whole picture
+                </h2>
+              </div>
+              <p className="max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg">
+                Pin a quote that keeps you moving, watch your overall GPA as
+                grades change, and keep every tracked semester and earned
+                credit visible in one place.
+              </p>
+            </div>
+            <MarketingDashboardMock />
+            <MarketingCourseMock />
+          </div>
+        </div>
+      </section>
+
       {/* CHARTS */}
       <section
         data-nav-tone="light"
@@ -322,7 +505,7 @@ export function MarketingPage() {
         <DoodleField />
         <div className="relative z-10 mx-auto max-w-[1400px] px-2 lg:px-4">
           <div
-            className={`mx-4 mb-6 flex justify-start lg:mx-10 ${chartsInView ? "animate-fade-up" : "opacity-0"}`}
+            className={`mx-4 mb-6 flex justify-start lg:mx-10 ${revealClass(chartsHydrated, chartsInView, "animate-fade-up")}`}
           >
             <div>
               <h2 className="font-futura-bold text-4xl font-black uppercase leading-none tracking-widest text-foreground sm:text-5xl lg:text-6xl">
@@ -334,7 +517,7 @@ export function MarketingPage() {
           </div>
           <div
             ref={chartsRef}
-            className={`relative mx-4 ${chartsInView ? "animate-fade-up" : "opacity-0"}`}
+            className={`relative mx-4 ${revealClass(chartsHydrated, chartsInView, "animate-fade-up")}`}
           >
             <DashboardPanel
               timelineData={marketingTimelineData}
@@ -367,7 +550,7 @@ export function MarketingPage() {
           <div
             data-nav-tone="light"
             ref={ctaRef}
-            className={`${ctaInView ? "animate-fade-up" : "opacity-0"} relative mx-auto max-w-2xl rounded-xl bg-[#fff8f1] px-6 py-10 text-foreground sm:px-10`}
+            className={`${revealClass(ctaHydrated, ctaInView, "animate-fade-up")} relative mx-auto max-w-2xl rounded-xl bg-[#fff8f1] px-6 py-10 text-foreground sm:px-10`}
           >
             <Tape className="-top-3 left-1/2 -translate-x-1/2 rotate-[-2deg]" />
             <div className="space-y-1">

@@ -93,6 +93,55 @@ export const marketingCourses: Course[] = MARKETING_COURSE_SEEDS.map(
   },
 );
 
+export const marketingCourseCard: Course = {
+  id: "marketing-course-card",
+  name: "Data Structures",
+  credits: 4,
+  percentBoost: 0,
+  criteria: [
+    {
+      id: "marketing-problem-sets",
+      clientId: "marketing-problem-sets",
+      name: "Problem Sets",
+      weight: 35,
+      score: 94,
+      dropLowest: 0,
+      extraCredit: 0,
+    },
+    {
+      id: "marketing-midterm",
+      clientId: "marketing-midterm",
+      name: "Midterm",
+      weight: 25,
+      score: 88,
+      dropLowest: 0,
+      extraCredit: 0,
+    },
+    {
+      id: "marketing-projects",
+      clientId: "marketing-projects",
+      name: "Projects",
+      weight: 20,
+      score: 96,
+      dropLowest: 0,
+      extraCredit: 0,
+    },
+    {
+      id: "marketing-final",
+      clientId: "marketing-final",
+      name: "Final",
+      weight: 20,
+      score: 91,
+      dropLowest: 0,
+      extraCredit: 0,
+    },
+  ],
+  gradeScale: cloneGradeScale(DEFAULT_GRADE_SCALE),
+  collapsed: false,
+  isPassFail: false,
+  headerColor: "#c56b5e",
+};
+
 const marketingTotalCredits = marketingCourses.reduce(
   (sum, course) => sum + (course.credits ?? 0),
   0,
