@@ -203,7 +203,7 @@ export function CourseSidebar({
   };
 
   const containerClass = cn(
-    "overflow-hidden border-r border-white/10 bg-foreground text-white flex flex-col",
+    "overflow-hidden bg-foreground text-white flex flex-col",
     variant === "desktop"
       ? "fixed inset-y-0 left-0 hidden w-52 md:flex lg:w-64"
       : "h-full w-full rounded-none border-0",
@@ -218,7 +218,7 @@ export function CourseSidebar({
             "repeating-linear-gradient(0deg, rgba(255,255,255,0.04) 0px, rgba(255,255,255,0.04) 1px, transparent 1px, transparent 40px), repeating-linear-gradient(90deg, rgba(255,255,255,0.04) 0px, rgba(255,255,255,0.04) 1px, transparent 1px, transparent 40px)",
         }}
       >
-        <div className="border-b-2 border-white/10">
+        <div>
           <div className="flex mx-auto mt-1 items-center justify-center gap-2 px-2 pt-2 pb-1">
             <Image
               src="/coursegrade.png"

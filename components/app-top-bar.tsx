@@ -36,10 +36,10 @@ export function AppTopBar({
             type="button"
             aria-current={active ? "page" : undefined}
             onClick={item.action}
-            className={`rounded-md border border-white/10 bg-foreground px-3 py-1.5 text-white underline-offset-[5px] transition-[opacity,border-color] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 ${
+            className={`rounded-md border-0 bg-foreground px-3 py-1.5 text-white underline-offset-[5px] transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 ${
               active
                 ? "underline decoration-2"
-                : "opacity-80 hover:border-white/25 hover:opacity-100 hover:underline"
+                : "opacity-80 hover:opacity-100 hover:underline"
             }`}
             style={{
               backgroundImage:
