@@ -1,6 +1,13 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import {
+  useState,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useCallback,
+  useMemo,
+} from "react";
 import { useSession } from "next-auth/react";
 import { useRouter, usePathname } from "next/navigation";
 import type { Course, Semester } from "@/lib/types";
@@ -66,6 +73,7 @@ export function useSemesterData({ appSettings }: { appSettings: AppSettings }) {
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const saveStatusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dataLoadedRef = useRef(false);
+  const appliedCourseOpenStateRef = useRef<string | null>(null);
 
   const ignoredSemesterIds = useMemo(
     () => new Set(semesters.filter((s) => s.ignored).map((s) => s.id)),
@@ -235,6 +243,37 @@ export function useSemesterData({ appSettings }: { appSettings: AppSettings }) {
   useEffect(() => {
     if (!loading) dataLoadedRef.current = true;
   }, [loading]);
+
+  useLayoutEffect(() => {
+    if (loading) return;
+    if (typeof routeSemesterId !== "string") {
+      appliedCourseOpenStateRef.current = null;
+      return;
+    }
+
+    const shouldCollapse = appSettings.collapseCoursesOnSemesterOpen;
+    const applicationKey = `${routeSemesterId}:${shouldCollapse}`;
+    if (appliedCourseOpenStateRef.current === applicationKey) return;
+    appliedCourseOpenStateRef.current = applicationKey;
+
+    setSemesters((previous) => {
+      let changed = false;
+      const next = previous.map((semester) => {
+        if (semester.id !== routeSemesterId) return semester;
+        const courses = semester.courses.map((course) => {
+          if (course.collapsed === shouldCollapse) return course;
+          changed = true;
+          return { ...course, collapsed: shouldCollapse };
+        });
+        return changed ? { ...semester, courses } : semester;
+      });
+      return changed ? next : previous;
+    });
+  }, [
+    appSettings.collapseCoursesOnSemesterOpen,
+    loading,
+    routeSemesterId,
+  ]);
 
   // ── Computed ──────────────────────────────────────────────────────────────
 

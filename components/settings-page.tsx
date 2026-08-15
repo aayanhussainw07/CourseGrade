@@ -382,38 +382,88 @@ export function SettingsPage({
               <div className={settingRowClass}>
                 <div>
                   <p
-                    id="skip-semester-delete-confirm-label"
+                    id="course-open-state-label"
                     className="text-sm font-medium"
                   >
-                    Skip semester delete confirmation
+                    Courses on semester open
                   </p>
                   <p className="mt-0.5 text-xs text-muted-foreground">
-                    Delete semesters without an extra prompt.
+                    Choose how courses appear whenever you open a semester.
                   </p>
                 </div>
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={localSettings.skipSemesterDeleteConfirm}
-                  aria-labelledby="skip-semester-delete-confirm-label"
-                  onClick={() =>
-                    update(
-                      "skipSemesterDeleteConfirm",
-                      !localSettings.skipSemesterDeleteConfirm,
-                    )
-                  }
-                  className={switchClass(
-                    localSettings.skipSemesterDeleteConfirm,
-                  )}
+                <div
+                  role="radiogroup"
+                  aria-labelledby="course-open-state-label"
+                  className="flex overflow-hidden rounded-lg border border-primary/25 bg-white text-sm font-medium"
                 >
-                  <span
-                    className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white transition-transform ${
-                      localSettings.skipSemesterDeleteConfirm
-                        ? "translate-x-5"
-                        : "translate-x-0"
-                    }`}
-                  />
-                </button>
+                  {[
+                    { label: "Collapse", value: true },
+                    { label: "Expand", value: false },
+                  ].map((option) => {
+                    const selected =
+                      localSettings.collapseCoursesOnSemesterOpen ===
+                      option.value;
+                    return (
+                      <button
+                        key={option.label}
+                        type="button"
+                        role="radio"
+                        aria-checked={selected}
+                        onClick={() =>
+                          update(
+                            "collapseCoursesOnSemesterOpen",
+                            option.value,
+                          )
+                        }
+                        className={`px-4 py-2 transition-colors ${
+                          selected
+                            ? "bg-primary text-primary-foreground"
+                            : "text-muted-foreground hover:bg-primary/5 hover:text-foreground"
+                        }`}
+                      >
+                        {option.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              <div className="border-t border-primary/10 pt-5">
+                <div className={settingRowClass}>
+                  <div>
+                    <p
+                      id="skip-semester-delete-confirm-label"
+                      className="text-sm font-medium"
+                    >
+                      Skip semester delete confirmation
+                    </p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      Delete semesters without an extra prompt.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={localSettings.skipSemesterDeleteConfirm}
+                    aria-labelledby="skip-semester-delete-confirm-label"
+                    onClick={() =>
+                      update(
+                        "skipSemesterDeleteConfirm",
+                        !localSettings.skipSemesterDeleteConfirm,
+                      )
+                    }
+                    className={switchClass(
+                      localSettings.skipSemesterDeleteConfirm,
+                    )}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white transition-transform ${
+                        localSettings.skipSemesterDeleteConfirm
+                          ? "translate-x-5"
+                          : "translate-x-0"
+                      }`}
+                    />
+                  </button>
+                </div>
               </div>
               <div className="border-t border-primary/10 pt-5">
                 <div className={settingRowClass}>

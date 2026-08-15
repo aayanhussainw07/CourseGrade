@@ -8,6 +8,23 @@ import {
 } from "../lib/grade-utils";
 import { DEFAULT_GRADE_SCALE } from "../lib/types";
 
+test("course open state defaults to collapsed and preserves an expand preference", () => {
+  assert.equal(
+    normalizeAppSettings(undefined).collapseCoursesOnSemesterOpen,
+    true,
+  );
+  assert.equal(
+    normalizeAppSettings({ collapseCoursesOnSemesterOpen: false })
+      .collapseCoursesOnSemesterOpen,
+    false,
+  );
+  assert.equal(
+    normalizeAppSettings({ collapseCoursesOnSemesterOpen: "invalid" })
+      .collapseCoursesOnSemesterOpen,
+    true,
+  );
+});
+
 test("legacy pass/fail app settings restore the saved letter scale", () => {
   const letterScale = [
     { letter: "A", min: 90 },

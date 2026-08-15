@@ -13,6 +13,7 @@ export interface AppSettings {
   defaultPassLabel: string
   defaultFailLabel: string
   defaultPassThreshold: number
+  collapseCoursesOnSemesterOpen: boolean
   skipSemesterDeleteConfirm: boolean
   skipCourseDeleteConfirm: boolean
   school: "general" | "cornell"
@@ -26,6 +27,7 @@ const DEFAULT_APP_SETTINGS: AppSettings = {
   defaultPassLabel: "P",
   defaultFailLabel: "F",
   defaultPassThreshold: 60,
+  collapseCoursesOnSemesterOpen: true,
   skipSemesterDeleteConfirm: false,
   skipCourseDeleteConfirm: false,
   school: "general",
@@ -81,10 +83,15 @@ export function normalizeAppSettings(value: unknown): AppSettings {
     : storedScale && !isLegacyPassFailScale(storedScale, stored)
       ? storedScale
       : DEFAULT_GRADE_SCALE.map((grade) => ({ ...grade }))
+  const collapseCoursesOnSemesterOpen =
+    typeof stored.collapseCoursesOnSemesterOpen === "boolean"
+      ? stored.collapseCoursesOnSemesterOpen
+      : DEFAULT_APP_SETTINGS.collapseCoursesOnSemesterOpen
   const merged = {
     ...DEFAULT_APP_SETTINGS,
     ...stored,
     defaultGradeScale,
+    collapseCoursesOnSemesterOpen,
   } as AppSettings & { defaultGradeScaleSnapshot?: unknown }
   delete merged.defaultGradeScaleSnapshot
   return merged
