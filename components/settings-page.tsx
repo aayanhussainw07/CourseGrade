@@ -1,7 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { AlertTriangle, CheckCircle2, CloudOff, Loader2 } from "lucide-react";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  CloudOff,
+  Download,
+  Loader2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,6 +18,8 @@ import { DEFAULT_GRADE_SCALE } from "@/lib/types";
 interface SettingsPageProps {
   settings: AppSettings;
   onSettingsChange: (settings: AppSettings) => void;
+  onExportData: () => void;
+  hasExportData: boolean;
   onClearAllData: () => Promise<void>;
   userEmail?: string;
   userId?: string;
@@ -22,6 +30,8 @@ type SaveStatus = "idle" | "saving" | "saved" | "error";
 export function SettingsPage({
   settings,
   onSettingsChange,
+  onExportData,
+  hasExportData,
   onClearAllData,
   userEmail,
   userId,
@@ -127,6 +137,25 @@ export function SettingsPage({
     } finally {
       setClearing(false);
       setClearStep("idle");
+    }
+  };
+
+  const handleExportData = () => {
+    setDataNotice(null);
+    try {
+      onExportData();
+      setDataNotice({
+        kind: "success",
+        message: "CSV export downloaded.",
+      });
+    } catch (error) {
+      setDataNotice({
+        kind: "error",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Your data could not be exported. Please try again.",
+      });
     }
   };
 
@@ -501,6 +530,25 @@ export function SettingsPage({
                   {dataNotice.message}
                 </div>
               )}
+
+              <div className={`${settingRowClass} border-b border-primary/10 pb-4`}>
+                <div>
+                  <p className="text-sm font-medium">Export all grades</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    Download every semester&apos;s courses, criteria, weights,
+                    and current grades as one CSV.
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="shrink-0 bg-white"
+                  onClick={handleExportData}
+                  disabled={!hasExportData}
+                >
+                  <Download className="h-4 w-4" /> Export CSV
+                </Button>
+              </div>
 
               {clearStep === "idle" ? (
                 <div className={settingRowClass}>

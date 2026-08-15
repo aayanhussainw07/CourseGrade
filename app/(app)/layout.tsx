@@ -154,6 +154,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     deleteSemester,
     editSemester,
     clearAllData,
+    exportAllDataCsv,
     addCourse: createCourse,
     updateCourse,
     deleteCourse,
@@ -486,6 +487,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <SettingsPage
             settings={appSettings}
             onSettingsChange={setAppSettings}
+            onExportData={exportAllDataCsv}
+            hasExportData={orderedSemesters.length > 0}
             onClearAllData={clearAllData}
             userEmail={session?.user?.email ?? undefined}
             userId={session?.user?.id ?? session?.user?.email ?? undefined}

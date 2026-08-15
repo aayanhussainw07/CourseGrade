@@ -40,6 +40,7 @@ import {
 } from "@/app/page-utils";
 import { useUndoRedo } from "./useUndoRedo";
 import type { AppSettings } from "@/lib/app-settings";
+import { serializeAllGradesCsv } from "@/lib/data-export";
 import { getRandomHeaderColor } from "@/lib/header-colors";
 import {
   SAVE_ERROR_DURATION_MS,
@@ -734,6 +735,14 @@ export function useSemesterData({ appSettings }: { appSettings: AppSettings }) {
     );
   }, [semesterOrder, semesters]);
 
+  const exportAllDataCsv = useCallback(() => {
+    const date = new Date().toISOString().slice(0, 10);
+    triggerFileDownload(
+      `coursegrade-all-data-${date}.csv`,
+      serializeAllGradesCsv(orderedSemesters),
+    );
+  }, [orderedSemesters]);
+
   const importSemesterFromJson = useCallback(
     async (file: File) => {
       try {
@@ -910,5 +919,6 @@ export function useSemesterData({ appSettings }: { appSettings: AppSettings }) {
     exportSemesterToJson,
     exportCourseToJson,
     exportDashboardBackup,
+    exportAllDataCsv,
   };
 }

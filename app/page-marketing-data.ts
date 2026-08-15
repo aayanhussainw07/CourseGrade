@@ -1,9 +1,9 @@
 import {
   type LucideIcon,
+  Download,
   GraduationCap,
   Layers,
   SlidersHorizontal,
-  Sparkles,
   TrendingUp,
 } from "lucide-react";
 import { DEFAULT_GRADE_SCALE, type Course } from "@/lib/types";
@@ -26,10 +26,10 @@ export const marketingFeatures: {
     icon: SlidersHorizontal,
   },
   {
-    title: "Skip the boring setup",
+    title: "Take your data with you",
     description:
-      "Parse syllabi to easily create grading schemes for your courses.",
-    icon: Sparkles,
+      "Export every semester's courses, criteria, weights, and grades in one clean CSV.",
+    icon: Download,
   },
 ];
 
