@@ -11,7 +11,7 @@ load_backend_env()
 
 from config import Config, get_cors_origins
 from extensions import db, migrate
-from routes import api
+from routes import api, record_user_activity
 
 
 def create_app() -> Flask:
@@ -57,6 +57,16 @@ def create_app() -> Flask:
         if not expected_secret or not hmac.compare_digest(provided_secret, expected_secret):
             return jsonify({"detail": "Unauthorized."}), 401
 
+        return None
+
+    @app.before_request
+    def track_user_activity():
+        # Runs only after the secret check passes (Flask stops on its 401).
+        if not request.path.startswith("/api/"):
+            return None
+        if request.path == "/api/health/" or request.method == "OPTIONS":
+            return None
+        record_user_activity(request.headers.get("X-User-Id", "").strip())
         return None
 
     @app.errorhandler(HTTPException)

@@ -1,19 +1,12 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { ADMIN_EMAIL, isAdminEmail } from "@/lib/is-admin";
 
-const FALLBACK_ADMIN_EMAILS = ["aayanhussainw07@gmail.com", "ah2425@gmail.com"];
-const DEV_INTERNAL_API_SECRET = "coursegrade-dev-internal-secret";
+export { isAdminEmail };
 
 export function getAdminEmails() {
-  const configured = process.env.ADMIN_EMAILS?.split(",")
-    .map((email) => email.trim().toLowerCase())
-    .filter(Boolean);
-  return new Set(configured?.length ? configured : FALLBACK_ADMIN_EMAILS);
-}
-
-export function isAdminEmail(email: string | null | undefined) {
-  return Boolean(email && getAdminEmails().has(email.toLowerCase()));
+  return new Set([ADMIN_EMAIL]);
 }
 
 export async function getRequiredSession() {
@@ -52,12 +45,11 @@ export function getBackendApiBaseUrl() {
 }
 
 export function getBackendInternalApiSecret() {
-  const secret = process.env.BACKEND_INTERNAL_API_SECRET;
-  if (secret) return secret;
-
-  if (process.env.NODE_ENV === "production") {
-    throw new Error("BACKEND_INTERNAL_API_SECRET is required in production.");
+  const secret = process.env.BACKEND_INTERNAL_API_SECRET?.trim();
+  if (!secret || secret.length < 32) {
+    throw new Error(
+      "BACKEND_INTERNAL_API_SECRET must be configured with at least 32 characters.",
+    );
   }
-
-  return DEV_INTERNAL_API_SECRET;
+  return secret;
 }

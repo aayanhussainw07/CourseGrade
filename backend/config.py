@@ -1,7 +1,7 @@
 import importlib.util
 import os
 
-DEV_INTERNAL_API_SECRET = "coursegrade-dev-internal-secret"
+from security_limits import MAX_BACKEND_BODY_BYTES
 
 
 def _postgres_driver_available() -> bool:
@@ -73,14 +73,12 @@ def get_cors_origins() -> list[str]:
 
 
 def get_internal_api_secret() -> str:
-    secret = os.getenv("INTERNAL_API_SECRET")
-    if secret:
-        return secret
-
-    if _is_production():
-        raise RuntimeError("INTERNAL_API_SECRET is required in production.")
-
-    return DEV_INTERNAL_API_SECRET
+    secret = os.getenv("INTERNAL_API_SECRET", "").strip()
+    if len(secret) < 32:
+        raise RuntimeError(
+            "INTERNAL_API_SECRET is required and must contain at least 32 characters."
+        )
+    return secret
 
 
 class Config:
@@ -89,3 +87,4 @@ class Config:
     JSON_SORT_KEYS = False
     AUTO_CREATE_TABLES = os.getenv("AUTO_CREATE_TABLES", "false").lower() in {"1", "true", "yes"}
     INTERNAL_API_SECRET = get_internal_api_secret()
+    MAX_CONTENT_LENGTH = MAX_BACKEND_BODY_BYTES

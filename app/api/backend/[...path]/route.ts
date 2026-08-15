@@ -4,6 +4,11 @@ import {
   getBackendInternalApiSecret,
   getRequiredSession,
 } from "@/lib/server-auth";
+import {
+  BackendBodyTooLargeError,
+  isAllowedBackendProxyRequest,
+  readBackendRequestBody,
+} from "@/lib/backend-proxy-security";
 
 type RouteContext = {
   params: Promise<{ path: string[] }>;
@@ -16,6 +21,9 @@ async function proxyToBackend(req: NextRequest, context: RouteContext) {
   if ("error" in auth) return auth.error;
 
   const { path } = await context.params;
+  if (!isAllowedBackendProxyRequest(path, req.method)) {
+    return NextResponse.json({ detail: "Not found." }, { status: 404 });
+  }
   const backendPath = `/${path.map(encodeURIComponent).join("/")}/`;
   const targetUrl = new URL(`${getBackendApiBaseUrl()}${backendPath}`);
   targetUrl.search = req.nextUrl.search;
@@ -29,9 +37,20 @@ async function proxyToBackend(req: NextRequest, context: RouteContext) {
   headers.set("X-User-Email", auth.userEmail);
   headers.set("X-Internal-Api-Secret", getBackendInternalApiSecret());
 
-  const body = METHODS_WITHOUT_BODY.has(req.method)
-    ? undefined
-    : await req.arrayBuffer();
+  let body: ArrayBuffer | undefined;
+  try {
+    body = METHODS_WITHOUT_BODY.has(req.method)
+      ? undefined
+      : await readBackendRequestBody(req);
+  } catch (error) {
+    if (error instanceof BackendBodyTooLargeError) {
+      return NextResponse.json(
+        { detail: "Request body must be no larger than 1 MB." },
+        { status: 413 },
+      );
+    }
+    throw error;
+  }
 
   let backendResponse: Response;
   try {

@@ -1,15 +1,26 @@
 from __future__ import annotations
 
-import os
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
+from threading import Lock
 
 from flask import Blueprint, jsonify, request
+from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 
 from extensions import db
 import json
 
-from models import Assignment, Course, Feedback, GradeScale, Semester, UserSettings
+from models import (
+    AiCall,
+    Assignment,
+    Course,
+    Feedback,
+    GradeScale,
+    Semester,
+    UserActivity,
+    UserSettings,
+)
+from security_limits import MAX_ASSIGNMENTS_PER_COURSE
 
 api = Blueprint("api", __name__, url_prefix="/api")
 
@@ -29,16 +40,17 @@ DEFAULT_GRADE_SCALES = [
     {"letter": "F", "min_percentage": 0, "gpa_value": 0.0},
 ]
 
-DEFAULT_ADMIN_EMAILS = {"aayanhussainw07@gmail.com", "ah2425@gmail.com"}
+# Sole admin. Mirrors the client-safe canonical value in lib/is-admin.ts;
+# keep this backend copy aligned because the services run independently.
+ADMIN_EMAIL = "aayanhussainw07@gmail.com"
+
+_activity_cache_lock = Lock()
+_activity_cache_date: date | None = None
+_activity_cache_user_ids: set[str] = set()
 
 
 def _admin_emails() -> set[str]:
-    configured = {
-        email.strip().lower()
-        for email in os.getenv("ADMIN_EMAILS", "").split(",")
-        if email.strip()
-    }
-    return configured or DEFAULT_ADMIN_EMAILS
+    return {ADMIN_EMAIL}
 
 
 def _request_user_id() -> str:
@@ -51,6 +63,51 @@ def _admin_forbidden():
     if admin_email not in _admin_emails():
         return jsonify({"detail": "Forbidden."}), 403
     return None
+
+
+def record_user_activity(user_id: str) -> None:
+    """Mark a user active once per UTC day and worker. Best-effort."""
+    global _activity_cache_date
+    if not user_id or user_id == "default":
+        return
+    today = datetime.now(timezone.utc).date()
+    with _activity_cache_lock:
+        if _activity_cache_date != today:
+            _activity_cache_user_ids.clear()
+            _activity_cache_date = today
+        if user_id in _activity_cache_user_ids:
+            return
+        # Reserve before I/O so concurrent requests for one user do not race.
+        _activity_cache_user_ids.add(user_id)
+
+    try:
+        dialect = db.engine.dialect.name
+        if dialect == "postgresql":
+            from sqlalchemy.dialects.postgresql import insert as pg_insert
+
+            stmt = (
+                pg_insert(UserActivity)
+                .values(user_id=user_id, activity_date=today)
+                .on_conflict_do_nothing(index_elements=["user_id", "activity_date"])
+            )
+            db.session.execute(stmt)
+        elif dialect == "sqlite":
+            from sqlalchemy.dialects.sqlite import insert as sqlite_insert
+
+            stmt = (
+                sqlite_insert(UserActivity)
+                .values(user_id=user_id, activity_date=today)
+                .on_conflict_do_nothing()
+            )
+            db.session.execute(stmt)
+        else:
+            db.session.add(UserActivity(user_id=user_id, activity_date=today))
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        with _activity_cache_lock:
+            if _activity_cache_date == today:
+                _activity_cache_user_ids.discard(user_id)
 
 
 def _json_payload() -> dict:
@@ -466,6 +523,10 @@ def courses_collection():
     if assignment_seeds_payload is not None:
         if not isinstance(assignment_seeds_payload, list):
             errors.setdefault("assignments", []).append("Expected a list of assignment objects.")
+        elif len(assignment_seeds_payload) > MAX_ASSIGNMENTS_PER_COURSE:
+            errors.setdefault("assignments", []).append(
+                f"Ensure this list has no more than {MAX_ASSIGNMENTS_PER_COURSE} items."
+            )
         else:
             for index, assignment_seed in enumerate(assignment_seeds_payload):
                 parsed = _parse_assignment_seed(assignment_seed, index, errors)
@@ -880,3 +941,222 @@ def feedback_detail(feedback_id: int):
         fb.completed = bool(payload.get("completed"))
     db.session.commit()
     return jsonify(_serialize_feedback(fb))
+
+
+# ── AI usage logging ──────────────────────────────────────────────────────────
+
+
+@api.route("/ai-calls/", methods=["POST"])
+def create_ai_call():
+    # Internal-only: the app-level X-Internal-Api-Secret check already gates this.
+    # Logged on behalf of the end user by our own server routes.
+    payload = _json_payload()
+    user_id = _request_user_id()
+
+    def _as_int(value) -> int:
+        try:
+            return max(0, int(value))
+        except (TypeError, ValueError):
+            return 0
+
+    def _as_float(value) -> float:
+        try:
+            return max(0.0, float(value))
+        except (TypeError, ValueError):
+            return 0.0
+
+    call = AiCall(
+        user_id=user_id,
+        feature=str(payload.get("feature", "syllabus"))[:64],
+        model=str(payload.get("model", ""))[:128],
+        input_tokens=_as_int(payload.get("input_tokens")),
+        output_tokens=_as_int(payload.get("output_tokens")),
+        cost_usd=_as_float(payload.get("cost_usd")),
+    )
+    db.session.add(call)
+    db.session.commit()
+    return jsonify({"id": call.id}), 201
+
+
+# ── Admin platform stats ──────────────────────────────────────────────────────
+
+
+@api.route("/admin/stats/", methods=["GET"])
+def admin_stats():
+    forbidden = _admin_forbidden()
+    if forbidden:
+        return forbidden
+
+    today = datetime.now(timezone.utc).date()
+
+    try:
+        window_days = int(request.args.get("days", 30))
+    except (TypeError, ValueError):
+        window_days = 30
+    window_days = max(1, min(365, window_days))
+
+    def active_window(days: int) -> int:
+        cutoff = today - timedelta(days=days - 1)
+        return (
+            db.session.query(func.count(func.distinct(UserActivity.user_id)))
+            .filter(
+                UserActivity.activity_date >= cutoff,
+                UserActivity.user_id != "default",
+            )
+            .scalar()
+            or 0
+        )
+
+    dau = active_window(1)
+    wau = active_window(7)
+    mau = active_window(30)
+
+    # ── First observed per user, merged across CourseGrade data sources ───────
+    first_seen: dict[str, date] = {}
+
+    def consider(user_id: str | None, value: date | None) -> None:
+        if not user_id or user_id == "default" or value is None:
+            return
+        current = first_seen.get(user_id)
+        if current is None or value < current:
+            first_seen[user_id] = value
+
+    for uid, d in db.session.query(
+        UserActivity.user_id, func.min(UserActivity.activity_date)
+    ).group_by(UserActivity.user_id):
+        consider(uid, d)
+
+    for uid, dt in db.session.query(
+        Semester.user_id, func.min(Semester.created_at)
+    ).group_by(Semester.user_id):
+        consider(uid, dt.date() if dt else None)
+
+    for uid, dt in db.session.query(
+        UserSettings.user_id, func.min(UserSettings.created_at)
+    ).group_by(UserSettings.user_id):
+        consider(uid, dt.date() if dt else None)
+
+    observed_users = len(first_seen)
+
+    window_start = today - timedelta(days=window_days - 1)
+
+    # This is not an auth-provider signup timestamp. It is the earliest date on
+    # which CourseGrade persisted activity/settings/semester data for the user.
+    first_seen_counts: dict[date, int] = {}
+    for d in first_seen.values():
+        first_seen_counts[d] = first_seen_counts.get(d, 0) + 1
+
+    first_seen_trend = []
+    for offset in range(window_days - 1, -1, -1):
+        day = today - timedelta(days=offset)
+        first_seen_trend.append(
+            {"date": day.isoformat(), "count": first_seen_counts.get(day, 0)}
+        )
+
+    # ── Active-users trend (zero-filled over selected window) ─────────────────
+    active_rows = (
+        db.session.query(
+            UserActivity.activity_date,
+            func.count(func.distinct(UserActivity.user_id)),
+        )
+        .filter(
+            UserActivity.activity_date >= window_start,
+            UserActivity.user_id != "default",
+        )
+        .group_by(UserActivity.activity_date)
+        .all()
+    )
+    active_map = {row[0]: row[1] for row in active_rows}
+
+    active_trend = []
+    for offset in range(window_days - 1, -1, -1):
+        day = today - timedelta(days=offset)
+        active_trend.append(
+            {"date": day.isoformat(), "count": active_map.get(day, 0)}
+        )
+
+    # ── AI usage ──────────────────────────────────────────────────────────────
+    ai_totals = db.session.query(
+        func.count(AiCall.id),
+        func.coalesce(func.sum(AiCall.cost_usd), 0.0),
+        func.coalesce(func.sum(AiCall.input_tokens + AiCall.output_tokens), 0),
+    ).one()
+    ai_total_calls = int(ai_totals[0] or 0)
+    ai_total_cost = round(float(ai_totals[1] or 0.0), 4)
+    ai_total_tokens = int(ai_totals[2] or 0)
+
+    ai_rows = (
+        db.session.query(
+            func.date(AiCall.created_at),
+            func.count(AiCall.id),
+            func.coalesce(func.sum(AiCall.cost_usd), 0.0),
+        )
+        .filter(
+            AiCall.created_at
+            >= datetime.now(timezone.utc) - timedelta(days=window_days - 1)
+        )
+        .group_by(func.date(AiCall.created_at))
+        .all()
+    )
+
+    def _as_date(value) -> date | None:
+        if isinstance(value, date):
+            return value
+        if isinstance(value, str):
+            try:
+                return date.fromisoformat(value[:10])
+            except ValueError:
+                return None
+        return None
+
+    ai_calls_map: dict[date, int] = {}
+    ai_cost_map: dict[date, float] = {}
+    for raw_day, calls, cost in ai_rows:
+        day = _as_date(raw_day)
+        if day is None:
+            continue
+        ai_calls_map[day] = int(calls or 0)
+        ai_cost_map[day] = float(cost or 0.0)
+
+    ai_trend = []
+    for offset in range(window_days - 1, -1, -1):
+        day = today - timedelta(days=offset)
+        ai_trend.append(
+            {
+                "date": day.isoformat(),
+                "calls": ai_calls_map.get(day, 0),
+                "cost": round(ai_cost_map.get(day, 0.0), 4),
+            }
+        )
+
+    ai_by_model = [
+        {
+            "model": model or "unknown",
+            "calls": int(calls or 0),
+            "cost": round(float(cost or 0.0), 4),
+        }
+        for model, calls, cost in db.session.query(
+            AiCall.model,
+            func.count(AiCall.id),
+            func.coalesce(func.sum(AiCall.cost_usd), 0.0),
+        )
+        .group_by(AiCall.model)
+        .all()
+    ]
+
+    return jsonify(
+        {
+            "observed_users": observed_users,
+            "window_days": window_days,
+            "dau": dau,
+            "wau": wau,
+            "mau": mau,
+            "first_seen_trend": first_seen_trend,
+            "active_trend": active_trend,
+            "ai_total_calls": ai_total_calls,
+            "ai_total_cost": ai_total_cost,
+            "ai_total_tokens": ai_total_tokens,
+            "ai_trend": ai_trend,
+            "ai_by_model": ai_by_model,
+        }
+    )

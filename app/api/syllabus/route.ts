@@ -3,6 +3,11 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@supabase/supabase-js";
+import {
+  getBackendApiBaseUrl,
+  getBackendInternalApiSecret,
+} from "@/lib/server-auth";
+import { computeAiCostUsd, type AiUsage } from "@/lib/ai-pricing";
 
 const ALLOWED_TYPES = [
   "application/pdf",
@@ -183,6 +188,42 @@ function parseJsonObject(responseText: string): unknown | null {
     } catch {
       return null;
     }
+  }
+}
+
+async function logAiCall(
+  userId: string,
+  userEmail: string,
+  usage: AiUsage | null | undefined,
+): Promise<void> {
+  try {
+    const input = usage?.input_tokens ?? 0;
+    const output = usage?.output_tokens ?? 0;
+    const response = await fetch(`${getBackendApiBaseUrl()}/ai-calls/`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-User-Id": userId,
+        "X-User-Email": userEmail,
+        "X-Internal-Api-Secret": getBackendInternalApiSecret(),
+      },
+      body: JSON.stringify({
+        feature: "syllabus",
+        model: CLAUDE_MODEL,
+        input_tokens: input,
+        output_tokens: output,
+        cost_usd: computeAiCostUsd(CLAUDE_MODEL, usage ?? {}),
+      }),
+      signal: AbortSignal.timeout(3_000),
+    });
+    if (!response.ok) {
+      const detail = await response.text().catch(() => "");
+      throw new Error(
+        `backend returned ${response.status}${detail ? `: ${detail}` : ""}`,
+      );
+    }
+  } catch (err) {
+    console.error("[syllabus] AI usage logging failed:", err);
   }
 }
 
@@ -385,6 +426,10 @@ export async function POST(req: NextRequest) {
         },
       },
     });
+
+    // Await best-effort logging so the serverless invocation cannot end while
+    // the request is still in flight. Logging failures do not fail the import.
+    await logAiCall(userId, session.user.email ?? userId, result.usage);
 
     const responseText = result.content
       .filter((block): block is Anthropic.TextBlock => block.type === "text")

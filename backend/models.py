@@ -100,6 +100,33 @@ class Feedback(TimestampMixin, db.Model):
     )
 
 
+class UserActivity(db.Model):
+    __tablename__ = "user_activity"
+
+    user_id = db.Column(db.String(255), primary_key=True)
+    activity_date = db.Column(db.Date, primary_key=True)
+
+    __table_args__ = (
+        db.Index("ix_user_activity_date", "activity_date"),
+    )
+
+
+class AiCall(TimestampMixin, db.Model):
+    __tablename__ = "ai_calls"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.String(255), nullable=False, default="default", index=True)
+    feature = db.Column(db.String(64), nullable=False, default="syllabus")
+    model = db.Column(db.String(128), nullable=False, default="")
+    input_tokens = db.Column(db.Integer, nullable=False, default=0)
+    output_tokens = db.Column(db.Integer, nullable=False, default=0)
+    cost_usd = db.Column(db.Float, nullable=False, default=0)
+
+    __table_args__ = (
+        db.Index("ix_ai_calls_created_at", "created_at"),
+    )
+
+
 class GradeScale(db.Model):
     __tablename__ = "grade_scales"
 
