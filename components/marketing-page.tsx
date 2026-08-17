@@ -9,7 +9,6 @@ import {
   Calculator,
   GraduationCap,
   Layers,
-  Mouse,
   NotebookPen,
   Pencil,
   Plus,
@@ -167,8 +166,8 @@ const revealClass = (
 };
 
 const marketingOverallGpa =
-  marketingDashboardStats.find((stat) => stat.label === "Overall GPA")
-    ?.value ?? "3.91";
+  marketingDashboardStats.find((stat) => stat.label === "Overall GPA")?.value ??
+  "3.91";
 const marketingSemesters =
   marketingDashboardStats.find((stat) => stat.label === "Semesters Tracked")
     ?.value ?? "6";
@@ -250,9 +249,6 @@ function MarketingCourseMock() {
   return (
     <div className="mt-14 grid gap-8 lg:grid-cols-[minmax(240px,0.65fr)_minmax(0,1.35fr)] lg:items-center lg:gap-12">
       <div className="max-w-xl">
-        <p className="text-xs font-bold uppercase tracking-[0.24em] text-primary">
-          Inside every course
-        </p>
         <h3 className="mt-3 font-futura-bold text-3xl font-black uppercase leading-none tracking-widest text-foreground sm:text-4xl">
           Know exactly where you stand
         </h3>
@@ -276,11 +272,6 @@ function MarketingCourseMock() {
             skipDeleteConfirm
           />
         </div>
-        <Mouse
-          aria-hidden="true"
-          className="pointer-events-none absolute right-[9%] top-[43%] z-20 h-11 w-11 fill-[#fff8f1] text-primary drop-shadow-[0_4px_5px_rgba(45,0,8,0.35)] motion-safe:animate-pulse sm:h-14 sm:w-14"
-          strokeWidth={2.25}
-        />
       </div>
     </div>
   );
@@ -487,8 +478,8 @@ export function MarketingPage() {
               </div>
               <p className="max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg">
                 Pin a quote that keeps you moving, watch your overall GPA as
-                grades change, and keep every tracked semester and earned
-                credit visible in one place.
+                grades change, and keep every tracked semester and earned credit
+                visible in one place.
               </p>
             </div>
             <MarketingDashboardMock />
