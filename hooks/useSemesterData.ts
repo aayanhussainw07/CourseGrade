@@ -67,6 +67,11 @@ export function useSemesterData({ appSettings }: { appSettings: AppSettings }) {
   const saveStatusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const courseSaveQueuesRef = useRef<Map<string, Promise<void>>>(new Map());
   const courseSaveVersionsRef = useRef<Map<string, number>>(new Map());
+  const semesterNameSaveQueuesRef = useRef<Map<string, Promise<void>>>(
+    new Map(),
+  );
+  const semesterNameSaveVersionsRef = useRef<Map<string, number>>(new Map());
+  const confirmedSemesterNamesRef = useRef<Map<string, string>>(new Map());
   const syncedCriterionIdsRef = useRef<
     Map<string, Map<string, string>>
   >(new Map());
@@ -499,17 +504,72 @@ export function useSemesterData({ appSettings }: { appSettings: AppSettings }) {
     [activeSemesterId, router, serverOffline],
   );
 
-  const editSemester = useCallback(async (semesterId: string, newName: string) => {
-    if (serverOffline) return;
-    try {
-      await storage.updateSemester(semesterId, { name: newName });
-      setSemesters((prev) => prev.map((s) => (s.id === semesterId ? { ...s, name: newName } : s)));
-      setServerOffline(false);
-    } catch (error) {
-      if (error instanceof ApiUnavailableError) setServerOffline(true);
-      else console.error("[v0] Failed to update semester:", error);
-    }
-  }, [serverOffline]);
+  const editSemester = useCallback(
+    async (semesterId: string, newName: string) => {
+      if (serverOffline) return;
+      const normalizedName = newName.trim();
+      const currentName = semesters.find(
+        (semester) => semester.id === semesterId,
+      )?.name;
+      if (!normalizedName || currentName === normalizedName) return;
+
+      if (currentName && !confirmedSemesterNamesRef.current.has(semesterId)) {
+        confirmedSemesterNamesRef.current.set(semesterId, currentName);
+      }
+
+      setSemesters((previous) =>
+        previous.map((semester) =>
+          semester.id === semesterId
+            ? { ...semester, name: normalizedName }
+            : semester,
+        ),
+      );
+
+      const saveVersion =
+        (semesterNameSaveVersionsRef.current.get(semesterId) ?? 0) + 1;
+      semesterNameSaveVersionsRef.current.set(semesterId, saveVersion);
+      const previousSave =
+        semesterNameSaveQueuesRef.current.get(semesterId) ?? Promise.resolve();
+      const saveRequest = previousSave.then(async () => {
+        try {
+          await storage.updateSemester(semesterId, { name: normalizedName });
+          confirmedSemesterNamesRef.current.set(semesterId, normalizedName);
+          if (
+            semesterNameSaveVersionsRef.current.get(semesterId) === saveVersion
+          ) {
+            setServerOffline(false);
+          }
+        } catch (error) {
+          if (
+            semesterNameSaveVersionsRef.current.get(semesterId) !== saveVersion
+          ) {
+            return;
+          }
+          const confirmedName =
+            confirmedSemesterNamesRef.current.get(semesterId);
+          if (confirmedName) {
+            setSemesters((previous) =>
+              previous.map((semester) =>
+                semester.id === semesterId &&
+                semester.name === normalizedName
+                  ? { ...semester, name: confirmedName }
+                  : semester,
+              ),
+            );
+          }
+          if (error instanceof ApiUnavailableError) setServerOffline(true);
+          else console.error("[v0] Failed to update semester:", error);
+        }
+      });
+
+      semesterNameSaveQueuesRef.current.set(semesterId, saveRequest);
+      await saveRequest;
+      if (semesterNameSaveQueuesRef.current.get(semesterId) === saveRequest) {
+        semesterNameSaveQueuesRef.current.delete(semesterId);
+      }
+    },
+    [semesters, serverOffline],
+  );
 
   const clearAllData = useCallback(async () => {
     if (serverOffline) return;
