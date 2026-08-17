@@ -56,6 +56,18 @@ export function buildDefaultCourseGrading(settings: {
 // Helper function to calculate criterion score from sub-items if they exist
 const normalizeCriteria = (criteria?: Criterion[] | null): Criterion[] => (Array.isArray(criteria) ? criteria : [])
 
+export function buildCriterionAdditionUpdate(
+  rawCriteria: Criterion[] | null | undefined,
+  newCriterion: Criterion,
+  currentPercentBoost?: number | null,
+): Pick<Course, "criteria" | "percentBoost"> {
+  const criteria = normalizeCriteria(rawCriteria)
+  return {
+    criteria: [...criteria, newCriterion],
+    percentBoost: criteria.length === 0 ? 0 : (currentPercentBoost ?? 0),
+  }
+}
+
 export function getCriterionScore(criterion: Criterion): number {
   if (criterion.subItems && criterion.subItems.length > 0) {
     const items = criterion.subItems

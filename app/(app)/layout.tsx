@@ -46,6 +46,8 @@ import { AppTopBar } from "@/components/app-top-bar";
 import { AppScreenLoader } from "@/components/app-screen-loader";
 
 const SCREEN_TRANSITION_DURATION_MS = 300;
+const COURSE_DRAG_INTERACTIVE_SELECTOR =
+  "button, input, textarea, select, a[href], [contenteditable='true'], [role='button'], [role='radio'], [role='switch']";
 
 type CaretDocument = Document & {
   caretPositionFromPoint?: (
@@ -116,6 +118,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [dragOverMainCourseId, setDragOverMainCourseId] = useState<
     string | null
   >(null);
+  const [armedMainCourseId, setArmedMainCourseId] = useState<string | null>(
+    null,
+  );
   const courseRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
   const [dashboardMessageDraft, setDashboardMessageDraft] = useState("");
   const [isEditingQuote, setIsEditingQuote] = useState(false);
@@ -841,8 +846,30 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                       }}
                     >
                       <div
-                        draggable
+                        draggable={armedMainCourseId === course.id}
+                        onPointerDownCapture={(event) => {
+                          if (event.button !== 0) return;
+                          const target = event.target as HTMLElement | null;
+                          if (
+                            !target?.closest("[data-course-drag-surface]") ||
+                            target?.closest(COURSE_DRAG_INTERACTIVE_SELECTOR)
+                          ) {
+                            setArmedMainCourseId(null);
+                            return;
+                          }
+                          setArmedMainCourseId(course.id);
+                        }}
+                        onPointerUpCapture={() => {
+                          if (!draggingMainCourseId) {
+                            setArmedMainCourseId(null);
+                          }
+                        }}
+                        onPointerCancel={() => setArmedMainCourseId(null)}
                         onDragStart={(e) => {
+                          if (armedMainCourseId !== course.id) {
+                            e.preventDefault();
+                            return;
+                          }
                           setDraggingMainCourseId(course.id);
                           e.dataTransfer.effectAllowed = "move";
                         }}
@@ -883,10 +910,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                           }
                           setDraggingMainCourseId(null);
                           setDragOverMainCourseId(null);
+                          setArmedMainCourseId(null);
                         }}
                         onDragEnd={() => {
                           setDraggingMainCourseId(null);
                           setDragOverMainCourseId(null);
+                          setArmedMainCourseId(null);
                         }}
                         style={{
                           opacity: draggingMainCourseId === course.id ? 0.4 : 1,
@@ -898,7 +927,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                             dragOverMainCourseId === course.id
                               ? "12px"
                               : undefined,
-                          cursor: draggingMainCourseId ? "grabbing" : "grab",
+                          cursor: draggingMainCourseId
+                            ? "grabbing"
+                            : undefined,
                         }}
                       >
                         <CourseCard

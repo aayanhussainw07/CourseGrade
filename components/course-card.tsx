@@ -19,6 +19,7 @@ import {
   Check,
 } from "lucide-react";
 import {
+  buildCriterionAdditionUpdate,
   buildPassFailScale,
   calculateCourseGrade,
   cloneGradeScale,
@@ -84,7 +85,7 @@ export function CourseCard({
   const [expandedCriteria, setExpandedCriteria] = useState<Set<string>>(
     new Set(),
   );
-  const [nameDraft, setNameDraft] = useState(course.name);
+  const [nameDraft, setNameDraft] = useState<string | undefined>(undefined);
   const formatCreditsDraft = (value: number | null | undefined) => {
     if (value === undefined || value === null || value === 0) return "";
     return value.toString();
@@ -116,7 +117,7 @@ export function CourseCard({
   const [directGradeEditing, setDirectGradeEditing] = useState(false);
   const [directGradeDraft, setDirectGradeDraft] = useState("");
   const interactiveDragSelector =
-    "button, input, textarea, select, a[href], [contenteditable='true'], [role='button'], [draggable='false']";
+    "button, input, textarea, select, a[href], [contenteditable='true'], [role='button']";
   const collapsedPaperRotation =
     COLLAPSED_PAPER_ROTATIONS[
       getStableIndex(course.id, COLLAPSED_PAPER_ROTATIONS.length)
@@ -126,10 +127,6 @@ export function CourseCard({
       ? "border-primary ring-2 ring-primary/40 ring-offset-2"
       : "border-primary/25"
   }`;
-
-  useEffect(() => {
-    setNameDraft(course.name);
-  }, [course.name]);
 
   useEffect(() => {
     if (creditsFocused) return;
@@ -211,7 +208,11 @@ export function CourseCard({
     if (name === course.name) return;
     updateCourse({ name });
   };
-  const commitCourseName = () => updateCourseName(nameDraft);
+  const commitCourseName = () => {
+    if (nameDraft === undefined) return;
+    setNameDraft(undefined);
+    updateCourseName(nameDraft);
+  };
 
   const commitCredits = () => {
     const trimmed = creditsDraft.trim();
@@ -293,6 +294,7 @@ export function CourseCard({
   };
 
   const addCriterion = () => {
+    const isFirstCriterion = courseCriteria.length === 0;
     const localId = crypto.randomUUID();
     const newCriterion: Criterion = {
       id: localId,
@@ -303,7 +305,18 @@ export function CourseCard({
       dropLowest: 0,
       extraCredit: 0,
     };
-    updateCourse({ criteria: [...courseCriteria, newCriterion] });
+    if (isFirstCriterion) {
+      setDirectGradeDraft("");
+      setDirectGradeEditing(false);
+      setPercentBoostDraft("");
+    }
+    updateCourse(
+      buildCriterionAdditionUpdate(
+        courseCriteria,
+        newCriterion,
+        course.percentBoost,
+      ),
+    );
   };
 
   const updateCriterion = (id: string, updates: Partial<Criterion>) => {
@@ -403,207 +416,12 @@ export function CourseCard({
     updateCriterion(criterionId, { subItems: items });
   };
 
-  const computeDropIndicator = (
-    e: React.DragEvent<HTMLDivElement>,
-    targetId: string,
-  ): DropIndicator | null => {
-    const sourceId = draggingIdRef.current;
-    if (!sourceId || sourceId === targetId || sourceId.startsWith("subitem:")) {
-      return null;
-    }
-    const rect = e.currentTarget.getBoundingClientRect();
-    const yRatio = (e.clientY - rect.top) / rect.height;
-    return {
-      targetId,
-      position: yRatio < 0.5 ? "before" : "after",
-    };
-  };
-
-  const handleDragStart = (
-    event: React.DragEvent<HTMLDivElement>,
-    criterionId: string,
-  ) => {
-    const target = event.target as HTMLElement | null;
-    if (
-      target &&
-      target.closest(interactiveDragSelector) &&
-      !target.closest("[data-grade-drag-grip]")
-    ) {
-      event.preventDefault();
-      return;
-    }
-    event.stopPropagation();
-    draggingIdRef.current = criterionId;
-    setDraggingCriterionId(criterionId);
-    event.dataTransfer.effectAllowed = "move";
-    event.dataTransfer.setData("text/plain", criterionId);
-  };
-
-  const handleSubItemDragStart = (
-    event: React.DragEvent<HTMLDivElement>,
-    criterionId: string,
-    subItemId: string,
-  ) => {
-    const target = event.target as HTMLElement | null;
-    if (
-      target &&
-      target.closest(interactiveDragSelector) &&
-      !target.closest("[data-grade-drag-grip]")
-    ) {
-      event.preventDefault();
-      return;
-    }
-    event.stopPropagation();
-    const key = `subitem:${criterionId}:${subItemId}`;
-    draggingIdRef.current = key;
-    setDraggingSubItemId(subItemId);
-    event.dataTransfer.effectAllowed = "move";
-    event.dataTransfer.setData("text/plain", key);
-  };
-
-  const handleSubItemDragEnd = () => {
-    draggingIdRef.current = null;
-    setDraggingSubItemId(null);
-    setDropIndicator(null);
-  };
-
-  const handleDragOver = (
-    event: React.DragEvent<HTMLDivElement>,
-    targetId: string,
-  ) => {
-    event.preventDefault();
-    event.stopPropagation();
-    const indicator = computeDropIndicator(event, targetId);
-    event.dataTransfer.dropEffect = indicator ? "move" : "none";
-    setDropIndicator(indicator);
-  };
-
-  const handleDragLeave = (
-    event: React.DragEvent<HTMLDivElement>,
-    targetId: string,
-  ) => {
-    if (event.currentTarget.contains(event.relatedTarget as Node | null))
-      return;
-    setDropIndicator((current) =>
-      current?.targetId === targetId ? null : current,
-    );
-  };
-
-  const handleSubItemDragOver = (
-    event: React.DragEvent<HTMLDivElement>,
-    parentCriterionId: string,
-    subItemId: string,
-  ) => {
-    event.preventDefault();
-    event.stopPropagation();
-    event.dataTransfer.dropEffect = "move";
-    const sourceId = draggingIdRef.current;
-    if (!sourceId?.startsWith("subitem:")) {
-      event.dataTransfer.dropEffect = "none";
-      setDropIndicator(null);
-      return;
-    }
-
-    const [, sourceParentId, sourceSubItemId] = sourceId.split(":");
-    if (
-      sourceParentId !== parentCriterionId ||
-      sourceSubItemId === subItemId
-    ) {
-      event.dataTransfer.dropEffect = "none";
-      setDropIndicator(null);
-      return;
-    }
-
-    const rect = event.currentTarget.getBoundingClientRect();
-    const position: "before" | "after" =
-      (event.clientY - rect.top) / rect.height < 0.5 ? "before" : "after";
-    setDropIndicator({
-      targetId: `sub:${parentCriterionId}:${subItemId}`,
-      position,
-    });
-  };
-
-  const handleSubItemDragLeave = (
-    event: React.DragEvent<HTMLDivElement>,
-    parentCriterionId: string,
-    subItemId: string,
-  ) => {
-    if (event.currentTarget.contains(event.relatedTarget as Node | null))
-      return;
-    const targetId = `sub:${parentCriterionId}:${subItemId}`;
-    setDropIndicator((current) =>
-      current?.targetId === targetId ? null : current,
-    );
-  };
-
-  const handleSubItemDrop = (
-    event: React.DragEvent<HTMLDivElement>,
-    parentCriterionId: string,
-    targetSubItemId: string,
-  ) => {
-    event.preventDefault();
-    event.stopPropagation();
-    const raw =
-      draggingIdRef.current || event.dataTransfer.getData("text/plain");
-    if (!raw?.startsWith("subitem:")) return;
-
-    const indicator = dropIndicator;
-    clearDragState();
-    const [, sourceParentId, sourceSubItemId] = raw.split(":");
-    if (
-      sourceParentId !== parentCriterionId ||
-      sourceSubItemId === targetSubItemId
-    )
-      return;
-
-    moveSubItemWithinParent(
-      parentCriterionId,
-      sourceSubItemId,
-      targetSubItemId,
-      indicator?.position === "after",
-    );
-  };
-
-  const handleDropOnCriterion = (
-    event: React.DragEvent<HTMLDivElement>,
-    targetId: string,
-  ) => {
-    event.preventDefault();
-    event.stopPropagation();
-    const raw =
-      draggingIdRef.current || event.dataTransfer.getData("text/plain");
-    if (!raw || raw.startsWith("subitem:")) return;
-
-    const indicator = dropIndicator;
-    clearDragState();
-
-    const sourceId = raw;
-    if (sourceId === targetId) return;
-    moveCriterion(sourceId, targetId, indicator?.position ?? "after");
-  };
-
   const clearDragState = () => {
     draggingIdRef.current = null;
     pointerDropIndicatorRef.current = null;
     setDraggingCriterionId(null);
     setDraggingSubItemId(null);
     setDropIndicator(null);
-  };
-
-  const handleDragEnd = () => {
-    clearDragState();
-  };
-
-  const handleDropAtEnd = (event: React.DragEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    event.stopPropagation();
-    const raw =
-      draggingIdRef.current || event.dataTransfer.getData("text/plain");
-    if (!raw) return;
-    clearDragState();
-    if (!raw.startsWith("subitem:")) {
-      moveCriterion(raw, null, "after");
-    }
   };
 
   const setPointerDropIndicator = (indicator: DropIndicator | null) => {
@@ -931,6 +749,7 @@ export function CourseCard({
           />
         )}
         <CardHeader
+          data-course-drag-surface
           className="cursor-pointer px-4 py-5 sm:px-5"
           onClick={toggleCollapse}
         >
@@ -1036,6 +855,7 @@ export function CourseCard({
       )}
       <CardHeader className="px-5 pb-4 pt-6 sm:px-4 sm:pb-2 sm:pt-3">
         <div
+          data-course-drag-surface
           className="relative cursor-pointer p-4 sm:p-2.5"
           onClick={(event) => {
             if ((event.target as HTMLElement).closest(interactiveDragSelector))
@@ -1112,13 +932,15 @@ export function CourseCard({
               {/* Course name + controls */}
               <div className="flex min-w-0 flex-1 flex-wrap items-center gap-3">
                 <Input
-                  value={nameDraft}
+                  value={nameDraft ?? course.name}
                   onChange={(e) => setNameDraft(e.target.value)}
                   onBlur={commitCourseName}
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
+                      e.preventDefault();
                       commitCourseName();
-                      e.currentTarget.blur();
+                      const target = e.currentTarget;
+                      requestAnimationFrame(() => target.blur());
                     }
                   }}
                   className="max-w-md border-2 border-primary/20 bg-[#fff8f1] text-lg font-semibold sm:h-8 sm:max-w-none sm:flex-1 sm:text-sm"
@@ -1181,19 +1003,7 @@ export function CourseCard({
       </CardHeader>
 
       <CardContent className="px-5 pb-6 pt-2 sm:px-4 sm:pb-4 sm:pt-1">
-        <div
-          className="space-y-3 rounded-lg bg-white/25 p-4 sm:space-y-2 sm:p-2.5"
-          onDragOver={(e) => {
-            e.preventDefault();
-            e.dataTransfer.dropEffect = "move";
-          }}
-          onDragLeave={(e) => {
-            if (e.currentTarget.contains(e.relatedTarget as Node | null))
-              return;
-            setDropIndicator(null);
-          }}
-          onDrop={handleDropAtEnd}
-        >
+        <div className="space-y-3 rounded-lg bg-white/25 p-4 sm:space-y-2 sm:p-2.5">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex flex-wrap items-center gap-2">
               <h3 className="font-semibold text-primary">Grade Breakdown</h3>
@@ -1238,16 +1048,6 @@ export function CourseCard({
               addSubItem,
               updateSubItem,
               deleteSubItem,
-              handleDragStart,
-              handleDragOver,
-              handleDragLeave,
-              handleDropOnCriterion,
-              handleDragEnd,
-              handleSubItemDragStart,
-              handleSubItemDragOver,
-              handleSubItemDragLeave,
-              handleSubItemDrop,
-              handleSubItemDragEnd,
               handlePointerDragStart,
               handlePointerDragMove,
               handlePointerDragEnd,
@@ -1272,37 +1072,13 @@ export function CourseCard({
                   ? "border-primary/60 bg-primary/10 text-primary"
                   : ""
               }`}
-              onDragOver={(e) => {
-                e.preventDefault();
-                e.dataTransfer.dropEffect = "move";
-                setDropIndicator({
-                  targetId: "__end__",
-                  position: "after",
-                });
-              }}
-              onDragLeave={() => {
-                if (dropIndicator?.targetId === "__end__")
-                  setDropIndicator(null);
-              }}
-              onDrop={handleDropAtEnd}
             >
               Drop at end
             </div>
           )}
 
           {courseCriteria.length > 0 && (
-            <div
-              className="flex flex-col gap-2 rounded-md bg-muted/20 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-end sm:px-2 sm:py-2"
-              onDragOver={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                e.dataTransfer.dropEffect = "none";
-              }}
-              onDrop={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-              }}
-            >
+            <div className="flex flex-col gap-2 rounded-md bg-muted/20 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-end sm:px-2 sm:py-2">
               <Label
                 htmlFor={`boost-${course.id}`}
                 className="text-sm font-medium"

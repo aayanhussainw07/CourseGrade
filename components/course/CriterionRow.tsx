@@ -1,7 +1,7 @@
 "use client";
 
 import type React from "react";
-import { useEffect, useRef, useState, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -73,16 +73,6 @@ export function CriterionRow({ criterion }: { criterion: Criterion }) {
     addSubItem,
     updateSubItem,
     deleteSubItem,
-    handleDragStart,
-    handleDragOver,
-    handleDragLeave,
-    handleDropOnCriterion,
-    handleDragEnd,
-    handleSubItemDragStart,
-    handleSubItemDragOver,
-    handleSubItemDragLeave,
-    handleSubItemDrop,
-    handleSubItemDragEnd,
     handlePointerDragStart,
     handlePointerDragMove,
     handlePointerDragEnd,
@@ -117,14 +107,7 @@ export function CriterionRow({ criterion }: { criterion: Criterion }) {
   const stopDragStart = (e: React.PointerEvent<HTMLButtonElement>) =>
     e.stopPropagation();
 
-  // A row is only `draggable` while its grip handle is held. Otherwise the
-  // browser blocks text selection inside the row and treats any mousedown as
-  // the start of a card move. Arm on grip pointerdown, then disarm and clear
-  // pointer focus on release/end so focus-within styling does not linger.
-  const [dragArmed, setDragArmed] = useState(false);
-  const armDrag = () => setDragArmed(true);
-  const disarmDrag = () => {
-    setDragArmed(false);
+  const clearDragGripFocus = () => {
     const activeElement = document.activeElement;
     if (
       activeElement instanceof HTMLElement &&
@@ -139,44 +122,31 @@ export function CriterionRow({ criterion }: { criterion: Criterion }) {
   ) => ({
     onPointerDown: (event: React.PointerEvent<HTMLButtonElement>) => {
       event.stopPropagation();
-      if (event.pointerType === "mouse") {
-        armDrag();
-        return;
-      }
       event.preventDefault();
       event.currentTarget.setPointerCapture(event.pointerId);
       handlePointerDragStart(source);
     },
     onPointerMove: (event: React.PointerEvent<HTMLButtonElement>) => {
-      if (
-        event.pointerType === "mouse" ||
-        !event.currentTarget.hasPointerCapture(event.pointerId)
-      ) {
+      if (!event.currentTarget.hasPointerCapture(event.pointerId)) {
         return;
       }
       event.preventDefault();
+      event.stopPropagation();
       handlePointerDragMove(event.clientX, event.clientY);
     },
     onPointerUp: (event: React.PointerEvent<HTMLButtonElement>) => {
-      if (event.pointerType === "mouse") {
-        disarmDrag();
-        return;
-      }
       event.preventDefault();
       event.stopPropagation();
       handlePointerDragEnd();
       if (event.currentTarget.hasPointerCapture(event.pointerId)) {
         event.currentTarget.releasePointerCapture(event.pointerId);
       }
-      disarmDrag();
+      clearDragGripFocus();
     },
     onPointerCancel: (event: React.PointerEvent<HTMLButtonElement>) => {
-      if (event.pointerType === "mouse") {
-        disarmDrag();
-        return;
-      }
+      event.stopPropagation();
       handlePointerDragCancel();
-      disarmDrag();
+      clearDragGripFocus();
     },
   });
 
@@ -194,34 +164,6 @@ export function CriterionRow({ criterion }: { criterion: Criterion }) {
   const [subItemNameDrafts, setSubItemNameDrafts] = useState<Record<string, string>>({});
   const [subItemScoreDrafts, setSubItemScoreDrafts] = useState<Record<string, string>>({});
   const [subItemWeightDrafts, setSubItemWeightDrafts] = useState<Record<string, string>>({});
-
-  const prevCriterionRef = useRef(criterion);
-  useEffect(() => {
-    const prev = prevCriterionRef.current;
-    prevCriterionRef.current = criterion;
-    if (prev === criterion) return;
-
-    if (prev.score !== criterion.score) setScoreDraft(undefined);
-    if (prev.weight !== criterion.weight) setWeightDraft(undefined);
-    if (prev.name !== criterion.name) setNameDraft(undefined);
-    if (prev.extraCredit !== criterion.extraCredit) setExtraCreditDraft(undefined);
-    if (prev.dropLowest !== criterion.dropLowest) setDropLowestDraft(undefined);
-
-    const prevSubs = prev.subItems ?? [];
-    const currSubs = criterion.subItems ?? [];
-    const changedIds = new Set<string>();
-    for (const si of currSubs) {
-      const p = prevSubs.find((x) => x.id === si.id);
-      if (!p || p.score !== si.score || p.name !== si.name || p.weight !== si.weight) {
-        changedIds.add(si.id);
-      }
-    }
-    if (changedIds.size > 0) {
-      setSubItemNameDrafts((d) => { const next = { ...d }; for (const id of changedIds) delete next[id]; return next; });
-      setSubItemScoreDrafts((d) => { const next = { ...d }; for (const id of changedIds) delete next[id]; return next; });
-      setSubItemWeightDrafts((d) => { const next = { ...d }; for (const id of changedIds) delete next[id]; return next; });
-    }
-  }, [criterion]);
 
   const hasSubItems = !!(criterion.subItems && criterion.subItems.length > 0);
 
@@ -377,15 +319,6 @@ export function CriterionRow({ criterion }: { criterion: Criterion }) {
         }`}
         data-grade-drop-kind="criterion"
         data-criterion-id={criterion.id}
-        draggable={dragArmed}
-        onDragStart={(e) => handleDragStart(e, criterion.id)}
-        onDragOver={(e) => handleDragOver(e, criterion.id)}
-        onDragLeave={(e) => handleDragLeave(e, criterion.id)}
-        onDrop={(e) => handleDropOnCriterion(e, criterion.id)}
-        onDragEnd={() => {
-          handleDragEnd();
-          disarmDrag();
-        }}
       >
         {/* Drag-only reorder control for mouse, touch, and pen input. */}
         <div
@@ -565,15 +498,6 @@ export function CriterionRow({ criterion }: { criterion: Criterion }) {
                   data-grade-drop-kind="subitem"
                   data-criterion-id={criterion.id}
                   data-sub-item-id={subItem.id}
-                  draggable={dragArmed}
-                  onDragStart={(e) => handleSubItemDragStart(e, criterion.id, subItem.id)}
-                  onDragOver={(e) => handleSubItemDragOver(e, criterion.id, subItem.id)}
-                  onDragLeave={(e) => handleSubItemDragLeave(e, criterion.id, subItem.id)}
-                  onDrop={(e) => handleSubItemDrop(e, criterion.id, subItem.id)}
-                  onDragEnd={() => {
-                    handleSubItemDragEnd();
-                    disarmDrag();
-                  }}
                   className={`group/subitem grid grid-cols-1 gap-2 rounded-md p-3 transition-all duration-150 sm:grid-cols-[auto_2fr_1fr_1fr_auto] sm:p-2 ${
                     isSubDragging
                       ? "scale-[0.97] bg-primary/5 opacity-50 ring-1 ring-primary/40"

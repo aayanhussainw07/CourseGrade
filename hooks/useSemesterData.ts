@@ -64,6 +64,11 @@ export function useSemesterData({ appSettings }: { appSettings: AppSettings }) {
   const [dashboardMessage, setDashboardMessage] = useState("");
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const saveStatusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const courseSaveQueuesRef = useRef<Map<string, Promise<void>>>(new Map());
+  const courseSaveVersionsRef = useRef<Map<string, number>>(new Map());
+  const syncedCriterionIdsRef = useRef<
+    Map<string, Map<string, string>>
+  >(new Map());
   const dataLoadedRef = useRef(false);
   const appliedCourseOpenStateRef = useRef<string | null>(null);
 
@@ -600,37 +605,86 @@ export function useSemesterData({ appSettings }: { appSettings: AppSettings }) {
         return;
       }
 
+      const saveVersion = (courseSaveVersionsRef.current.get(id) ?? 0) + 1;
+      courseSaveVersionsRef.current.set(id, saveVersion);
       setSaveStatus("saving");
-      try {
-        const syncedCourse = await storage.updateCourse(activeSemesterId, sanitizedCourse);
-        setSemesters((prev) =>
-          prev.map((s) =>
-            s.id === activeSemesterId
-              ? {
-                  ...s,
-                  courses: s.courses.map((c) =>
-                    c.id === id ? { ...c, criteria: syncedCourse.criteria } : c,
-                  ),
-                }
-              : s,
-          ),
-        );
-        setServerOffline(false);
-        setSaveStatus("saved");
-        if (saveStatusTimerRef.current) clearTimeout(saveStatusTimerRef.current);
-        saveStatusTimerRef.current = setTimeout(
-          () => setSaveStatus("idle"),
-          SAVE_SUCCESS_DURATION_MS,
-        );
-      } catch (error) {
-        setSaveStatus("error");
-        if (saveStatusTimerRef.current) clearTimeout(saveStatusTimerRef.current);
-        saveStatusTimerRef.current = setTimeout(
-          () => setSaveStatus("idle"),
-          SAVE_ERROR_DURATION_MS,
-        );
-        if (error instanceof ApiUnavailableError) setServerOffline(true);
-        else console.error("[v0] Failed to update course:", error);
+      const previousSave = courseSaveQueuesRef.current.get(id) ??
+        Promise.resolve();
+      const saveRequest = previousSave
+        .catch(() => undefined)
+        .then(async () => {
+          const knownCriterionIds = syncedCriterionIdsRef.current.get(id);
+          const courseToSave: Course = knownCriterionIds
+            ? {
+                ...sanitizedCourse,
+                criteria: sanitizedCourse.criteria.map((criterion) => {
+                  const clientId = criterion.clientId ?? criterion.id;
+                  const serverId = knownCriterionIds.get(clientId);
+                  return serverId
+                    ? { ...criterion, id: serverId, clientId }
+                    : criterion;
+                }),
+              }
+            : sanitizedCourse;
+
+          try {
+            const syncedCourse = await storage.updateCourse(
+              activeSemesterId,
+              courseToSave,
+            );
+            syncedCriterionIdsRef.current.set(
+              id,
+              new Map(
+                syncedCourse.criteria.map((criterion) => [
+                  criterion.clientId ?? criterion.id,
+                  criterion.id,
+                ]),
+              ),
+            );
+
+            if (courseSaveVersionsRef.current.get(id) !== saveVersion) return;
+            setSemesters((prev) =>
+              prev.map((s) =>
+                s.id === activeSemesterId
+                  ? {
+                      ...s,
+                      courses: s.courses.map((c) =>
+                        c.id === id
+                          ? { ...c, criteria: syncedCourse.criteria }
+                          : c,
+                      ),
+                    }
+                  : s,
+              ),
+            );
+            setServerOffline(false);
+            setSaveStatus("saved");
+            if (saveStatusTimerRef.current) {
+              clearTimeout(saveStatusTimerRef.current);
+            }
+            saveStatusTimerRef.current = setTimeout(
+              () => setSaveStatus("idle"),
+              SAVE_SUCCESS_DURATION_MS,
+            );
+          } catch (error) {
+            if (courseSaveVersionsRef.current.get(id) !== saveVersion) return;
+            setSaveStatus("error");
+            if (saveStatusTimerRef.current) {
+              clearTimeout(saveStatusTimerRef.current);
+            }
+            saveStatusTimerRef.current = setTimeout(
+              () => setSaveStatus("idle"),
+              SAVE_ERROR_DURATION_MS,
+            );
+            if (error instanceof ApiUnavailableError) setServerOffline(true);
+            else console.error("[v0] Failed to update course:", error);
+          }
+        });
+
+      courseSaveQueuesRef.current.set(id, saveRequest);
+      await saveRequest;
+      if (courseSaveQueuesRef.current.get(id) === saveRequest) {
+        courseSaveQueuesRef.current.delete(id);
       }
     },
     [activeSemesterId, serverOffline],
