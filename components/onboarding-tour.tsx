@@ -41,6 +41,28 @@ interface StepPresentation {
   hint?: string
 }
 
+const paperCardClass =
+  "relative overflow-visible rounded-md border-2 border-primary/30 bg-[#fff8f1] text-foreground shadow-[0_14px_35px_rgba(45,0,8,0.22)]"
+
+function PaperAccents({ centered = false }: { centered?: boolean }) {
+  return (
+    <>
+      <span
+        aria-hidden="true"
+        className={`pointer-events-none absolute -top-2.5 h-5 w-20 border border-white/25 bg-primary/20 ${
+          centered
+            ? "left-1/2 -translate-x-1/2 rotate-[1deg]"
+            : "left-7 rotate-[-2deg]"
+        }`}
+      />
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute bottom-0 right-0 h-8 w-8 bg-primary/8 [clip-path:polygon(100%_0,0_100%,100%_100%)]"
+      />
+    </>
+  )
+}
+
 const CORE_ORDER: CoreOnboardingStep[] = [
   "welcome",
   "add_semester",
@@ -226,7 +248,7 @@ function SpotlightLayer({
         bottom: Math.min(viewport.height, rect.bottom + pad),
       }
     : null
-  const dimClass = "fixed z-[90] bg-[#2d0008]/20 backdrop-blur-[1px]"
+  const dimClass = "fixed z-[90] bg-[#2d0008]/25"
   const tooltipStyle = (() => {
     if (!hole || viewport.width < 640) return undefined
     const width = Math.min(340, viewport.width - 32)
@@ -234,7 +256,7 @@ function SpotlightLayer({
       viewport.width - width - 16,
       Math.max(16, hole.left + (hole.right - hole.left - width) / 2),
     )
-    const estimatedHeight = 230
+    const estimatedHeight = 270
     const below = hole.bottom + 14
     const top =
       below + estimatedHeight <= viewport.height
@@ -270,7 +292,7 @@ function SpotlightLayer({
           />
         </>
       ) : (
-        <div className="fixed inset-0 z-[90] bg-[#2d0008]/20 backdrop-blur-[1px]" />
+        <div className="fixed inset-0 z-[90] bg-[#2d0008]/25" />
       )}
       <motion.div
         key={selector ?? "centered"}
@@ -678,29 +700,42 @@ export function OnboardingTour({
       : true)
 
   const card = showResume && !active ? (
-    <div className="relative rounded-xl border border-primary/25 bg-[#fff8f1] p-5 text-foreground shadow-2xl">
-      <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary/65">
-        Onboarding paused
+    <div className={`${paperCardClass} rotate-[0.35deg] p-5 pt-7 motion-reduce:rotate-0`}>
+      <PaperAccents />
+      <p className="font-futura-bold text-[10px] font-black uppercase tracking-[0.22em] text-primary/70">
+        Saved for later
       </p>
-      <h2 className="mt-2 text-xl font-bold">Pick up where you left off</h2>
+      <h2 className="mt-2 font-futura-bold text-xl font-black uppercase tracking-wide">
+        Pick up where you left off
+      </h2>
       <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
         Your progress is saved. Resume the current step or restart the tour without changing your grade data.
       </p>
-      <div className="mt-5 flex flex-wrap justify-end gap-2">
-        <Button variant="outline" size="sm" onClick={startOver} className="gap-1.5 bg-white">
-          <RotateCcw className="h-3.5 w-3.5" /> Start over
-        </Button>
-        <Button size="sm" onClick={resume} className="gap-1.5">
-          Resume <ChevronRight className="h-3.5 w-3.5" />
-        </Button>
+      <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t-2 border-dashed border-primary/20 pt-4">
+        <button
+          type="button"
+          onClick={() => setConfirmSkip(true)}
+          className="rounded-sm text-xs font-semibold text-muted-foreground underline decoration-primary/35 underline-offset-4 transition hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+        >
+          Skip tour
+        </button>
+        <div className="flex flex-wrap justify-end gap-2">
+          <Button variant="outline" size="sm" onClick={startOver} className="gap-1.5 bg-white">
+            <RotateCcw className="h-3.5 w-3.5" /> Start over
+          </Button>
+          <Button size="sm" onClick={resume} className="gap-1.5">
+            Resume <ChevronRight className="h-3.5 w-3.5" />
+          </Button>
+        </div>
       </div>
     </div>
   ) : presentation ? (
     <div
       role="dialog"
       aria-label={presentation.title}
-      className="relative rounded-xl border border-primary/25 bg-[#fff8f1] p-5 text-foreground shadow-2xl"
+      className={`${paperCardClass} rotate-[-0.35deg] p-5 pt-7 motion-reduce:rotate-0`}
     >
+      <PaperAccents />
       <button
         type="button"
         onClick={pauseTour}
@@ -711,41 +746,44 @@ export function OnboardingTour({
         <Pause className="h-3.5 w-3.5" />
       </button>
       <div className="pr-8">
-        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary/65">
-          Getting started · {Math.max(1, stepIndex + 1)} of {CORE_ORDER.length}
+        <p className="font-futura-bold text-[10px] font-black uppercase tracking-[0.22em] text-primary/70">
+          Page {Math.max(1, stepIndex + 1)} of {CORE_ORDER.length} · Getting started
         </p>
-        <h2 className="mt-2 text-xl font-bold">{presentation.title}</h2>
+        <h2 className="mt-2 font-futura-bold text-xl font-black uppercase tracking-wide">
+          {presentation.title}
+        </h2>
         <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
           {presentation.body}
         </p>
       </div>
-      <div className="mt-4 flex gap-1" aria-hidden="true">
-        {CORE_ORDER.map((step, index) => (
-          <span
-            key={step}
-            className={`h-1 flex-1 rounded-full ${index <= stepIndex ? "bg-primary" : "bg-primary/15"}`}
-          />
-        ))}
-      </div>
-      <div className="mt-4 flex min-h-8 items-center justify-between gap-3">
-        <p className="text-xs font-medium text-primary/70">
+      <div className="mt-5 border-t-2 border-dashed border-primary/20 pt-4">
+        <p className="min-h-4 text-xs font-semibold text-primary/70">
           {serverOffline ? "Reconnect to continue" : presentation.hint ?? ""}
         </p>
-        {showCoreButton && (
-          <Button
-            size="sm"
-            disabled={!canContinueCore || serverOffline}
-            onClick={advanceCore}
-            className="shrink-0 gap-1.5"
+        <div className="mt-2 flex min-h-8 items-center justify-between gap-3">
+          <button
+            type="button"
+            onClick={() => setConfirmSkip(true)}
+            className="rounded-sm text-xs font-semibold text-muted-foreground underline decoration-primary/35 underline-offset-4 transition hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
           >
-            {progress.coreStep === "dashboard_finish" ? "Finish" : "Next"}
-            {progress.coreStep === "dashboard_finish" ? (
-              <Check className="h-3.5 w-3.5" />
-            ) : (
-              <ChevronRight className="h-3.5 w-3.5" />
-            )}
-          </Button>
-        )}
+            Skip tour
+          </button>
+          {showCoreButton && (
+            <Button
+              size="sm"
+              disabled={!canContinueCore || serverOffline}
+              onClick={advanceCore}
+              className="shrink-0 gap-1.5"
+            >
+              {progress.coreStep === "dashboard_finish" ? "Finish" : "Next"}
+              {progress.coreStep === "dashboard_finish" ? (
+                <Check className="h-3.5 w-3.5" />
+              ) : (
+                <ChevronRight className="h-3.5 w-3.5" />
+              )}
+            </Button>
+          )}
+        </div>
       </div>
     </div>
   ) : null
@@ -753,20 +791,18 @@ export function OnboardingTour({
   return createPortal(
     <AnimatePresence>
       <SpotlightLayer selector={presentation?.selector ?? null}>{card}</SpotlightLayer>
-      <button
-        type="button"
-        onClick={() => setConfirmSkip(true)}
-        className="fixed left-1/2 top-3 z-[120] -translate-x-1/2 rounded-full border border-primary/25 bg-[#fff8f1]/95 px-3 py-1.5 text-xs font-semibold text-primary shadow-lg backdrop-blur transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
-      >
-        Skip onboarding
-      </button>
       {confirmSkip && (
-        <div className="fixed inset-0 z-[130] flex items-center justify-center bg-[#2d0008]/25 px-4 backdrop-blur-[1px]">
+        <div className="fixed inset-0 z-[130] flex items-center justify-center bg-[#2d0008]/30 px-4">
           <motion.div
             initial={{ opacity: 0, scale: 0.97 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="relative w-full max-w-sm rounded-xl border border-primary/25 bg-[#fff8f1] p-5 shadow-2xl"
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="skip-onboarding-title"
+            aria-describedby="skip-onboarding-description"
+            className={`${paperCardClass} w-full max-w-sm rotate-[0.4deg] p-5 pt-7 motion-reduce:rotate-0`}
           >
+            <PaperAccents centered />
             <button
               type="button"
               onClick={() => setConfirmSkip(false)}
@@ -775,15 +811,23 @@ export function OnboardingTour({
             >
               <X className="h-4 w-4" />
             </button>
-            <h2 className="pr-8 text-lg font-bold text-foreground">Skip onboarding?</h2>
-            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+            <h2
+              id="skip-onboarding-title"
+              className="pr-8 font-futura-bold text-lg font-black uppercase tracking-wide text-foreground"
+            >
+              Skip onboarding?
+            </h2>
+            <p
+              id="skip-onboarding-description"
+              className="mt-2 text-sm leading-relaxed text-muted-foreground"
+            >
               It will stop appearing automatically. You can replay it anytime from Settings.
             </p>
-            <div className="mt-5 flex justify-end gap-2">
+            <div className="mt-5 flex justify-end gap-2 border-t-2 border-dashed border-primary/20 pt-4">
               <Button variant="outline" size="sm" onClick={() => setConfirmSkip(false)} className="bg-white">
                 Keep going
               </Button>
-              <Button size="sm" onClick={skipTour}>Skip</Button>
+              <Button size="sm" onClick={skipTour}>Skip tour</Button>
             </div>
           </motion.div>
         </div>
