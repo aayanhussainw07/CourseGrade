@@ -34,7 +34,12 @@ import {
 } from "@/components/ui/sheet";
 import { SyllabusImportDialog } from "@/components/syllabus-import-dialog";
 import { SettingsPage } from "@/components/settings-page";
-import { loadAppSettings, loadAppSettingsFromServer, type AppSettings } from "@/lib/app-settings";
+import {
+  loadAppSettings,
+  loadAppSettingsFromServer,
+  saveAppSettings,
+  type AppSettings,
+} from "@/lib/app-settings";
 import { HIGHLIGHT_DURATION_MS, SCROLL_DELAY_MS } from "@/lib/constants";
 import { useSemesterData } from "@/hooks/useSemesterData";
 import { FeedbackPanel } from "@/components/feedback-panel";
@@ -44,6 +49,9 @@ import {
 } from "@/lib/feature-flags";
 import { AppTopBar } from "@/components/app-top-bar";
 import { AppScreenLoader } from "@/components/app-screen-loader";
+import {
+  OnboardingTour,
+} from "@/components/onboarding-tour";
 
 const SCREEN_TRANSITION_DURATION_MS = 300;
 const COURSE_DRAG_INTERACTIVE_SELECTOR =
@@ -100,6 +108,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     null,
   );
   const [appSettings, setAppSettings] = useState<AppSettings>(loadAppSettings);
+  const [appSettingsLoaded, setAppSettingsLoaded] = useState(false);
+  const [onboardingLaunchNonce, setOnboardingLaunchNonce] = useState<
+    number | null
+  >(null);
   const [syllabusImportOpen, setSyllabusImportOpen] = useState(false);
   const [editingSemesterNameId, setEditingSemesterNameId] = useState<
     string | null
@@ -288,9 +300,32 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   // ── Load settings from server on auth ──────────────────────────────────────
   useEffect(() => {
     if (status === "authenticated") {
-      loadAppSettingsFromServer().then(setAppSettings);
+      let cancelled = false;
+      setAppSettingsLoaded(false);
+      loadAppSettingsFromServer()
+        .then((settings) => {
+          if (!cancelled) setAppSettings(settings);
+        })
+        .finally(() => {
+          if (!cancelled) setAppSettingsLoaded(true);
+        });
+      return () => {
+        cancelled = true;
+      };
     }
   }, [status]);
+
+  const persistOnboardingProgress = useCallback(
+    (onboarding: AppSettings["onboarding"]) => {
+      setAppSettings((current) => ({ ...current, onboarding }));
+      void saveAppSettings({ onboarding }).catch(() => undefined);
+    },
+    [],
+  );
+
+  const launchOnboarding = useCallback(() => {
+    setOnboardingLaunchNonce(Date.now());
+  }, []);
 
   // ── Responsive sidebar ────────────────────────────────────────────────────
   useEffect(() => {
@@ -407,6 +442,18 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
       )}
       <FeedbackPanel />
+      <OnboardingTour
+        progress={appSettings.onboarding}
+        onProgressChange={persistOnboardingProgress}
+        launchNonce={onboardingLaunchNonce}
+        authenticated={status === "authenticated"}
+        settingsLoaded={appSettingsLoaded}
+        dataLoaded={!loading}
+        serverOffline={serverOffline}
+        semesters={orderedSemesters}
+        activeSemesterId={activeSemesterId}
+        sidebarOpen={sidebarOpen}
+      />
       <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
         <AppTopBar
           activeItem={
@@ -500,10 +547,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             onClearAllData={clearAllData}
             userEmail={session?.user?.email ?? undefined}
             userId={session?.user?.id ?? session?.user?.email ?? undefined}
+            onStartOnboarding={launchOnboarding}
           />
         ) : isDashboardView ? (
           <div className="-mx-4 -mt-8">
             <section
+              data-onboarding-target="dashboard-overview"
               data-nav-tone="dark"
               className="px-4 pb-4 pt-14 md:pb-6"
               style={{
@@ -650,7 +699,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                         Let's get started!
                       </p>
                     </div>
-                    <Button onClick={addSemester} size="lg" className="gap-2">
+                    <Button
+                      data-onboarding-target="add-semester-main"
+                      onClick={addSemester}
+                      size="lg"
+                      className="gap-2"
+                    >
                       <Plus className="h-5 w-5" />
                       Add Semester
                     </Button>
@@ -728,6 +782,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   <div className="flex min-w-0 items-center justify-start">
                     <input
                       ref={semesterNameInputRef}
+                      data-onboarding-target="semester-title"
                       aria-label="Semester name"
                       size={Math.max(1, semesterNameDraft.length)}
                       value={semesterNameDraft}
@@ -755,6 +810,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   <div className="flex min-w-0 items-center justify-start">
                     <button
                       type="button"
+                      data-onboarding-target="semester-title"
                       aria-label="Edit semester name"
                       className="font-futura-bold max-w-full cursor-text truncate border-0 bg-transparent p-0 text-left text-5xl uppercase text-white transition-colors duration-150 hover:text-white/75"
                       onClick={startEditingSemesterName}
@@ -800,6 +856,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     </>
                   )}
                   <Button
+                    data-onboarding-target="add-course"
                     onClick={addCourse}
                     size="lg"
                     variant="ghost"
@@ -830,6 +887,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   {courses.map((course, i) => (
                     <motion.div
                       key={course.id}
+                      data-onboarding-course-id={course.id}
                       ref={(el) => {
                         courseRefs.current[course.id] = el;
                       }}

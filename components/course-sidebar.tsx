@@ -212,6 +212,7 @@ export function CourseSidebar({
   return (
     <>
       <div
+        data-onboarding-target={`sidebar-${variant === "desktop" ? "desktop" : "overlay"}`}
         className={containerClass}
         style={{
           backgroundImage:
@@ -420,6 +421,7 @@ export function CourseSidebar({
             <div className="mt-1 flex items-center gap-2">
               <Button
                 type="button"
+                data-onboarding-target="add-semester"
                 onClick={onAddSemester}
                 variant="outline"
                 size="sm"

@@ -310,6 +310,7 @@ export function CriterionRow({ criterion }: { criterion: Criterion }) {
 
       {/* Criterion row */}
       <div
+        data-onboarding-target={isFirstCriterion ? "criterion-row" : undefined}
         className={`group/criterion relative flex items-start gap-2 rounded-md px-2.5 py-2.5 transition-all duration-150 sm:px-1.5 sm:py-1 ${
           isDragging
             ? "scale-[0.97] bg-primary/5 opacity-50 ring-1 ring-primary/40"
@@ -344,6 +345,7 @@ export function CriterionRow({ criterion }: { criterion: Criterion }) {
           <div>
             <Label className={labelCls}>Name</Label>
             <Input
+              data-onboarding-field="criterion-name"
               value={nameDraft ?? criterion.name ?? ""}
               onChange={(e) => setNameDraft(e.target.value)}
               onBlur={commitName}
@@ -357,6 +359,7 @@ export function CriterionRow({ criterion }: { criterion: Criterion }) {
           <div>
             <Label className={labelCls}>Weight (%)</Label>
             <Input
+              data-onboarding-field="criterion-weight"
               type="text"
               inputMode="decimal"
               value={getInputValue("weight")}
@@ -379,6 +382,7 @@ export function CriterionRow({ criterion }: { criterion: Criterion }) {
               </div>
             ) : (
               <Input
+                data-onboarding-field="criterion-score"
                 type="text"
                 inputMode="decimal"
                 value={getInputValue("score")}

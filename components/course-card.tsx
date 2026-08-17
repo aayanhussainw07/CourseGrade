@@ -629,6 +629,7 @@ export function CourseCard({
 
   const gradeSummary = (collapsed: boolean) => (
     <div
+      data-onboarding-target="grade-result"
       className={`flex items-center justify-between rounded-lg bg-[#fff8f1] ${collapsed ? "p-4" : "p-6 sm:p-3"}`}
     >
       <div>
@@ -733,6 +734,7 @@ export function CourseCard({
     const displayColor = course.isPassFail ? "#6b7280" : gradeColor;
     return (
       <div
+        data-onboarding-target="course-card"
         className={`${paperShellClass} overflow-visible ${collapsedPaperRotation} focus-within:z-50 hover:z-20 hover:rotate-0 hover:-translate-y-0.5`}
       >
         <div className="pointer-events-none absolute right-0 top-0 h-10 w-10 bg-primary/8 [clip-path:polygon(100%_0,0_0,100%_100%)]" />
@@ -853,7 +855,10 @@ export function CourseCard({
           style={{ backgroundColor: course.headerColor }}
         />
       )}
-      <CardHeader className="px-5 pb-4 pt-6 sm:px-4 sm:pb-2 sm:pt-3">
+      <CardHeader
+        data-onboarding-target="course-card"
+        className="px-5 pb-4 pt-6 sm:px-4 sm:pb-2 sm:pt-3"
+      >
         <div
           data-course-drag-surface
           className="relative cursor-pointer p-4 sm:p-2.5"
@@ -930,7 +935,10 @@ export function CourseCard({
                 </div>
               )}
               {/* Course name + controls */}
-              <div className="flex min-w-0 flex-1 flex-wrap items-center gap-3">
+              <div
+                data-onboarding-target="course-basics"
+                className="flex min-w-0 flex-1 flex-wrap items-center gap-3"
+              >
                 <Input
                   value={nameDraft ?? course.name}
                   onChange={(e) => setNameDraft(e.target.value)}
@@ -1008,6 +1016,7 @@ export function CourseCard({
             <div className="flex flex-wrap items-center gap-2">
               <h3 className="font-semibold text-primary">Grade Breakdown</h3>
               <Button
+                data-onboarding-target="add-criterion"
                 onClick={addCriterion}
                 variant="outline"
                 size="sm"

@@ -6,6 +6,7 @@ import {
   CheckCircle2,
   CloudOff,
   Download,
+  GraduationCap,
   Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -23,6 +24,7 @@ interface SettingsPageProps {
   onClearAllData: () => Promise<void>;
   userEmail?: string;
   userId?: string;
+  onStartOnboarding: () => void;
 }
 
 type SaveStatus = "idle" | "saving" | "saved" | "error";
@@ -35,6 +37,7 @@ export function SettingsPage({
   onClearAllData,
   userEmail,
   userId,
+  onStartOnboarding,
 }: SettingsPageProps) {
   const [localSettings, setLocalSettings] = useState(settings);
   const settingsRef = useRef(settings);
@@ -175,7 +178,7 @@ export function SettingsPage({
         data-nav-tone="light"
         className="bg-background px-4 pb-7 pt-14 sm:pb-9"
       >
-        <div className="mx-auto w-full max-w-[1200px]">
+        <div className="w-full max-w-[1200px]">
           <h1 className="sr-only">Settings</h1>
           <div className="divide-y divide-primary/20">
             <section className={`${sectionClass} space-y-5`}>
@@ -541,6 +544,32 @@ export function SettingsPage({
                     </button>
                   ))}
                 </div>
+              </div>
+            </section>
+
+            <section className={`${sectionClass} space-y-4`}>
+              <h2 className={sectionTitleClass}>Help &amp; onboarding</h2>
+              <div className={settingRowClass}>
+                <div>
+                  <p className="text-sm font-medium">Core walkthrough</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    Review semesters, courses, weighted criteria, navigation,
+                    and the dashboard.
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="shrink-0 gap-2 bg-white"
+                  onClick={onStartOnboarding}
+                >
+                  <GraduationCap className="h-4 w-4" />
+                  {localSettings.onboarding.coreStatus === "in_progress"
+                    ? "Resume tour"
+                    : localSettings.onboarding.coreStatus === "not_started"
+                      ? "Start tour"
+                      : "Replay tour"}
+                </Button>
               </div>
             </section>
 

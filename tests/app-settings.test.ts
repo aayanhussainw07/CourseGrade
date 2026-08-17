@@ -25,6 +25,28 @@ test("course open state defaults to collapsed and preserves an expand preference
   );
 });
 
+test("onboarding state is normalized with app settings", () => {
+  const defaults = normalizeAppSettings(undefined).onboarding;
+  assert.equal(defaults.coreStatus, "not_started");
+  assert.equal(defaults.coreStep, "welcome");
+
+  const saved = normalizeAppSettings({
+    onboarding: {
+      ...defaults,
+      coreStatus: "in_progress",
+      coreStep: "configure_criterion",
+      semesterId: "12",
+      courseId: "44",
+      criterionScoreEntered: true,
+    },
+  }).onboarding;
+  assert.equal(saved.coreStatus, "in_progress");
+  assert.equal(saved.coreStep, "configure_criterion");
+  assert.equal(saved.semesterId, "12");
+  assert.equal(saved.courseId, "44");
+  assert.equal(saved.criterionScoreEntered, true);
+});
+
 test("legacy pass/fail app settings restore the saved letter scale", () => {
   const letterScale = [
     { letter: "A", min: 90 },

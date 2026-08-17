@@ -1,6 +1,11 @@
 import type { GradeScale } from "./types"
 import { DEFAULT_GRADE_SCALE } from "./types"
 import { settingsApi } from "./api"
+import {
+  DEFAULT_ONBOARDING_PROGRESS,
+  normalizeOnboardingProgress,
+  type OnboardingProgress,
+} from "./onboarding"
 
 const APP_SETTINGS_KEY = "coursegrade:app-settings"
 let settingsSaveQueue: Promise<void> = Promise.resolve()
@@ -17,6 +22,7 @@ export interface AppSettings {
   skipSemesterDeleteConfirm: boolean
   skipCourseDeleteConfirm: boolean
   school: "general" | "cornell"
+  onboarding: OnboardingProgress
 }
 
 const DEFAULT_APP_SETTINGS: AppSettings = {
@@ -31,6 +37,7 @@ const DEFAULT_APP_SETTINGS: AppSettings = {
   skipSemesterDeleteConfirm: false,
   skipCourseDeleteConfirm: false,
   school: "general",
+  onboarding: DEFAULT_ONBOARDING_PROGRESS,
 }
 
 type LegacyAppSettings = Partial<AppSettings> & {
@@ -87,11 +94,13 @@ export function normalizeAppSettings(value: unknown): AppSettings {
     typeof stored.collapseCoursesOnSemesterOpen === "boolean"
       ? stored.collapseCoursesOnSemesterOpen
       : DEFAULT_APP_SETTINGS.collapseCoursesOnSemesterOpen
+  const onboarding = normalizeOnboardingProgress(stored.onboarding)
   const merged = {
     ...DEFAULT_APP_SETTINGS,
     ...stored,
     defaultGradeScale,
     collapseCoursesOnSemesterOpen,
+    onboarding,
   } as AppSettings & { defaultGradeScaleSnapshot?: unknown }
   delete merged.defaultGradeScaleSnapshot
   return merged
@@ -130,6 +139,9 @@ export async function loadAppSettingsFromServer(): Promise<AppSettings> {
       localStorage.setItem(APP_SETTINGS_KEY, JSON.stringify(merged))
       return merged
     }
+    const defaults = normalizeAppSettings(undefined)
+    localStorage.setItem(APP_SETTINGS_KEY, JSON.stringify(defaults))
+    return defaults
   } catch {
     // fall through to local
   }

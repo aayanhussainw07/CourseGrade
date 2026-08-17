@@ -56,6 +56,7 @@ export function AppTopBar({
           <SheetTrigger asChild>
             <button
               type="button"
+              data-onboarding-target="overview-trigger"
               className="relative isolate px-2 py-1.5 text-white opacity-80 underline-offset-[5px] transition-opacity hover:opacity-100 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 data-[state=open]:opacity-100 data-[state=open]:underline md:hidden"
             >
               <span
@@ -76,6 +77,7 @@ export function AppTopBar({
             <button
               key={item.id}
               type="button"
+              data-onboarding-target={`${item.id}-link`}
               aria-current={active ? "page" : undefined}
               onClick={item.action}
               className={`relative isolate border-0 px-2 py-1.5 text-white underline-offset-[5px] transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 md:px-3 ${
