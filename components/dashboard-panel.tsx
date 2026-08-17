@@ -127,6 +127,11 @@ export function DashboardPanel({
   const barLayoutClass = separated
     ? separatedPanelClass
     : "border-b border-primary/20 md:border-b-0 md:border-r"
+  const separatedTitleClass =
+    "mb-4 font-heading text-base font-bold uppercase tracking-wide text-primary"
+  const distributionTitleClass = separated
+    ? separatedTitleClass
+    : "mb-4 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground"
 
   const inner = (
     <div
@@ -140,12 +145,18 @@ export function DashboardPanel({
             {separated && (
               <div className="pointer-events-none absolute -top-2 left-8 z-10 h-5 w-20 rotate-[-2deg] bg-primary/15" />
             )}
-            <div className="mb-4 flex items-center gap-2">
-              <p className="font-heading text-xs font-bold uppercase tracking-wide text-primary">
+            {separated ? (
+              <p className={separatedTitleClass}>
                 GPA Timeline
               </p>
-              <span className="h-px flex-1 bg-primary/20" aria-hidden="true" />
-            </div>
+            ) : (
+              <div className="mb-4 flex items-center gap-2">
+                <p className="font-heading text-xs font-bold uppercase tracking-wide text-primary">
+                  GPA Timeline
+                </p>
+                <span className="h-px flex-1 bg-primary/20" aria-hidden="true" />
+              </div>
+            )}
             {timeline ? (
               <svg viewBox={`0 0 ${VW} ${VH}`} className="w-full">
                 <defs>
@@ -276,7 +287,7 @@ export function DashboardPanel({
               {separated && (
                 <div className="pointer-events-none absolute -top-2 left-1/2 z-10 h-5 w-20 -translate-x-1/2 rotate-[1deg] bg-primary/15" />
               )}
-              <p className="mb-4 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+              <p className={distributionTitleClass}>
                 Bar Distribution
               </p>
               <div className="flex-1 flex items-center">
@@ -293,7 +304,7 @@ export function DashboardPanel({
               {separated && (
                 <div className="pointer-events-none absolute -top-2 right-8 z-10 h-5 w-20 rotate-[3deg] bg-primary/15" />
               )}
-              <p className="mb-4 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+              <p className={distributionTitleClass}>
                 Pie Distribution
               </p>
               <div className="flex flex-1 items-center">
