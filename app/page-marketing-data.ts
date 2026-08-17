@@ -142,16 +142,11 @@ export const marketingCourseCard: Course = {
   headerColor: "#c56b5e",
 };
 
-const marketingTotalCredits = marketingCourses.reduce(
-  (sum, course) => sum + (course.credits ?? 0),
-  0,
-);
-
 export const marketingDashboardStats = [
   { label: "Overall GPA", value: "3.91", icon: TrendingUp },
   {
     label: "Total Credits",
-    value: marketingTotalCredits.toString(),
+    value: "92",
     icon: Layers,
   },
   { label: "Semesters Tracked", value: "6", icon: GraduationCap },

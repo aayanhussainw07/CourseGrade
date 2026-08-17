@@ -193,7 +193,7 @@ function MarketingDashboardMock() {
             QUOTE IT!
           </p>
           <p className="mt-8 text-xl italic leading-relaxed text-foreground/85">
-            “Small progress is still progress.”
+            “WOOOOOHOOOOO!”
           </p>
         </div>
 
@@ -253,9 +253,8 @@ function MarketingCourseMock() {
           Know exactly where you stand
         </h3>
         <p className="mt-5 text-base leading-7 text-muted-foreground sm:text-lg">
-          Add each part of your grading scheme, update a score, and watch your
-          numeric and letter grade respond instantly. No spreadsheet formulas
-          required.
+          Courses have full customization: grading curves, weights, extra
+          credit, and bonuses!
         </p>
       </div>
 
@@ -470,16 +469,14 @@ export function MarketingPage() {
               "animate-fade-up",
             )}
           >
-            <div className="mb-8 grid gap-4 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] lg:items-end">
+            <div className="mb-8 grid gap-4 lg:grid-cols-[minmax(0,0.6fr)_minmax(0,1.2fr)] lg:items-end">
               <div>
                 <h2 className="font-futura-bold text-3xl font-black uppercase leading-none tracking-widest text-foreground sm:text-4xl">
                   Track the whole picture
                 </h2>
               </div>
               <p className="max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg">
-                Pin a quote that keeps you moving, watch your overall GPA as
-                grades change, and keep every tracked semester and earned credit
-                visible in one place.
+                Our dashboard shows you an overview of all your semesters.
               </p>
             </div>
             <MarketingDashboardMock />
