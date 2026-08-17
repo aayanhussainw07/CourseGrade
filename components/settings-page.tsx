@@ -178,7 +178,7 @@ export function SettingsPage({
         data-nav-tone="light"
         className="bg-background px-4 pb-7 pt-14 sm:pb-9"
       >
-        <div className="w-full max-w-[1200px]">
+        <div className="w-full">
           <h1 className="sr-only">Settings</h1>
           <div className="divide-y divide-primary/20">
             <section className={`${sectionClass} space-y-5`}>
