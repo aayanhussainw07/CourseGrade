@@ -253,7 +253,7 @@ export function DashboardPanel({
                           {pt.label}
                         </text>
                       ) : (
-                        <text x={pt.x} y={timeline.baseY + 20} textAnchor="middle" fontSize="12" fill="var(--foreground)" opacity="0.82"
+                        <text x={pt.x} y={timeline.baseY + 20} textAnchor={semesterLabelAnchor} fontSize="12" fill="var(--foreground)" opacity="0.82"
                           fontFamily="var(--font-display)">
                           {pt.label}
                         </text>
