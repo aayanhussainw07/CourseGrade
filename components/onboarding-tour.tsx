@@ -747,7 +747,7 @@ export function OnboardingTour({
       </button>
       <div className="pr-8">
         <p className="font-futura-bold text-[10px] font-black uppercase tracking-[0.22em] text-primary/70">
-          Page {Math.max(1, stepIndex + 1)} of {CORE_ORDER.length} · Getting started
+          Page {Math.max(1, stepIndex + 1)} of {CORE_ORDER.length}
         </p>
         <h2 className="mt-2 font-futura-bold text-xl font-black uppercase tracking-wide">
           {presentation.title}
