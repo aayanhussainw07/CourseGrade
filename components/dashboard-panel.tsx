@@ -42,27 +42,15 @@ const CHART_COLORS: Record<string, string> = {
 // ── Timeline helpers ──────────────────────────────────────────────────────────
 
 const VW = 600
-const VH = 260
-const PAD = { top: 28, right: 16, bottom: 52, left: 48 }
+const VH = 360
+const PAD = { top: 34, right: 16, bottom: 58, left: 48 }
 const REF_LINES = [1.0, 2.0, 3.0, 4.0, 4.33]
 
-function catmullRom(pts: [number, number][]): string {
+function sketchLine(pts: [number, number][]): string {
   if (pts.length === 0) return ""
-  if (pts.length === 1) return `M ${pts[0][0]} ${pts[0][1]}`
-  let d = `M ${pts[0][0]} ${pts[0][1]}`
-  for (let i = 0; i < pts.length - 1; i++) {
-    const p0 = pts[Math.max(i - 1, 0)]
-    const p1 = pts[i]
-    const p2 = pts[i + 1]
-    const p3 = pts[Math.min(i + 2, pts.length - 1)]
-    const t = 0.15
-    const cp1x = p1[0] + ((p2[0] - p0[0]) * t) / 2
-    const cp1y = p1[1] + ((p2[1] - p0[1]) * t) / 2
-    const cp2x = p2[0] - ((p3[0] - p1[0]) * t) / 2
-    const cp2y = p2[1] - ((p3[1] - p1[1]) * t) / 2
-    d += ` C ${cp1x.toFixed(2)} ${cp1y.toFixed(2)}, ${cp2x.toFixed(2)} ${cp2y.toFixed(2)}, ${p2[0]} ${p2[1]}`
-  }
-  return d
+  return pts
+    .map(([x, y], index) => `${index === 0 ? "M" : "L"} ${x} ${y}`)
+    .join(" ")
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
@@ -95,14 +83,14 @@ export function DashboardPanel({
       PAD.top + cH - ((gpa - domainMin) / domainRange) * cH
     const points = data.map((d, i) => ({ ...d, x: toX(i), y: toY(d.gpa) }))
     const pts = points.map((p) => [p.x, p.y] as [number, number])
-    const linePath = catmullRom(pts)
+    const linePath = sketchLine(pts)
     const baseY = PAD.top + cH
     const areaPath =
       pts.length < 2
         ? ""
         : `${linePath} L ${pts[pts.length - 1][0]} ${baseY} L ${pts[0][0]} ${baseY} Z`
     const yTicks = REF_LINES.filter((t) => t >= domainMin - 0.05 && t <= domainMax + 0.05)
-    return { points, linePath, areaPath, yTicks, toY, baseY }
+    return { points, linePath, areaPath, yTicks, toY, baseY, chartWidth: cW, chartHeight: cH }
   }, [timelineData])
 
   // Distribution chart data
@@ -152,25 +140,77 @@ export function DashboardPanel({
             {separated && (
               <div className="pointer-events-none absolute -top-2 left-8 z-10 h-5 w-20 rotate-[-2deg] bg-primary/15" />
             )}
-            <p className="mb-4 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-              GPA Timeline
-            </p>
+            <div className="mb-4 flex items-center gap-2">
+              <p className="font-heading text-xs font-bold uppercase tracking-wide text-primary">
+                GPA Timeline
+              </p>
+              <span className="h-px flex-1 bg-primary/20" aria-hidden="true" />
+            </div>
             {timeline ? (
               <svg viewBox={`0 0 ${VW} ${VH}`} className="w-full">
                 <defs>
-                  <linearGradient id="dp-tl-area" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="var(--primary)" stopOpacity="0.22" />
-                    <stop offset="100%" stopColor="var(--primary)" stopOpacity="0.02" />
+                  <pattern
+                    id="dp-tl-grid"
+                    width="24"
+                    height="24"
+                    patternUnits="userSpaceOnUse"
+                  >
+                    <path
+                      d="M 24 0 L 0 0 0 24"
+                      fill="none"
+                      stroke="var(--primary)"
+                      strokeWidth="0.75"
+                      opacity="0.11"
+                    />
+                  </pattern>
+                  <linearGradient
+                    id="dp-tl-area-colors"
+                    gradientUnits="userSpaceOnUse"
+                    x1={PAD.left}
+                    y1="0"
+                    x2={VW - PAD.right}
+                    y2="0"
+                  >
+                    {timeline.points.map((point, index) => (
+                      <stop
+                        key={`${point.label}-${index}`}
+                        offset={`${(index / Math.max(timeline.points.length - 1, 1)) * 100}%`}
+                        stopColor={point.color}
+                        stopOpacity="0.18"
+                      />
+                    ))}
                   </linearGradient>
                 </defs>
+
+                <rect
+                  x={PAD.left}
+                  y={PAD.top}
+                  width={timeline.chartWidth}
+                  height={timeline.chartHeight}
+                  fill="#fffaf5"
+                  stroke="var(--primary)"
+                  strokeWidth="1"
+                  strokeOpacity="0.18"
+                />
+                <rect
+                  x={PAD.left}
+                  y={PAD.top}
+                  width={timeline.chartWidth}
+                  height={timeline.chartHeight}
+                  fill="url(#dp-tl-grid)"
+                />
+
+                {timeline.areaPath && (
+                  <path d={timeline.areaPath} fill="url(#dp-tl-area-colors)" />
+                )}
 
                 {timeline.yTicks.map((tick) => {
                   const y = timeline.toY(tick)
                   return (
                     <g key={tick}>
                       <line x1={PAD.left} y1={y} x2={VW - PAD.right} y2={y}
-                        stroke="var(--border)" strokeWidth="1" strokeDasharray="4 5" strokeOpacity="0.6" />
-                      <text x={PAD.left - 6} y={y + 4} textAnchor="end" fontSize="11" fill="var(--muted-foreground)">
+                        stroke="var(--primary)" strokeWidth="1" strokeOpacity="0.16" />
+                      <text x={PAD.left - 7} y={y + 4} textAnchor="end" fontSize="11" fill="var(--muted-foreground)" fontFamily="var(--font-display)">
                         {tick.toFixed(1)}
                       </text>
                     </g>
@@ -178,34 +218,46 @@ export function DashboardPanel({
                 })}
 
                 <line x1={PAD.left} y1={timeline.baseY} x2={VW - PAD.right} y2={timeline.baseY}
-                  stroke="var(--border)" strokeWidth="1.5" strokeOpacity="0.7" />
+                  stroke="var(--primary)" strokeWidth="1.5" strokeOpacity="0.35" />
 
-                {timeline.areaPath && <path d={timeline.areaPath} fill="url(#dp-tl-area)" />}
                 {timeline.linePath && (
-                  <path d={timeline.linePath} fill="none" stroke="var(--primary)"
-                    strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" opacity="0.85" />
+                  <>
+                    <path d={timeline.linePath} fill="none" stroke="var(--primary)"
+                      strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" opacity="0.14"
+                      transform="translate(0.7 0.7)" />
+                    <path d={timeline.linePath} fill="none" stroke="var(--primary)"
+                      strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.9" />
+                  </>
                 )}
 
                 {timeline.points.map((pt, i) => {
                   const isHov = hovered === i
+                  const isOnly = timeline.points.length === 1
                   const isFirst = i === 0
-                  const pointLabelX = isFirst ? pt.x + 18 : pt.x
-                  const pointLabelAnchor = isFirst ? "start" : "middle"
+                  const isLast = i === timeline.points.length - 1
+                  const pointLabelX = isOnly ? pt.x : isFirst ? pt.x + 4 : isLast ? pt.x - 4 : pt.x
+                  const pointLabelAnchor = isOnly ? "middle" : isFirst ? "start" : isLast ? "end" : "middle"
+                  const semesterLabelAnchor = isOnly ? "middle" : isFirst ? "start" : isLast ? "end" : "middle"
                   return (
                     <g key={i} onMouseEnter={() => setHovered(i)} onMouseLeave={() => setHovered(null)} style={{ cursor: "default" }}>
-                      <text x={pointLabelX} y={pt.y - 16} textAnchor={pointLabelAnchor} fontSize="14" fontWeight="700" fill={pt.color}>
+                      <text x={pointLabelX} y={pt.y - 14} textAnchor={pointLabelAnchor} fontSize="14"
+                        fontWeight={isHov ? "800" : "700"} fill={pt.color} opacity={isHov ? 1 : 0.86}
+                        fontFamily="var(--font-display)" style={{ transition: "opacity 0.12s ease" }}>
                         {pt.gpa.toFixed(2)}
                       </text>
-                      {isHov && <circle cx={pt.x} cy={pt.y} r={14} fill={pt.color} opacity="0.15" />}
-                      <circle cx={pt.x} cy={pt.y} r={isHov ? 9 : 7} fill={pt.color}
-                        stroke="var(--card)" strokeWidth="2.5" style={{ transition: "r 0.12s ease" }} />
+                      <circle cx={pt.x} cy={pt.y} r="14" fill="transparent" />
+                      <circle cx={pt.x} cy={pt.y} r="6.5" fill={isHov ? pt.color : "#fffaf5"}
+                        stroke={pt.color} strokeWidth={isHov ? "3" : "2.25"}
+                        style={{ transition: "fill 0.12s ease, stroke-width 0.12s ease" }} />
                       {timelineData.length > 4 ? (
-                        <text x={0} y={0} textAnchor="end" fontSize="11" fill="var(--foreground)" opacity="0.8"
-                          transform={`translate(${pt.x + 4}, ${timeline.baseY + 16}) rotate(-38)`}>
+                        <text x={0} y={0} textAnchor={semesterLabelAnchor} fontSize="11" fill="var(--foreground)" opacity="0.82"
+                          fontFamily="var(--font-display)"
+                          transform={`translate(${pt.x}, ${timeline.baseY + 18}) rotate(-32)`}>
                           {pt.label}
                         </text>
                       ) : (
-                        <text x={pt.x} y={timeline.baseY + 20} textAnchor="middle" fontSize="12" fill="var(--foreground)" opacity="0.8">
+                        <text x={pt.x} y={timeline.baseY + 20} textAnchor="middle" fontSize="12" fill="var(--foreground)" opacity="0.82"
+                          fontFamily="var(--font-display)">
                           {pt.label}
                         </text>
                       )}
