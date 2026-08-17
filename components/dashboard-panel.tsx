@@ -173,7 +173,7 @@ export function DashboardPanel({
                         key={`${point.label}-${index}`}
                         offset={`${(index / Math.max(timeline.points.length - 1, 1)) * 100}%`}
                         stopColor={point.color}
-                        stopOpacity="0.18"
+                        stopOpacity={separated ? 0.18 : 1}
                       />
                     ))}
                   </linearGradient>
