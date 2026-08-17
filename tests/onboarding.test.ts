@@ -79,25 +79,25 @@ test("settings onboarding precedes the existing UI walkthrough", () => {
   assert.equal(savedSettingsStep.coreStatus, "in_progress")
 })
 
-test("UI onboarding review navigation follows the setup and replay paths", () => {
-  assert.equal(getPreviousUiOnboardingStep("welcome", true), undefined)
-  assert.equal(getNextUiOnboardingStep("welcome", true), "add_semester")
+test("UI onboarding navigation includes every page for setup and replay", () => {
+  assert.equal(getPreviousUiOnboardingStep("welcome"), undefined)
+  assert.equal(getNextUiOnboardingStep("welcome"), "add_semester")
   assert.equal(
-    getPreviousUiOnboardingStep("rename_semester", true),
+    getPreviousUiOnboardingStep("rename_semester"),
     "add_semester",
   )
   assert.equal(
-    getNextUiOnboardingStep("dashboard_finish", true),
+    getNextUiOnboardingStep("dashboard_finish"),
     undefined,
   )
 
-  assert.equal(getNextUiOnboardingStep("welcome", false), "rename_semester")
+  assert.equal(getNextUiOnboardingStep("welcome"), "add_semester")
   assert.equal(
-    getPreviousUiOnboardingStep("rename_semester", false),
-    "welcome",
+    getNextUiOnboardingStep("add_semester"),
+    "rename_semester",
   )
   assert.equal(
-    getPreviousUiOnboardingStep("configure_criterion", false),
+    getPreviousUiOnboardingStep("configure_criterion"),
     "add_criterion",
   )
 })

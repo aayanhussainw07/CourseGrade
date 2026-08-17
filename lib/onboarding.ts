@@ -99,30 +99,18 @@ export function getPreviousSettingsOnboardingStep(
   return SETTINGS_ONBOARDING_STEPS[index - 1]
 }
 
-function getUiOnboardingSequence(
-  coreSetupRequired: boolean,
-): readonly UiOnboardingStep[] {
-  return coreSetupRequired
-    ? UI_ONBOARDING_STEPS
-    : UI_ONBOARDING_STEPS.filter((step) => step !== "add_semester")
-}
-
 export function getPreviousUiOnboardingStep(
   step: UiOnboardingStep,
-  coreSetupRequired: boolean,
 ): UiOnboardingStep | undefined {
-  const steps = getUiOnboardingSequence(coreSetupRequired)
-  const index = steps.indexOf(step)
-  return index > 0 ? steps[index - 1] : undefined
+  const index = UI_ONBOARDING_STEPS.indexOf(step)
+  return index > 0 ? UI_ONBOARDING_STEPS[index - 1] : undefined
 }
 
 export function getNextUiOnboardingStep(
   step: UiOnboardingStep,
-  coreSetupRequired: boolean,
 ): UiOnboardingStep | undefined {
-  const steps = getUiOnboardingSequence(coreSetupRequired)
-  const index = steps.indexOf(step)
-  return index >= 0 ? steps[index + 1] : undefined
+  const index = UI_ONBOARDING_STEPS.indexOf(step)
+  return index >= 0 ? UI_ONBOARDING_STEPS[index + 1] : undefined
 }
 
 export function normalizeOnboardingProgress(value: unknown): OnboardingProgress {

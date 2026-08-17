@@ -623,19 +623,13 @@ export function OnboardingTour({
   const advanceCore = () => {
     const step = progress.coreStep;
     if (step === "welcome") {
-      if (!progress.coreSetupRequired && selectedSemester) {
-        persist({
-          coreStep: "rename_semester",
-          semesterId: selectedSemester.id,
-          initialSemesterName: selectedSemester.name,
-        });
-      } else {
-        persist({ coreStep: "add_semester" });
-      }
+      persist({ coreStep: "add_semester" });
       return;
     }
     if (step === "add_semester" && !progress.coreSetupRequired) {
-      const semester = selectedSemester;
+      const semester =
+        semesters.find((item) => item.id === activeSemesterId) ??
+        selectedSemester;
       if (!semester) return;
       persist({
         coreStep: "rename_semester",
@@ -691,7 +685,6 @@ export function OnboardingTour({
   const goBackCore = () => {
     const previousStep = getPreviousUiOnboardingStep(
       displayedUiStep,
-      progress.coreSetupRequired,
     );
     if (previousStep) setReviewStep(previousStep);
   };
@@ -700,7 +693,6 @@ export function OnboardingTour({
     if (!reviewStep) return;
     const nextStep = getNextUiOnboardingStep(
       reviewStep,
-      progress.coreSetupRequired,
     );
     if (!nextStep || nextStep === currentUiStep) {
       setReviewStep(null);
@@ -799,7 +791,6 @@ export function OnboardingTour({
         : true));
   const previousUiStep = getPreviousUiOnboardingStep(
     displayedUiStep,
-    progress.coreSetupRequired,
   );
 
   const card =
