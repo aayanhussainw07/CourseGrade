@@ -384,7 +384,7 @@ export function MarketingPage() {
       <section
         data-nav-tone="light"
         id="feature-grid"
-        className="relative overflow-hidden bg-background py-20"
+        className="relative -mt-px overflow-hidden bg-background py-20"
       >
         <DoodleField />
         <div className="relative z-10 mx-auto max-w-[1400px] px-2 lg:px-4">
