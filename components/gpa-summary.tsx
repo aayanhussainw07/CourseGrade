@@ -59,7 +59,7 @@ export function GpaSummary({ courses }: GpaSummaryProps) {
             {safeCourses.map((course, index) => {
               const grade = calculateCourseGrade(course.criteria, course.percentBoost)
               const letter = getLetterGrade(grade, course.gradeScale)
-              const gradeColor = getLetterGradeColor(letter)
+              const gradeColor = getLetterGradeColor(letter, course.gradeScale)
               return (
                 <div
                   key={`${course.id}-${index}`}

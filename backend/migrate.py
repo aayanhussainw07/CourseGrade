@@ -78,6 +78,8 @@ def _ensure_cloud_persistence_columns() -> None:
             "pass_label": "VARCHAR(24)",
             "fail_label": "VARCHAR(24)",
             "pass_threshold": "FLOAT",
+            "pass_color": "VARCHAR(7)",
+            "fail_color": "VARCHAR(7)",
             "letter_grade_scale": json_type,
         },
         "assignments": {
@@ -91,6 +93,9 @@ def _ensure_cloud_persistence_columns() -> None:
             "last_active_semester_id": "INTEGER",
             "local_migration_version": "INTEGER NOT NULL DEFAULT 0",
         },
+        "grade_scales": {
+            "color": "VARCHAR(7) NOT NULL DEFAULT '#888888'",
+        },
     }
 
     for table_name, columns_to_add in additions.items():
@@ -102,6 +107,14 @@ def _ensure_cloud_persistence_columns() -> None:
                 db.session.execute(
                     text(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {definition}")
                 )
+
+    if dialect == "postgresql" and "grade_scales" in table_names:
+        db.session.execute(text("ALTER TABLE grade_scales ALTER COLUMN letter TYPE VARCHAR(8)"))
+        db.session.execute(text("ALTER TABLE grade_scales DROP CONSTRAINT IF EXISTS grade_scales_gpa_value_range"))
+        db.session.execute(text("ALTER TABLE grade_scales DROP CONSTRAINT IF EXISTS grade_scales_gpa_value_nonnegative"))
+        db.session.execute(text(
+            "ALTER TABLE grade_scales ADD CONSTRAINT grade_scales_gpa_value_nonnegative CHECK (gpa_value >= 0)"
+        ))
 
     if "assignments" in table_names:
         db.session.execute(

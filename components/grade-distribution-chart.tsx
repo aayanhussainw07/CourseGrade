@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { calculateCourseGrade, getLetterGrade } from "@/lib/grade-utils";
+import { buildGradeDistribution } from "@/lib/grade-utils";
 import type { Course } from "@/lib/types";
 import { BarChart3, PieChart } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -11,38 +11,6 @@ interface GradeDistributionChartProps {
   courses: Course[];
   title?: string;
 }
-
-const GRADE_ORDER = [
-  "A+",
-  "A",
-  "A-",
-  "B+",
-  "B",
-  "B-",
-  "C+",
-  "C",
-  "C-",
-  "D+",
-  "D",
-  "D-",
-  "F",
-];
-
-const CHART_COLORS: Record<string, string> = {
-  "A+": "#e8756a",
-  A: "#d9645a",
-  "A-": "#c5534a",
-  "B+": "#e8a068",
-  B: "#d98e58",
-  "B-": "#c57e4a",
-  "C+": "#d9c058",
-  C: "#c8ae48",
-  "C-": "#b59a3a",
-  "D+": "#9898d0",
-  D: "#8484be",
-  "D-": "#7070ac",
-  F: "#8a8a8a",
-};
 
 interface ChartEntry {
   letter: string;
@@ -58,25 +26,7 @@ export function GradeDistributionChart({
   const [chartType, setChartType] = useState<"bar" | "pie">("bar");
 
   const data = useMemo((): ChartEntry[] => {
-    if (!courses.length) return [];
-    const dist: Record<string, number> = {};
-    for (const course of courses) {
-      if (course.isPassFail) continue;
-      const numeric = calculateCourseGrade(
-        course.criteria,
-        course.percentBoost,
-      );
-      const letter = getLetterGrade(numeric, course.gradeScale);
-      dist[letter] = (dist[letter] || 0) + 1;
-    }
-    const total = Object.values(dist).reduce((s, v) => s + v, 0);
-    if (!total) return [];
-    return GRADE_ORDER.filter((l) => dist[l]).map((letter) => ({
-      letter,
-      count: dist[letter],
-      color: CHART_COLORS[letter] ?? "#888",
-      pct: Math.round((dist[letter] / total) * 100),
-    }));
+    return buildGradeDistribution(courses);
   }, [courses]);
 
   if (!data.length) return null;

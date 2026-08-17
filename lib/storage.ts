@@ -197,6 +197,8 @@ export const storage = {
       pass_label: course.passLabel ?? "P",
       fail_label: course.failLabel ?? "F",
       pass_threshold: course.passThreshold ?? 60,
+      pass_color: course.passColor ?? "#888888",
+      fail_color: course.failColor ?? "#8a8a8a",
       letter_grade_scale: letterGradeScale,
       assignments: currentCriteria.map((criterion) => ({
         client_id: criterion.clientId ?? criterion.id,

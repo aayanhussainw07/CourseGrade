@@ -86,11 +86,14 @@ export const courseToPortable = (course: Course): CoursePortableData => ({
   passLabel: course.passLabel ?? "P",
   failLabel: course.failLabel ?? "F",
   passThreshold: course.passThreshold ?? 60,
+  passColor: course.passColor ?? "#888888",
+  failColor: course.failColor ?? "#8a8a8a",
   headerColor: course.headerColor ?? null,
   gradeScale:
     Array.isArray(course.gradeScale) && course.gradeScale.length > 0
       ? course.gradeScale
       : [],
+  gradeScaleSnapshot: course.gradeScaleSnapshot,
   criteria: (Array.isArray(course.criteria) ? course.criteria : []).map(
     (criterion) => ({
       name: criterion.name,
@@ -181,7 +184,7 @@ export const formatDateLabel = (value?: string | null) => {
   });
 };
 
-export const gpaToLetterGrade = (gpa: number, aPlusValue = 4.3): string => {
+export const gpaToLetterGrade = (gpa: number, aPlusValue = 4.33): string => {
   const scale: [string, number][] = [
     ["A+", aPlusValue],
     ["A",  4.0],

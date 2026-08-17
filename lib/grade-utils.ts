@@ -3,10 +3,41 @@ import { DEFAULT_GRADE_SCALE } from "./types"
 
 export const cloneGradeScale = (scale: GradeScale[]): GradeScale[] => scale.map((grade) => ({ ...grade }))
 
+const HEX_COLOR = /^#[0-9a-f]{6}$/i
+
+export function normalizeGradeScaleMetadata(
+  scale: GradeScale[],
+  legacyAPlusValue = 4.33,
+  fallbackScale: GradeScale[] = DEFAULT_GRADE_SCALE,
+): GradeScale[] {
+  return scale.map((grade) => {
+    const { gpa: _storedGpa, color: _storedColor, ...baseGrade } = grade
+    const fallback = fallbackScale.find(
+      (candidate) => candidate.letter === grade.letter.trim().toUpperCase(),
+    )
+    const standard = DEFAULT_GRADE_SCALE.find(
+      (candidate) => candidate.letter === grade.letter.trim().toUpperCase(),
+    )
+    const gpa =
+      typeof grade.gpa === "number" && Number.isFinite(grade.gpa) && grade.gpa >= 0
+        ? grade.gpa
+        : grade.letter.trim().toUpperCase() === "A+" && legacyAPlusValue !== 4.33
+          ? legacyAPlusValue
+          : fallback?.gpa ?? standard?.gpa
+    const color =
+      typeof grade.color === "string" && HEX_COLOR.test(grade.color)
+        ? grade.color.toLowerCase()
+        : fallback?.color ?? standard?.color
+    return { ...baseGrade, ...(gpa === undefined ? {} : { gpa }), ...(color ? { color } : {}) }
+  })
+}
+
 export function buildPassFailScale(settings: {
   passLabel?: string
   failLabel?: string
   threshold?: number
+  passColor?: string
+  failColor?: string
 }): GradeScale[] {
   const passLabel = settings.passLabel?.trim() || "P"
   const failLabel = settings.failLabel?.trim() || "F"
@@ -14,8 +45,8 @@ export function buildPassFailScale(settings: {
   const threshold = Math.min(100, Math.max(0, rawThreshold))
 
   return [
-    { letter: passLabel, min: threshold },
-    { letter: failLabel, min: 0 },
+    { letter: passLabel, min: threshold, color: settings.passColor || "#888888" },
+    { letter: failLabel, min: 0, color: settings.failColor || "#8a8a8a" },
   ]
 }
 
@@ -25,6 +56,8 @@ export function buildDefaultCourseGrading(settings: {
   defaultPassLabel: string
   defaultFailLabel: string
   defaultPassThreshold: number
+  defaultPassColor?: string
+  defaultFailColor?: string
 }): Pick<
   Course,
   | "gradeScale"
@@ -33,12 +66,16 @@ export function buildDefaultCourseGrading(settings: {
   | "passLabel"
   | "failLabel"
   | "passThreshold"
+  | "passColor"
+  | "failColor"
 > {
   const letterScale = cloneGradeScale(settings.defaultGradeScale)
   const passFailSettings = {
     passLabel: settings.defaultPassLabel,
     failLabel: settings.defaultFailLabel,
     threshold: settings.defaultPassThreshold,
+    passColor: settings.defaultPassColor,
+    failColor: settings.defaultFailColor,
   }
 
   return {
@@ -46,6 +83,8 @@ export function buildDefaultCourseGrading(settings: {
     passLabel: passFailSettings.passLabel,
     failLabel: passFailSettings.failLabel,
     passThreshold: passFailSettings.threshold,
+    passColor: passFailSettings.passColor,
+    failColor: passFailSettings.failColor,
     gradeScale: settings.defaultIsPassFail
       ? buildPassFailScale(passFailSettings)
       : letterScale,
@@ -108,41 +147,33 @@ export function calculateCourseGrade(
 }
 
 export function getLetterGrade(numericGrade: number, gradeScale: GradeScale[]): string {
+  return getGradeScaleEntry(numericGrade, gradeScale)?.letter ?? ""
+}
+
+export function getGradeScaleEntry(
+  numericGrade: number,
+  gradeScale: GradeScale[],
+): GradeScale | undefined {
   // Sort by minimum score descending
   const sorted = [...gradeScale || DEFAULT_GRADE_SCALE].sort((a, b) => b.min - a.min)
 
   for (const grade of sorted) {
     if (numericGrade >= grade.min) {
-      return grade.letter
+      return grade
     }
   }
 
-  return sorted[sorted.length - 1]?.letter
+  return sorted[sorted.length - 1]
 }
 
-export function letterGradeToGPA(letter: string, aPlusValue = 4.3): number {
+export function letterGradeToGPA(letter: string, aPlusValue = 4.33): number {
   const normalized = letter?.trim().toUpperCase()
-  const gpaMap: Record<string, number> = {
-    "A+": aPlusValue,
-    A: 4.0,
-    "A-": 3.7,
-    "B+": 3.3,
-    B: 3.0,
-    "B-": 2.7,
-    "C+": 2.3,
-    C: 2.0,
-    "C-": 1.7,
-    "D+": 1.3,
-    D: 1.0,
-    "D-": 0.7,
-    F: 0.0,
-  }
-
   if (!normalized) return -1.0
-  return gpaMap[normalized] ?? -1.0
+  if (normalized === "A+") return aPlusValue
+  return DEFAULT_GRADE_SCALE.find((grade) => grade.letter === normalized)?.gpa ?? -1.0
 }
 
-export function calculateGPA(courses: Course[] | null | undefined, aPlusValue = 4.3): number {
+export function calculateGPA(courses: Course[] | null | undefined): number {
   const safeCourses = Array.isArray(courses) ? courses : []
   if (safeCourses.length === 0) return 0
 
@@ -154,10 +185,10 @@ export function calculateGPA(courses: Course[] | null | undefined, aPlusValue = 
     if (course.isPassFail) continue
 
     const numericGrade = calculateCourseGrade(course.criteria, course.percentBoost)
-    const letterGrade = getLetterGrade(numericGrade, course.gradeScale)
-    const gradePoints = letterGradeToGPA(letterGrade, aPlusValue)
+    const resolvedGrade = getGradeScaleEntry(numericGrade, course.gradeScale)
+    const gradePoints = resolvedGrade?.gpa
 
-    if (gradePoints != -1.0) {
+    if (typeof gradePoints === "number" && Number.isFinite(gradePoints) && gradePoints >= 0) {
       totalPoints += gradePoints * course.credits
       totalCredits += course.credits
     }
@@ -166,23 +197,44 @@ export function calculateGPA(courses: Course[] | null | undefined, aPlusValue = 
   return totalCredits > 0 ? totalPoints / totalCredits : 0
 }
 
-export function getLetterGradeColor(letter: string): string {
-  const colorMap: Record<string, string> = {
-    "A+": "#e8756a",
-    A:   "#d9645a",
-    "A-": "#c5534a",
-    "B+": "#e8a068",
-    B:   "#d98e58",
-    "B-": "#c57e4a",
-    "C+": "#d9c058",
-    C:   "#c8ae48",
-    "C-": "#b59a3a",
-    "D+": "#9898d0",
-    D:   "#8484be",
-    "D-": "#7070ac",
-    F:   "#8a8a8a",
+export interface GradeDistributionEntry {
+  letter: string
+  count: number
+  color: string
+  gpa: number
+  pct: number
+}
+
+export function buildGradeDistribution(courses: Course[]): GradeDistributionEntry[] {
+  const grouped = new Map<string, Omit<GradeDistributionEntry, "pct">>()
+  for (const course of courses) {
+    if (course.isPassFail) continue
+    const numeric = calculateCourseGrade(course.criteria, course.percentBoost)
+    const grade = getGradeScaleEntry(numeric, course.gradeScale)
+    if (!grade) continue
+    const existing = grouped.get(grade.letter)
+    if (existing) {
+      existing.count += 1
+    } else {
+      grouped.set(grade.letter, {
+        letter: grade.letter,
+        count: 1,
+        color: grade.color || getLetterGradeColor(grade.letter, course.gradeScale),
+        gpa: typeof grade.gpa === "number" && Number.isFinite(grade.gpa) ? grade.gpa : -1,
+      })
+    }
   }
-  return colorMap[letter] || "#888"
+  const entries = [...grouped.values()]
+  const total = entries.reduce((sum, entry) => sum + entry.count, 0)
+  return entries
+    .sort((a, b) => b.gpa - a.gpa || a.letter.localeCompare(b.letter))
+    .map((entry) => ({ ...entry, pct: total ? Math.round((entry.count / total) * 100) : 0 }))
+}
+
+export function getLetterGradeColor(letter: string, gradeScale?: GradeScale[]): string {
+  const custom = gradeScale?.find((grade) => grade.letter === letter)?.color
+  if (custom) return custom
+  return DEFAULT_GRADE_SCALE.find((grade) => grade.letter === letter)?.color || "#888888"
 }
 
 const parseColorChannels = (value: string): [number, number, number] | null => {

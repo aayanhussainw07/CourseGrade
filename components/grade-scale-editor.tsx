@@ -8,11 +8,14 @@ import { Plus, X } from "lucide-react"
 import { useState, useEffect, useId, useMemo, useRef, useCallback } from "react"
 import type { GradeScale } from "@/lib/types"
 import { adjustGradeBoundary } from "@/lib/grade-scale"
+import { getLetterGradeColor } from "@/lib/grade-utils"
 
 interface PassFailSettings {
   passLabel: string
   failLabel: string
   threshold: number
+  passColor: string
+  failColor: string
 }
 
 interface GradeScaleEditorBaseProps {
@@ -42,13 +45,20 @@ const sanitizePassFailSettings = (settings: PassFailSettings): PassFailSettings 
   passLabel: settings.passLabel?.trim() || "P",
   failLabel: settings.failLabel?.trim() || "F",
   threshold: clampPercentage(typeof settings.threshold === "number" ? settings.threshold : 60),
+  passColor: /^#[0-9a-f]{6}$/i.test(settings.passColor) ? settings.passColor : "#888888",
+  failColor: /^#[0-9a-f]{6}$/i.test(settings.failColor) ? settings.failColor : "#8a8a8a",
 })
 
 const normalizeLetter = (value?: string) => (value ? value.trim().toUpperCase() : "")
 const normalizeMinimum = (value?: string) => {
   if (!value) return 0
   const parsed = Number.parseFloat(value.trim())
-  return Number.isNaN(parsed) ? 0 : Math.max(0, parsed)
+  return Number.isNaN(parsed) ? 0 : clampPercentage(parsed)
+}
+const normalizeGpa = (value?: string) => {
+  if (value === undefined || value.trim() === "") return undefined
+  const parsed = Number.parseFloat(value.trim())
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined
 }
 
 export function GradeScaleEditor(props: GradeScaleEditorProps) {
@@ -59,8 +69,10 @@ export function GradeScaleEditor(props: GradeScaleEditorProps) {
     passLabel: "P",
     failLabel: "F",
     threshold: 60,
+    passColor: "#888888",
+    failColor: "#8a8a8a",
   }
-  const [editingValues, setEditingValues] = useState<Record<string, { letter?: string; min?: string }>>({})
+  const [editingValues, setEditingValues] = useState<Record<string, { letter?: string; min?: string; gpa?: string; color?: string }>>({})
   const [dragScale, setDragScale] = useState<GradeScale[] | null>(null)
   const dragScaleRef = useRef<GradeScale[] | null>(null)
   const passFailToggleId = useId()
@@ -76,27 +88,28 @@ export function GradeScaleEditor(props: GradeScaleEditorProps) {
   useEffect(() => {
     if (!isPassFail) return
     const desiredScale: GradeScale[] = [
-      { letter: normalizedPassFail.passLabel, min: normalizedPassFail.threshold },
-      { letter: normalizedPassFail.failLabel, min: 0 },
+      { letter: normalizedPassFail.passLabel, min: normalizedPassFail.threshold, color: normalizedPassFail.passColor },
+      { letter: normalizedPassFail.failLabel, min: 0, color: normalizedPassFail.failColor },
     ]
     const matches =
       gradeScale.length === desiredScale.length &&
       desiredScale.every((target, index) => {
         const current = gradeScale[index]
-        return current && current.letter === target.letter && current.min === target.min
+        return current && current.letter === target.letter && current.min === target.min && current.color === target.color
       })
     if (!matches) {
       onUpdate(desiredScale)
     }
   }, [gradeScale, isPassFail, normalizedPassFail, onUpdate])
 
-  const getDisplayValue = (index: number, field: "letter" | "min") => {
+  const getDisplayValue = (index: number, field: "letter" | "min" | "gpa" | "color") => {
     const key = getEditingKey(index)
     if (editingValues[key]?.[field] !== undefined) {
       return editingValues[key][field]
     }
-    if (field === "min") {
-      return (dragScale ?? gradeScale)[index][field].toString()
+    if (field === "min" || field === "gpa") {
+      const value = (dragScale ?? gradeScale)[index][field]
+      return value === undefined ? "" : value.toString()
     }
     return (dragScale ?? gradeScale)[index][field]
   }
@@ -107,10 +120,18 @@ export function GradeScaleEditor(props: GradeScaleEditorProps) {
     if (edits) {
       const updates: Partial<GradeScale> = {}
       if (edits.letter !== undefined) {
-        updates.letter = normalizeLetter(edits.letter)
+        const nextLetter = normalizeLetter(edits.letter)
+        const duplicate = gradeScale.some(
+          (grade, gradeIndex) => gradeIndex !== index && grade.letter.trim().toUpperCase() === nextLetter,
+        )
+        if (nextLetter && nextLetter.length <= 8 && !duplicate) updates.letter = nextLetter
       }
       if (edits.min !== undefined) {
         updates.min = normalizeMinimum(edits.min)
+      }
+      if (edits.gpa !== undefined) updates.gpa = normalizeGpa(edits.gpa)
+      if (edits.color !== undefined && /^#[0-9a-f]{6}$/i.test(edits.color)) {
+        updates.color = edits.color.toLowerCase()
       }
       updateGrade(index, updates)
       setEditingValues((prev) => {
@@ -122,9 +143,15 @@ export function GradeScaleEditor(props: GradeScaleEditorProps) {
   }
 
   const addGrade = () => {
+    const used = new Set(gradeScale.map((grade) => grade.letter.toUpperCase()))
+    let suffix = 1
+    let letter = "X"
+    while (used.has(letter)) letter = `X${++suffix}`
     const newGrade: GradeScale = {
-      letter: "X",
+      letter,
       min: 100,
+      gpa: 0,
+      color: "#888888",
     }
     onUpdate([...gradeScale, newGrade])
   }
@@ -237,7 +264,7 @@ export function GradeScaleEditor(props: GradeScaleEditorProps) {
           </div>
 
           {isPassFail && (
-            <div className="grid gap-3 sm:grid-cols-3">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">Pass Label</Label>
                 <Input
@@ -252,6 +279,28 @@ export function GradeScaleEditor(props: GradeScaleEditorProps) {
                   className="border-2 border-primary/20 bg-[#fff8f1]"
                 />
               </div>
+              {(["pass", "fail"] as const).map((kind) => {
+                const key = kind === "pass" ? "passColor" : "failColor"
+                const label = kind === "pass" ? "Pass Color" : "Fail Color"
+                return (
+                  <div key={key} className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">{label}</Label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="color"
+                        aria-label={label}
+                        value={normalizedPassFail[key]}
+                        onChange={(event) => combinedProps.onPassFailSettingsChange({
+                          ...passFailSettings,
+                          [key]: event.target.value,
+                        })}
+                        className="h-9 w-12 cursor-pointer rounded border-2 border-primary/20 bg-[#fff8f1] p-1"
+                      />
+                      <Input value={normalizedPassFail[key]} readOnly className="h-9 font-mono text-xs" />
+                    </div>
+                  </div>
+                )
+              })}
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">Fail Label</Label>
                 <Input
@@ -302,11 +351,6 @@ export function GradeScaleEditor(props: GradeScaleEditorProps) {
                     ? ascendingScale[pos + 1].grade.min
                     : 100
                 const width = Math.max(0, upper - grade.min)
-                const ratio =
-                  ascendingScale.length > 1
-                    ? pos / (ascendingScale.length - 1)
-                    : 1
-                const hue = Math.round(120 * ratio) // red (low) → green (high)
                 return (
                   <div
                     key={`seg-${index}`}
@@ -314,7 +358,7 @@ export function GradeScaleEditor(props: GradeScaleEditorProps) {
                     style={{
                       left: `${grade.min}%`,
                       width: `${width}%`,
-                      backgroundColor: `hsl(${hue} 50% 73%)`,
+                      backgroundColor: getLetterGradeColor(grade.letter, dragScale ?? gradeScale),
                     }}
                   >
                     {width > 7 && (
@@ -359,10 +403,12 @@ export function GradeScaleEditor(props: GradeScaleEditorProps) {
           </div>
 
           {/* Precise numeric editor */}
-          <div className="max-h-72 space-y-2 overflow-y-auto">
-            <div className="grid grid-cols-[1fr_1fr_auto] gap-2 px-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+          <div className="max-h-72 space-y-2 overflow-auto">
+            <div className="grid min-w-[560px] grid-cols-[1fr_0.8fr_0.8fr_1fr_auto] gap-2 px-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
               <span>Letter</span>
               <span>Min %</span>
+              <span>GPA</span>
+              <span>Color</span>
               <span className="w-8" />
             </div>
             {sortedScale.map(({ grade, index }) => {
@@ -370,7 +416,7 @@ export function GradeScaleEditor(props: GradeScaleEditorProps) {
               return (
                 <div
                   key={`${grade.letter}-${grade.min}-${index}`}
-                  className="grid grid-cols-[1fr_1fr_auto] items-center gap-2"
+                  className="grid min-w-[560px] grid-cols-[1fr_0.8fr_0.8fr_1fr_auto] items-center gap-2"
                 >
                   <Input
                     value={(getDisplayValue(originalIndex, "letter") as string) ?? ""}
@@ -411,6 +457,40 @@ export function GradeScaleEditor(props: GradeScaleEditorProps) {
                     }}
                     className="h-9 border-2 border-primary/20 bg-[#fff8f1]"
                   />
+                  <Input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={(getDisplayValue(originalIndex, "gpa") as string) ?? ""}
+                    aria-invalid={grade.gpa === undefined}
+                    title={grade.gpa === undefined ? "Set a GPA value to include this grade in GPA calculations" : undefined}
+                    onChange={(e) => {
+                      const key = getEditingKey(originalIndex)
+                      setEditingValues((prev) => ({ ...prev, [key]: { ...prev[key], gpa: e.target.value } }))
+                    }}
+                    onBlur={() => commitChanges(originalIndex)}
+                    onKeyDown={(e) => { if (e.key === "Enter") { commitChanges(originalIndex); e.currentTarget.blur() } }}
+                    className="h-9 border-2 border-primary/20 bg-[#fff8f1] aria-invalid:border-destructive"
+                    placeholder="Required"
+                  />
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="color"
+                      aria-label={`${grade.letter} color`}
+                      value={grade.color && /^#[0-9a-f]{6}$/i.test(grade.color) ? grade.color : "#888888"}
+                      onChange={(e) => updateGrade(originalIndex, { color: e.target.value })}
+                      className="h-9 w-11 cursor-pointer rounded border-2 border-primary/20 bg-[#fff8f1] p-1"
+                    />
+                    <Input
+                      value={(getDisplayValue(originalIndex, "color") as string) || grade.color || "#888888"}
+                      onChange={(e) => {
+                        const key = getEditingKey(originalIndex)
+                        setEditingValues((prev) => ({ ...prev, [key]: { ...prev[key], color: e.target.value } }))
+                      }}
+                      onBlur={() => commitChanges(originalIndex)}
+                      className="h-9 min-w-0 font-mono text-xs"
+                    />
+                  </div>
                   <Button
                     variant="ghost"
                     size="icon"

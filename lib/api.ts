@@ -1,5 +1,5 @@
 // API service layer for communicating with backend service
-import type { ApiAssignment, ApiCourse, ApiGradeScale, ApiSemester } from "./types"
+import type { ApiAssignment, ApiCourse, ApiGradeScale, ApiSemester, GradeScale } from "./types"
 
 const API_BASE_URL = "/api/backend"
 
@@ -33,7 +33,9 @@ type CoursePayload = {
   pass_label?: string
   fail_label?: string
   pass_threshold?: number
-  letter_grade_scale?: Array<{ letter: string; min: number }>
+  pass_color?: string
+  fail_color?: string
+  letter_grade_scale?: GradeScale[]
   assignments?: CourseAssignmentPayload[]
   criteria?: unknown
 }
@@ -51,6 +53,7 @@ type GradeScalePayload = {
   letter: string
   min_percentage: number
   gpa_value: number
+  color?: string
 }
 
 export const extractApiList = <T>(payload: ApiListResponse<T>): T[] => {

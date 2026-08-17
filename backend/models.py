@@ -49,6 +49,8 @@ class Course(TimestampMixin, db.Model):
     pass_label = db.Column(db.String(24), nullable=True)
     fail_label = db.Column(db.String(24), nullable=True)
     pass_threshold = db.Column(db.Float, nullable=True)
+    pass_color = db.Column(db.String(7), nullable=True)
+    fail_color = db.Column(db.String(7), nullable=True)
     letter_grade_scale = db.Column(db.JSON, nullable=True)
 
     __table_args__ = (
@@ -168,13 +170,14 @@ class GradeScale(db.Model):
     __tablename__ = "grade_scales"
 
     id = db.Column(db.Integer, primary_key=True)
-    letter = db.Column(db.String(3), nullable=False)
+    letter = db.Column(db.String(8), nullable=False)
     min_percentage = db.Column(db.Float, nullable=False)
     gpa_value = db.Column(db.Float, nullable=False)
+    color = db.Column(db.String(7), nullable=False, default="#888888", server_default="#888888")
     created_at = db.Column(db.DateTime(timezone=True), nullable=False, server_default=func.now())
 
     __table_args__ = (
         UniqueConstraint("letter", "min_percentage", name="grade_scales_letter_min_percentage_unique"),
         CheckConstraint("min_percentage >= 0 AND min_percentage <= 100", name="grade_scales_min_percentage_range"),
-        CheckConstraint("gpa_value >= 0 AND gpa_value <= 4.33", name="grade_scales_gpa_value_range"),
+        CheckConstraint("gpa_value >= 0", name="grade_scales_gpa_value_nonnegative"),
     )

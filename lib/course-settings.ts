@@ -15,6 +15,8 @@ export type StoredCourseSettings = Pick<
   | "passLabel"
   | "failLabel"
   | "passThreshold"
+  | "passColor"
+  | "failColor"
   | "headerColor"
   | "percentBoost"
 > & {

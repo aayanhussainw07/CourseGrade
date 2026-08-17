@@ -7,9 +7,12 @@ interface CoursePortableData {
   passLabel: string
   failLabel: string
   passThreshold: number
+  passColor?: string
+  failColor?: string
   headerColor?: string | null
   percentBoost?: number
   gradeScale: GradeScale[]
+  gradeScaleSnapshot?: GradeScale[]
   criteria: Array<{
     name: string
     weight: number
@@ -65,9 +68,12 @@ export const serializeCourseCsv = (course: Course): string => {
     passLabel: course.passLabel ?? "P",
     failLabel: course.failLabel ?? "F",
     passThreshold: course.passThreshold ?? 60,
+    passColor: course.passColor ?? "#888888",
+    failColor: course.failColor ?? "#8a8a8a",
     headerColor: course.headerColor ?? null,
     percentBoost: course.percentBoost ?? 0,
     gradeScale: course.gradeScale,
+    gradeScaleSnapshot: course.gradeScaleSnapshot,
     criteria: sanitizeCriteria(course),
   }
   return createPortableEnvelope("course", portable)
@@ -92,9 +98,12 @@ export const serializeSemesterCsv = (semester: Semester): string => {
       passLabel: course.passLabel ?? "P",
       failLabel: course.failLabel ?? "F",
       passThreshold: course.passThreshold ?? 60,
+      passColor: course.passColor ?? "#888888",
+      failColor: course.failColor ?? "#8a8a8a",
       headerColor: course.headerColor ?? null,
       percentBoost: course.percentBoost ?? 0,
       gradeScale: course.gradeScale,
+      gradeScaleSnapshot: course.gradeScaleSnapshot,
       criteria: sanitizeCriteria(course),
     })),
   }

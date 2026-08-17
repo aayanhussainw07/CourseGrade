@@ -456,7 +456,7 @@ export function CourseSidebar({
                     numericGrade,
                     course.gradeScale,
                   );
-                  const gradeColor = getLetterGradeColor(letterGrade);
+                  const gradeColor = getLetterGradeColor(letterGrade, course.gradeScale);
                   const displayGrade = course.isPassFail
                     ? numericGrade >= 60
                       ? "P"

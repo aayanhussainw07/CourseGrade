@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { serializeAllGradesCsv } from "../lib/data-export";
+import { parseCourseCsv, serializeCourseCsv } from "../lib/csv";
 import type { Course, Semester } from "../lib/types";
 
 const gradeScale = [
@@ -96,4 +97,27 @@ test("escapes commas, quotes, and line breaks and includes empty courses", () =>
     csv,
     /"Fall, ""Honors""","Writing\nSeminar",,,,0,F/,
   );
+});
+
+test("portable course exports preserve grade metadata and pass/fail snapshots", () => {
+  const exported = parseCourseCsv(serializeCourseCsv(course({
+    isPassFail: true,
+    passColor: "#112233",
+    failColor: "#445566",
+    gradeScale: [
+      { letter: "S", min: 70, color: "#112233" },
+      { letter: "U", min: 0, color: "#445566" },
+    ],
+    gradeScaleSnapshot: [
+      { letter: "H", min: 90, gpa: 6.5, color: "#abcdef" },
+      { letter: "F", min: 0, gpa: 0, color: "#101010" },
+    ],
+  })));
+
+  assert.equal(exported.passColor, "#112233");
+  assert.equal(exported.failColor, "#445566");
+  assert.deepEqual(exported.gradeScaleSnapshot, [
+    { letter: "H", min: 90, gpa: 6.5, color: "#abcdef" },
+    { letter: "F", min: 0, gpa: 0, color: "#101010" },
+  ]);
 });

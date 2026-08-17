@@ -25,10 +25,16 @@ test("course open state defaults to collapsed and preserves an expand preference
   );
 });
 
+test("legacy A+ GPA settings migrate into the grade row", () => {
+  const normalized = normalizeAppSettings({ aPlusGpaValue: 4 });
+  assert.equal(normalized.defaultGradeScale[0].gpa, 4);
+  assert.equal("aPlusGpaValue" in normalized, false);
+});
+
 test("onboarding state is normalized with app settings", () => {
   const defaults = normalizeAppSettings(undefined).onboarding;
   assert.equal(defaults.coreStatus, "not_started");
-  assert.equal(defaults.coreStep, "welcome");
+  assert.equal(defaults.coreStep, "settings_credits");
 
   const saved = normalizeAppSettings({
     onboarding: {
@@ -64,7 +70,10 @@ test("legacy pass/fail app settings restore the saved letter scale", () => {
     defaultGradeScaleSnapshot: letterScale,
   });
 
-  assert.deepEqual(normalized.defaultGradeScale, letterScale);
+  assert.deepEqual(normalized.defaultGradeScale, [
+    { letter: "A", min: 90, gpa: 4, color: "#d9645a" },
+    { letter: "F", min: 0, gpa: 0, color: "#8a8a8a" },
+  ]);
   assert.equal("defaultGradeScaleSnapshot" in normalized, false);
   assert.equal(normalized.defaultIsPassFail, true);
 });
@@ -95,11 +104,13 @@ test("new pass/fail courses retain an independent letter-scale snapshot", () => 
     defaultPassLabel: "S",
     defaultFailLabel: "U",
     defaultPassThreshold: 67,
+    defaultPassColor: "#123456",
+    defaultFailColor: "#654321",
   });
 
   assert.deepEqual(grading.gradeScale, [
-    { letter: "S", min: 67 },
-    { letter: "U", min: 0 },
+    { letter: "S", min: 67, color: "#123456" },
+    { letter: "U", min: 0, color: "#654321" },
   ]);
   assert.deepEqual(grading.gradeScaleSnapshot, letterScale);
   assert.notEqual(grading.gradeScaleSnapshot, letterScale);
@@ -113,8 +124,8 @@ test("pass/fail scale labels and threshold are sanitized", () => {
       threshold: 130,
     }),
     [
-      { letter: "P", min: 100 },
-      { letter: "NO", min: 0 },
+      { letter: "P", min: 100, color: "#888888" },
+      { letter: "NO", min: 0, color: "#8a8a8a" },
     ],
   );
 });

@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from datetime import date, datetime, timedelta, timezone
 from threading import Lock
+import re
+import math
 
 from flask import Blueprint, jsonify, request
 from sqlalchemy import func
@@ -29,19 +31,19 @@ LOCAL_MIGRATION_VERSION = 1
 api = Blueprint("api", __name__, url_prefix="/api")
 
 DEFAULT_GRADE_SCALES = [
-    {"letter": "A+", "min_percentage": 96, "gpa_value": 4.33},
-    {"letter": "A", "min_percentage": 93, "gpa_value": 4.0},
-    {"letter": "A-", "min_percentage": 90, "gpa_value": 3.7},
-    {"letter": "B+", "min_percentage": 87, "gpa_value": 3.3},
-    {"letter": "B", "min_percentage": 83, "gpa_value": 3.0},
-    {"letter": "B-", "min_percentage": 80, "gpa_value": 2.7},
-    {"letter": "C+", "min_percentage": 77, "gpa_value": 2.3},
-    {"letter": "C", "min_percentage": 73, "gpa_value": 2.0},
-    {"letter": "C-", "min_percentage": 70, "gpa_value": 1.7},
-    {"letter": "D+", "min_percentage": 67, "gpa_value": 1.3},
-    {"letter": "D", "min_percentage": 63, "gpa_value": 1.0},
-    {"letter": "D-", "min_percentage": 60, "gpa_value": 0.7},
-    {"letter": "F", "min_percentage": 0, "gpa_value": 0.0},
+    {"letter": "A+", "min_percentage": 96, "gpa_value": 4.33, "color": "#e8756a"},
+    {"letter": "A", "min_percentage": 93, "gpa_value": 4.0, "color": "#d9645a"},
+    {"letter": "A-", "min_percentage": 90, "gpa_value": 3.7, "color": "#c5534a"},
+    {"letter": "B+", "min_percentage": 87, "gpa_value": 3.3, "color": "#e8a068"},
+    {"letter": "B", "min_percentage": 83, "gpa_value": 3.0, "color": "#d98e58"},
+    {"letter": "B-", "min_percentage": 80, "gpa_value": 2.7, "color": "#c57e4a"},
+    {"letter": "C+", "min_percentage": 77, "gpa_value": 2.3, "color": "#d9c058"},
+    {"letter": "C", "min_percentage": 73, "gpa_value": 2.0, "color": "#c8ae48"},
+    {"letter": "C-", "min_percentage": 70, "gpa_value": 1.7, "color": "#b59a3a"},
+    {"letter": "D+", "min_percentage": 67, "gpa_value": 1.3, "color": "#9898d0"},
+    {"letter": "D", "min_percentage": 63, "gpa_value": 1.0, "color": "#8484be"},
+    {"letter": "D-", "min_percentage": 60, "gpa_value": 0.7, "color": "#7070ac"},
+    {"letter": "F", "min_percentage": 0, "gpa_value": 0.0, "color": "#8a8a8a"},
 ]
 
 # Sole admin. Mirrors the client-safe canonical value in lib/is-admin.ts;
@@ -167,6 +169,8 @@ def _serialize_course(course: Course) -> dict:
         "pass_label": course.pass_label if course.pass_label is not None else "P",
         "fail_label": course.fail_label if course.fail_label is not None else "F",
         "pass_threshold": course.pass_threshold if course.pass_threshold is not None else 60,
+        "pass_color": course.pass_color or "#888888",
+        "fail_color": course.fail_color or "#8a8a8a",
         "letter_grade_scale": course.letter_grade_scale,
         "assignments": [_serialize_assignment(assignment) for assignment in assignments],
         "created_at": _serialize_datetime(course.created_at),
@@ -196,6 +200,7 @@ def _serialize_grade_scale(grade_scale: GradeScale) -> dict:
         "letter": grade_scale.letter,
         "min_percentage": grade_scale.min_percentage,
         "gpa_value": grade_scale.gpa_value,
+        "color": grade_scale.color,
         "created_at": _serialize_datetime(grade_scale.created_at),
     }
 
@@ -231,6 +236,10 @@ def _parse_float(
         parsed = float(value)
     except (TypeError, ValueError):
         errors.setdefault(field, []).append("A valid number is required.")
+        return None
+
+    if not math.isfinite(parsed):
+        errors.setdefault(field, []).append("A finite number is required.")
         return None
 
     if min_value is not None and parsed < min_value:
@@ -274,6 +283,15 @@ def _parse_optional_short_string(value: object, field: str, errors: dict[str, li
     return normalized
 
 
+def _parse_hex_color(value: object, field: str, errors: dict[str, list[str]], default: str | None = None) -> str | None:
+    if value is None:
+        return default
+    if not isinstance(value, str) or re.fullmatch(r"#[0-9a-fA-F]{6}", value.strip()) is None:
+        errors.setdefault(field, []).append("Enter a six-digit hex color such as #888888.")
+        return None
+    return value.strip().lower()
+
+
 def _parse_date(value: object, field: str, errors: dict[str, list[str]]) -> date | None:
     if value is None:
         return None
@@ -304,15 +322,30 @@ def _parse_grade_scale(value: object, field: str, errors: dict[str, list[str]]) 
         if not isinstance(letter, str) or not letter.strip() or len(letter.strip()) > 8:
             errors.setdefault(f"{item_field}.letter", []).append("Must be a non-empty string of at most 8 characters.")
             continue
-        normalized_letter = letter.strip()
-        if normalized_letter in seen_letters:
+        normalized_letter = letter.strip().upper()
+        if normalized_letter.casefold() in seen_letters:
             errors.setdefault(f"{item_field}.letter", []).append("Grade labels must be unique.")
             continue
         minimum = _parse_float(item.get("min"), f"{item_field}.min", errors, min_value=0, max_value=100)
         if minimum is None:
             continue
-        seen_letters.add(normalized_letter)
-        parsed.append({"letter": normalized_letter, "min": minimum})
+        gpa = None
+        if "gpa" in item:
+            gpa = _parse_float(item.get("gpa"), f"{item_field}.gpa", errors, min_value=0)
+            if gpa is None:
+                continue
+        color = None
+        if "color" in item:
+            color = _parse_hex_color(item.get("color"), f"{item_field}.color", errors)
+            if color is None:
+                continue
+        seen_letters.add(normalized_letter.casefold())
+        parsed_grade = {"letter": normalized_letter, "min": minimum}
+        if gpa is not None:
+            parsed_grade["gpa"] = gpa
+        if color is not None:
+            parsed_grade["color"] = color
+        parsed.append(parsed_grade)
 
     return parsed if not any(key.startswith(field) for key in errors) else None
 
@@ -624,6 +657,8 @@ def semester_duplicate(semester_id: int):
             pass_label=course.pass_label,
             fail_label=course.fail_label,
             pass_threshold=course.pass_threshold,
+            pass_color=course.pass_color,
+            fail_color=course.fail_color,
             letter_grade_scale=course.letter_grade_scale,
         )
         db.session.add(copied_course)
@@ -691,8 +726,16 @@ def courses_collection():
     pass_threshold = _parse_float(
         payload.get("pass_threshold", 60), "pass_threshold", errors, min_value=0, max_value=100
     )
+    pass_color = _parse_hex_color(payload.get("pass_color"), "pass_color", errors, "#888888")
+    fail_color = _parse_hex_color(payload.get("fail_color"), "fail_color", errors, "#8a8a8a")
     default_letter_scale = [
-        {"letter": grade["letter"], "min": grade["min_percentage"]} for grade in DEFAULT_GRADE_SCALES
+        {
+            "letter": grade["letter"],
+            "min": grade["min_percentage"],
+            "gpa": grade["gpa_value"],
+            "color": grade["color"],
+        }
+        for grade in DEFAULT_GRADE_SCALES
     ]
     letter_grade_scale = _parse_grade_scale(
         payload.get("letter_grade_scale", default_letter_scale), "letter_grade_scale", errors
@@ -737,6 +780,8 @@ def courses_collection():
         pass_label=pass_label or "P",
         fail_label=fail_label or "F",
         pass_threshold=pass_threshold,
+        pass_color=pass_color,
+        fail_color=fail_color,
         letter_grade_scale=letter_grade_scale,
     )
     db.session.add(course)
@@ -826,6 +871,16 @@ def course_detail(course_id: int):
         )
         if "pass_threshold" not in errors:
             course.pass_threshold = pass_threshold
+
+    if "pass_color" in payload:
+        pass_color = _parse_hex_color(payload.get("pass_color"), "pass_color", errors)
+        if "pass_color" not in errors:
+            course.pass_color = pass_color
+
+    if "fail_color" in payload:
+        fail_color = _parse_hex_color(payload.get("fail_color"), "fail_color", errors)
+        if "fail_color" not in errors:
+            course.fail_color = fail_color
 
     if "letter_grade_scale" in payload:
         letter_grade_scale = _parse_grade_scale(
@@ -1030,16 +1085,17 @@ def grade_scales_collection():
     letter = payload.get("letter")
     if not isinstance(letter, str) or len(letter.strip()) == 0:
         errors.setdefault("letter", []).append("This field is required.")
-    elif len(letter) > 3:
-        errors.setdefault("letter", []).append("Ensure this field has no more than 3 characters.")
+    elif len(letter.strip()) > 8:
+        errors.setdefault("letter", []).append("Ensure this field has no more than 8 characters.")
 
     min_percentage = _parse_float(payload.get("min_percentage"), "min_percentage", errors, min_value=0, max_value=100)
-    gpa_value = _parse_float(payload.get("gpa_value"), "gpa_value", errors, min_value=0, max_value=4.33)
+    gpa_value = _parse_float(payload.get("gpa_value"), "gpa_value", errors, min_value=0)
+    color = _parse_hex_color(payload.get("color"), "color", errors, "#888888")
 
     if errors:
         return jsonify(errors), 400
 
-    grade_scale = GradeScale(letter=letter.strip(), min_percentage=min_percentage, gpa_value=gpa_value)
+    grade_scale = GradeScale(letter=letter.strip().upper(), min_percentage=min_percentage, gpa_value=gpa_value, color=color)
     db.session.add(grade_scale)
 
     try:
@@ -1076,10 +1132,10 @@ def grade_scale_detail(grade_scale_id: int):
         letter = payload.get("letter")
         if not isinstance(letter, str) or len(letter.strip()) == 0:
             errors.setdefault("letter", []).append("This field may not be blank.")
-        elif len(letter) > 3:
-            errors.setdefault("letter", []).append("Ensure this field has no more than 3 characters.")
+        elif len(letter.strip()) > 8:
+            errors.setdefault("letter", []).append("Ensure this field has no more than 8 characters.")
         else:
-            grade_scale.letter = letter.strip()
+            grade_scale.letter = letter.strip().upper()
 
     if "min_percentage" in payload:
         min_percentage = _parse_float(
@@ -1093,9 +1149,14 @@ def grade_scale_detail(grade_scale_id: int):
             grade_scale.min_percentage = min_percentage
 
     if "gpa_value" in payload:
-        gpa_value = _parse_float(payload.get("gpa_value"), "gpa_value", errors, min_value=0, max_value=4.33)
+        gpa_value = _parse_float(payload.get("gpa_value"), "gpa_value", errors, min_value=0)
         if "gpa_value" not in errors:
             grade_scale.gpa_value = gpa_value
+
+    if "color" in payload:
+        color = _parse_hex_color(payload.get("color"), "color", errors)
+        if "color" not in errors:
+            grade_scale.color = color
 
     if errors:
         return jsonify(errors), 400
@@ -1241,6 +1302,10 @@ def migrate_local_v1():
                 )
                 if threshold is not None:
                     course.pass_threshold = threshold
+            if course.pass_color is None and "passColor" in payload:
+                course.pass_color = _parse_hex_color(payload.get("passColor"), "passColor", errors)
+            if course.fail_color is None and "failColor" in payload:
+                course.fail_color = _parse_hex_color(payload.get("failColor"), "failColor", errors)
             if course.letter_grade_scale is None:
                 legacy_scale = payload.get("gradeScaleSnapshot") or payload.get("gradeScale")
                 if legacy_scale is not None:

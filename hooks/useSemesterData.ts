@@ -23,6 +23,7 @@ import { migrateLegacyBrowserState } from "@/lib/local-cloud-migration";
 import {
   buildDefaultCourseGrading,
   calculateGPA,
+  normalizeGradeScaleMetadata,
 } from "@/lib/grade-utils";
 import {
   type DashboardBackupPayload,
@@ -70,12 +71,17 @@ export function useSemesterData({ appSettings }: { appSettings: AppSettings }) {
     Map<string, Map<string, string>>
   >(new Map());
   const dataLoadedRef = useRef(false);
+  const defaultGradeScaleRef = useRef(appSettings.defaultGradeScale);
   const appliedCourseOpenStateRef = useRef<string | null>(null);
 
   const ignoredSemesterIds = useMemo(
     () => new Set(semesters.filter((s) => s.ignored).map((s) => s.id)),
     [semesters],
   );
+
+  useEffect(() => {
+    defaultGradeScaleRef.current = appSettings.defaultGradeScale;
+  }, [appSettings.defaultGradeScale]);
 
   const toggleSemesterIgnore = useCallback(async (semesterId: string) => {
     if (serverOffline) return;
@@ -152,6 +158,17 @@ export function useSemesterData({ appSettings }: { appSettings: AppSettings }) {
     urlSemesterId?: string | null,
     explicitScopeId?: string,
   ) => {
+    const hydrateCourses = (loaded: Semester[]) => loaded.map((semester) => ({
+      ...semester,
+      courses: semester.courses.map((course) => ({
+        ...course,
+        gradeScale: normalizeGradeScaleMetadata(course.gradeScale, 4.33, defaultGradeScaleRef.current),
+        gradeScaleSnapshot: course.gradeScaleSnapshot
+          ? normalizeGradeScaleMetadata(course.gradeScaleSnapshot, 4.33, defaultGradeScaleRef.current)
+          : undefined,
+        collapsed: true,
+      })),
+    }))
     try {
       setLoading(true);
       setServerOffline(false);
@@ -163,10 +180,7 @@ export function useSemesterData({ appSettings }: { appSettings: AppSettings }) {
       }
       setDashboardMessage(migratedState.dashboardMessage ?? "");
       setSemesters(
-        loadedSemesters.map((s) => ({
-          ...s,
-          courses: s.courses.map((c) => ({ ...c, collapsed: true })),
-        })),
+        hydrateCourses(loadedSemesters),
       );
       setSemesterOrder(loadedSemesters.map((semester) => semester.id));
 
@@ -190,7 +204,7 @@ export function useSemesterData({ appSettings }: { appSettings: AppSettings }) {
         setServerOffline(true);
         const cached = storage.getCachedSemesters();
         const cachedUserState = storage.getCachedUserState();
-        setSemesters(cached);
+        setSemesters(hydrateCourses(cached));
         setSemesterOrder(cached.map((semester) => semester.id));
         setDashboardMessage(cachedUserState?.dashboard_message ?? "");
         if (typeof urlSemesterId === "string" && cached.some((semester) => semester.id === urlSemesterId)) {
@@ -314,13 +328,13 @@ export function useSemesterData({ appSettings }: { appSettings: AppSettings }) {
   );
 
   const overallGpa = useMemo(
-    () => (allCourses.length > 0 ? calculateGPA(allCourses, appSettings.aPlusGpaValue) : 0),
-    [allCourses, appSettings.aPlusGpaValue],
+    () => (allCourses.length > 0 ? calculateGPA(allCourses) : 0),
+    [allCourses],
   );
 
   const overallGpaLetter = useMemo(
-    () => gpaToLetterGrade(overallGpa, appSettings.aPlusGpaValue),
-    [overallGpa, appSettings.aPlusGpaValue],
+    () => gpaToLetterGrade(overallGpa),
+    [overallGpa],
   );
 
   const totalCredits = useMemo(
@@ -336,7 +350,7 @@ export function useSemesterData({ appSettings }: { appSettings: AppSettings }) {
         const coursesList = Array.isArray(semester.courses) ? semester.courses : [];
         const credits = coursesList.reduce((sum, c) => sum + c.credits, 0);
         const gpa =
-          coursesList.length > 0 ? calculateGPA(coursesList, appSettings.aPlusGpaValue) : 0;
+          coursesList.length > 0 ? calculateGPA(coursesList) : 0;
         return {
           id: semester.id,
           name: semester.name,
@@ -345,7 +359,7 @@ export function useSemesterData({ appSettings }: { appSettings: AppSettings }) {
           createdAt: semester.createdAt ?? semester.updatedAt ?? "",
         };
       }),
-    [activeSemesters, appSettings.aPlusGpaValue],
+    [activeSemesters],
   );
 
   const timelineData = useMemo(
@@ -422,6 +436,8 @@ export function useSemesterData({ appSettings }: { appSettings: AppSettings }) {
         passLabel: courseData.passLabel ?? baseCourse.passLabel ?? "P",
         failLabel: courseData.failLabel ?? baseCourse.failLabel ?? "F",
         passThreshold: numericOr(courseData.passThreshold, baseCourse.passThreshold ?? 60),
+        passColor: courseData.passColor ?? baseCourse.passColor ?? "#888888",
+        failColor: courseData.failColor ?? baseCourse.failColor ?? "#8a8a8a",
         headerColor: courseData.headerColor ?? baseCourse.headerColor ?? null,
         percentBoost: Math.max(
           0,
@@ -431,6 +447,10 @@ export function useSemesterData({ appSettings }: { appSettings: AppSettings }) {
           courseData.gradeScale && courseData.gradeScale.length > 0
             ? courseData.gradeScale
             : baseCourse.gradeScale,
+        gradeScaleSnapshot:
+          courseData.gradeScaleSnapshot && courseData.gradeScaleSnapshot.length > 0
+            ? courseData.gradeScaleSnapshot
+            : baseCourse.gradeScaleSnapshot,
         criteria: normalizedCriteria.length > 0 ? normalizedCriteria : baseCourse.criteria,
       };
 
@@ -547,9 +567,11 @@ export function useSemesterData({ appSettings }: { appSettings: AppSettings }) {
     activeSemesterId,
     courses.length,
     appSettings.defaultCredits,
+    appSettings.defaultFailColor,
     appSettings.defaultFailLabel,
     appSettings.defaultGradeScale,
     appSettings.defaultIsPassFail,
+    appSettings.defaultPassColor,
     appSettings.defaultPassLabel,
     appSettings.defaultPassThreshold,
     serverOffline,

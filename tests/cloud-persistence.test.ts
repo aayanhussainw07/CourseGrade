@@ -13,9 +13,11 @@ test("cloud course payload restores pass/fail labels, letter snapshot, and crite
     pass_label: "S",
     fail_label: "U",
     pass_threshold: 70,
+    pass_color: "#112233",
+    fail_color: "#445566",
     letter_grade_scale: [
-      { letter: "A", min: 90 },
-      { letter: "F", min: 0 },
+      { letter: "A", min: 90, gpa: 6, color: "#abcdef" },
+      { letter: "F", min: 0, gpa: 0, color: "#101010" },
     ],
     assignments: [
       {
@@ -37,13 +39,15 @@ test("cloud course payload restores pass/fail labels, letter snapshot, and crite
   });
 
   assert.deepEqual(course.gradeScale, [
-    { letter: "S", min: 70 },
-    { letter: "U", min: 0 },
+    { letter: "S", min: 70, color: "#112233" },
+    { letter: "U", min: 0, color: "#445566" },
   ]);
   assert.deepEqual(course.gradeScaleSnapshot, [
-    { letter: "A", min: 90 },
-    { letter: "F", min: 0 },
+    { letter: "A", min: 90, gpa: 6, color: "#abcdef" },
+    { letter: "F", min: 0, gpa: 0, color: "#101010" },
   ]);
+  assert.equal(course.passColor, "#112233");
+  assert.equal(course.failColor, "#445566");
   assert.equal(course.criteria[0].clientId, "criterion-stable-id");
   assert.equal(course.criteria[0].extraCredit, 3);
   assert.deepEqual(course.criteria[0].subItems, [

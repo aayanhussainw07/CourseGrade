@@ -118,6 +118,8 @@ export function SettingsPage({
       100,
       Math.max(0, localSettings.defaultPassThreshold ?? 60),
     ),
+    passColor: localSettings.defaultPassColor || "#888888",
+    failColor: localSettings.defaultFailColor || "#8a8a8a",
   };
 
   const handleClearAll = async () => {
@@ -290,7 +292,7 @@ export function SettingsPage({
                     toward GPA.
                   </p>
                 </div>
-                <div className="grid gap-3 sm:grid-cols-3">
+                <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
                   <div className="space-y-1">
                     <Label
                       htmlFor="default-pass-label"
@@ -308,6 +310,25 @@ export function SettingsPage({
                       className="border-2 border-primary/20 bg-white"
                     />
                   </div>
+                  {(["pass", "fail"] as const).map((kind) => {
+                    const settingKey = kind === "pass" ? "defaultPassColor" : "defaultFailColor"
+                    const value = kind === "pass" ? defaultPassFailSettings.passColor : defaultPassFailSettings.failColor
+                    return (
+                      <div key={settingKey} className="space-y-1">
+                        <Label className="text-xs text-muted-foreground">{kind === "pass" ? "Pass color" : "Fail color"}</Label>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="color"
+                            aria-label={`${kind} color`}
+                            value={value}
+                            onChange={(event) => update(settingKey, event.target.value)}
+                            className="h-10 w-12 cursor-pointer rounded border-2 border-primary/20 bg-white p-1"
+                          />
+                          <span className="font-mono text-xs text-muted-foreground">{value}</span>
+                        </div>
+                      </div>
+                    )
+                  })}
                   <div className="space-y-1">
                     <Label
                       htmlFor="default-fail-label"
@@ -504,45 +525,6 @@ export function SettingsPage({
                       }`}
                     />
                   </button>
-                </div>
-              </div>
-            </section>
-
-            <section className={sectionClass}>
-              <h2 className={sectionTitleClass}>GPA</h2>
-              <div className={settingRowClass}>
-                <div>
-                  <p id="a-plus-gpa-label" className="text-sm font-medium">
-                    A+ counts as…
-                  </p>
-                  <p className="mt-0.5 text-xs text-muted-foreground">
-                    Some schools treat A+ the same as A.
-                  </p>
-                </div>
-                <div
-                  role="group"
-                  aria-labelledby="a-plus-gpa-label"
-                  className="flex overflow-hidden rounded-lg border border-primary/25 bg-white text-sm font-medium"
-                >
-                  {([4.0, 4.33] as const).map((value) => (
-                    <button
-                      key={value}
-                      type="button"
-                      aria-pressed={
-                        Math.abs(localSettings.aPlusGpaValue - value) < 0.01
-                      }
-                      onClick={() =>
-                        update("aPlusGpaValue", value === 4.33 ? 4.33 : 4.0)
-                      }
-                      className={`px-5 py-2 transition-colors ${
-                        Math.abs(localSettings.aPlusGpaValue - value) < 0.01
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-transparent text-foreground hover:bg-primary/10"
-                      }`}
-                    >
-                      {value.toFixed(2)}
-                    </button>
-                  ))}
                 </div>
               </div>
             </section>

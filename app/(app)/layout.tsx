@@ -323,6 +323,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     [],
   );
 
+  const persistOnboardingSettings = useCallback(
+    (updates: Partial<AppSettings>) => {
+      setAppSettings((current) => ({ ...current, ...updates }));
+      return saveAppSettings(updates);
+    },
+    [],
+  );
+
   const launchOnboarding = useCallback(() => {
     setOnboardingLaunchNonce(Date.now());
   }, []);
@@ -445,6 +453,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <OnboardingTour
         progress={appSettings.onboarding}
         onProgressChange={persistOnboardingProgress}
+        settings={appSettings}
+        onSettingsUpdate={persistOnboardingSettings}
         launchNonce={onboardingLaunchNonce}
         authenticated={status === "authenticated"}
         settingsLoaded={appSettingsLoaded}

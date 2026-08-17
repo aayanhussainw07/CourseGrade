@@ -6,6 +6,7 @@ import { BarChart3, PieChart } from "lucide-react"
 import {
   calculateCourseGrade,
   calculateGPA,
+  buildGradeDistribution,
   getLetterGrade,
   getLetterGradeColor,
 } from "@/lib/grade-utils"
@@ -14,16 +15,6 @@ import { RollingNumber } from "@/components/rolling-number"
 
 interface SemesterPanelProps {
   courses: Course[]
-}
-
-const GRADE_ORDER = ["A+", "A", "A-", "B+", "B", "B-", "C+", "C", "C-", "D+", "D", "D-", "F"]
-
-const CHART_COLORS: Record<string, string> = {
-  "A+": "#e8756a", "A": "#d9645a", "A-": "#c5534a",
-  "B+": "#e8a068", "B": "#d98e58", "B-": "#c57e4a",
-  "C+": "#d9c058", "C": "#c8ae48", "C-": "#b59a3a",
-  "D+": "#9898d0", "D": "#8484be", "D-": "#7070ac",
-  "F": "#8a8a8a",
 }
 
 interface ChartEntry { letter: string; count: number; color: string; pct: number }
@@ -40,28 +31,15 @@ export function SemesterPanel({ courses }: SemesterPanelProps) {
     safeCourses.map((course) => {
       const grade = calculateCourseGrade(course.criteria, course.percentBoost)
       const letter = getLetterGrade(grade, course.gradeScale)
-      const color = getLetterGradeColor(letter)
+      const color = getLetterGradeColor(letter, course.gradeScale)
       return { course, grade, letter, color }
     }),
     [safeCourses]
   )
 
   const chartData = useMemo((): ChartEntry[] => {
-    if (!safeCourses.length) return []
-    const dist: Record<string, number> = {}
-    for (const { course, letter } of courseRows) {
-      if (course.isPassFail) continue
-      dist[letter] = (dist[letter] || 0) + 1
-    }
-    const total = Object.values(dist).reduce((s, v) => s + v, 0)
-    if (!total) return []
-    return GRADE_ORDER.filter((l) => dist[l]).map((letter) => ({
-      letter,
-      count: dist[letter],
-      color: CHART_COLORS[letter] ?? "#888",
-      pct: Math.round((dist[letter] / total) * 100),
-    }))
-  }, [courseRows, safeCourses.length])
+    return buildGradeDistribution(safeCourses)
+  }, [safeCourses])
 
   const chartTotal = chartData.reduce((s, d) => s + d.count, 0)
   const maxCount = Math.max(...chartData.map((d) => d.count), 1)

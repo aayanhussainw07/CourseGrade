@@ -3,10 +3,18 @@ import test from "node:test"
 
 import {
   DEFAULT_ONBOARDING_PROGRESS,
+  getNextSettingsOnboardingStep,
+  getNextUiOnboardingStep,
+  getPreviousSettingsOnboardingStep,
+  getPreviousUiOnboardingStep,
   isAutomaticOnboardingEligible,
   isFirstCriterionConfigured,
+  isSettingsOnboardingStep,
+  isUiOnboardingStep,
   normalizeOnboardingProgress,
   ONBOARDING_VERSION,
+  SETTINGS_ONBOARDING_STEPS,
+  UI_ONBOARDING_STEPS,
 } from "../lib/onboarding"
 
 test("onboarding progress rejects malformed and outdated state", () => {
@@ -26,11 +34,72 @@ test("onboarding progress rejects malformed and outdated state", () => {
   })
 
   assert.equal(normalized.coreStatus, "not_started")
-  assert.equal(normalized.coreStep, "welcome")
+  assert.equal(normalized.coreStep, "settings_credits")
   assert.equal("advancedStatus" in normalized, false)
   assert.equal("advancedStep" in normalized, false)
   assert.equal(normalized.criterionScoreEntered, true)
   assert.equal(normalized.coreSetupRequired, false)
+})
+
+test("settings onboarding precedes the existing UI walkthrough", () => {
+  assert.deepEqual(SETTINGS_ONBOARDING_STEPS, [
+    "settings_credits",
+    "settings_grade_scale",
+    "settings_course_behavior",
+  ])
+  assert.equal(UI_ONBOARDING_STEPS[0], "welcome")
+  assert.equal(isSettingsOnboardingStep("settings_grade_scale"), true)
+  assert.equal(isSettingsOnboardingStep("welcome"), false)
+  assert.equal(isUiOnboardingStep("welcome"), true)
+  assert.equal(isUiOnboardingStep("settings_course_behavior"), false)
+  assert.equal(
+    getNextSettingsOnboardingStep("settings_credits"),
+    "settings_grade_scale",
+  )
+  assert.equal(
+    getNextSettingsOnboardingStep("settings_course_behavior"),
+    undefined,
+  )
+  assert.equal(
+    getPreviousSettingsOnboardingStep("settings_course_behavior"),
+    "settings_grade_scale",
+  )
+  assert.equal(
+    getPreviousSettingsOnboardingStep("settings_credits"),
+    undefined,
+  )
+
+  const savedSettingsStep = normalizeOnboardingProgress({
+    ...DEFAULT_ONBOARDING_PROGRESS,
+    version: ONBOARDING_VERSION,
+    coreStatus: "in_progress",
+    coreStep: "settings_a_plus",
+  })
+  assert.equal(savedSettingsStep.coreStep, "settings_course_behavior")
+  assert.equal(savedSettingsStep.coreStatus, "in_progress")
+})
+
+test("UI onboarding review navigation follows the setup and replay paths", () => {
+  assert.equal(getPreviousUiOnboardingStep("welcome", true), undefined)
+  assert.equal(getNextUiOnboardingStep("welcome", true), "add_semester")
+  assert.equal(
+    getPreviousUiOnboardingStep("rename_semester", true),
+    "add_semester",
+  )
+  assert.equal(
+    getNextUiOnboardingStep("dashboard_finish", true),
+    undefined,
+  )
+
+  assert.equal(getNextUiOnboardingStep("welcome", false), "rename_semester")
+  assert.equal(
+    getPreviousUiOnboardingStep("rename_semester", false),
+    "welcome",
+  )
+  assert.equal(
+    getPreviousUiOnboardingStep("configure_criterion", false),
+    "add_criterion",
+  )
 })
 
 test("automatic onboarding only starts for a ready empty account", () => {
@@ -56,6 +125,13 @@ test("automatic onboarding only starts for a ready empty account", () => {
     isAutomaticOnboardingEligible({
       ...ready,
       progress: { ...ready.progress, coreStatus: "dismissed" },
+    }),
+    false,
+  )
+  assert.equal(
+    isAutomaticOnboardingEligible({
+      ...ready,
+      progress: { ...ready.progress, coreStatus: "completed" },
     }),
     false,
   )

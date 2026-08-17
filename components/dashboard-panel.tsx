@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react"
 import { CardContent } from "@/components/ui/card"
-import { calculateCourseGrade, getLetterGrade } from "@/lib/grade-utils"
+import { buildGradeDistribution } from "@/lib/grade-utils"
 import type { Course } from "@/lib/types"
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -28,16 +28,6 @@ interface DashboardPanelProps {
 }
 
 // ── Constants ────────────────────────────────────────────────────────────────
-
-const GRADE_ORDER = ["A+", "A", "A-", "B+", "B", "B-", "C+", "C", "C-", "D+", "D", "D-", "F"]
-
-const CHART_COLORS: Record<string, string> = {
-  "A+": "#e8756a", "A": "#d9645a", "A-": "#c5534a",
-  "B+": "#e8a068", "B": "#d98e58", "B-": "#c57e4a",
-  "C+": "#d9c058", "C": "#c8ae48", "C-": "#b59a3a",
-  "D+": "#9898d0", "D": "#8484be", "D-": "#7070ac",
-  "F": "#8a8a8a",
-}
 
 // ── Timeline helpers ──────────────────────────────────────────────────────────
 
@@ -73,7 +63,7 @@ export function DashboardPanel({
     const spread = rawMax - rawMin
     const padding = Math.max(0.3, spread * 0.2)
     const domainMin = Math.max(0, rawMin - padding)
-    const domainMax = Math.min(4.4, rawMax + padding)
+    const domainMax = Math.max(4.4, rawMax + padding)
     const domainRange = domainMax - domainMin || 0.5
     const cW = VW - PAD.left - PAD.right
     const cH = VH - PAD.top - PAD.bottom
@@ -89,28 +79,16 @@ export function DashboardPanel({
       pts.length < 2
         ? ""
         : `${linePath} L ${pts[pts.length - 1][0]} ${baseY} L ${pts[0][0]} ${baseY} Z`
-    const yTicks = REF_LINES.filter((t) => t >= domainMin - 0.05 && t <= domainMax + 0.05)
+    const dynamicTop = Math.ceil(domainMax * 2) / 2
+    const yTicks = [...new Set([...REF_LINES, dynamicTop])]
+      .filter((t) => t >= domainMin - 0.05 && t <= domainMax + 0.05)
+      .sort((a, b) => a - b)
     return { points, linePath, areaPath, yTicks, toY, baseY, chartWidth: cW, chartHeight: cH }
   }, [timelineData])
 
   // Distribution chart data
   const distData = useMemo((): ChartEntry[] => {
-    if (!courses.length) return []
-    const dist: Record<string, number> = {}
-    for (const course of courses) {
-      if (course.isPassFail) continue
-      const numeric = calculateCourseGrade(course.criteria, course.percentBoost)
-      const letter = getLetterGrade(numeric, course.gradeScale)
-      dist[letter] = (dist[letter] || 0) + 1
-    }
-    const total = Object.values(dist).reduce((s, v) => s + v, 0)
-    if (!total) return []
-    return GRADE_ORDER.filter((l) => dist[l]).map((letter) => ({
-      letter,
-      count: dist[letter],
-      color: CHART_COLORS[letter] ?? "#888",
-      pct: Math.round((dist[letter] / total) * 100),
-    }))
+    return buildGradeDistribution(courses)
   }, [courses])
 
   const distTotal = distData.reduce((s, d) => s + d.count, 0)

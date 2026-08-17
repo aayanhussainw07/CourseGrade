@@ -125,7 +125,7 @@ export default function SharePage() {
             const gradeScale = course.gradeScale ?? DEFAULT_GRADE_SCALE;
             const numeric = calculateCourseGrade(criteria, course.percentBoost ?? 0);
             const letter = getLetterGrade(numeric, gradeScale);
-            const color = getLetterGradeColor(letter);
+            const color = getLetterGradeColor(letter, gradeScale);
             return (
               <div key={course.name} className="rounded-lg border-2 border-primary/30 bg-card p-4">
                 <div className="flex items-start justify-between gap-2">

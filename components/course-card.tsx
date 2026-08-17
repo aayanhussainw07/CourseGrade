@@ -197,7 +197,7 @@ export function CourseCard({
     return {
       numericGrade: numeric,
       letterGrade: letter,
-      gradeColor: getLetterGradeColor(letter),
+      gradeColor: getLetterGradeColor(letter, course.gradeScale),
       totalWeight: courseCriteria.reduce((sum, c) => sum + c.weight, 0),
     };
   }, [courseCriteria, course.gradeScale, course.percentBoost]);
@@ -586,8 +586,10 @@ export function CourseCard({
       passLabel: (course.passLabel ?? "P").trim() || "P",
       failLabel: (course.failLabel ?? "F").trim() || "F",
       threshold: Math.min(100, Math.max(0, course.passThreshold ?? 60)),
+      passColor: course.passColor || "#888888",
+      failColor: course.failColor || "#8a8a8a",
     }),
-    [course.failLabel, course.passLabel, course.passThreshold],
+    [course.failColor, course.failLabel, course.passColor, course.passLabel, course.passThreshold],
   );
 
   const passFailScale = useMemo(
@@ -602,6 +604,9 @@ export function CourseCard({
         : passFailSettings.failLabel,
     [numericGrade, passFailSettings],
   );
+  const passFailColor = numericGrade >= passFailSettings.threshold
+    ? passFailSettings.passColor
+    : passFailSettings.failColor;
   const handlePassFailToggle = useCallback(
     (value: boolean) => {
       if (value) {
@@ -676,7 +681,7 @@ export function CourseCard({
         </p>
         <p
           className={`mt-1 font-bold ${collapsed ? "text-3xl" : "text-5xl sm:mt-0 sm:text-3xl"}`}
-          style={{ color: course.isPassFail ? "#6b7280" : gradeColor }}
+          style={{ color: course.isPassFail ? passFailColor : gradeColor }}
         >
           {course.isPassFail ? passFailLabel : letterGrade}
         </p>
@@ -717,6 +722,8 @@ export function CourseCard({
                       passLabel: settings.passLabel,
                       failLabel: settings.failLabel,
                       passThreshold: settings.threshold,
+                      passColor: settings.passColor,
+                      failColor: settings.failColor,
                     })
                   }
                   onUpdate={(gradeScale) => updateCourse({ gradeScale })}
@@ -731,7 +738,7 @@ export function CourseCard({
 
   if (course.collapsed) {
     const displayGrade = course.isPassFail ? passFailLabel : letterGrade;
-    const displayColor = course.isPassFail ? "#6b7280" : gradeColor;
+    const displayColor = course.isPassFail ? passFailColor : gradeColor;
     return (
       <div
         data-onboarding-target="course-card"

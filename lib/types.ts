@@ -19,22 +19,24 @@ export interface SubItem {
 export interface GradeScale {
   letter: string
   min: number // minimum percentage for this grade
+  gpa?: number // omitted only for legacy/custom grades that have not been configured
+  color?: string // six-digit hex; omitted legacy values use the canonical fallback
 }
 
 export const DEFAULT_GRADE_SCALE: GradeScale[] = [
-  { letter: "A+", min: 96 },
-  { letter: "A", min: 93 },
-  { letter: "A-", min: 90 },
-  { letter: "B+", min: 87 },
-  { letter: "B", min: 83 },
-  { letter: "B-", min: 80 },
-  { letter: "C+", min: 77 },
-  { letter: "C", min: 73 },
-  { letter: "C-", min: 70 },
-  { letter: "D+", min: 67 },
-  { letter: "D", min: 63 },
-  { letter: "D-", min: 60 },
-  { letter: "F", min: 0 },
+  { letter: "A+", min: 96, gpa: 4.33, color: "#e8756a" },
+  { letter: "A", min: 93, gpa: 4, color: "#d9645a" },
+  { letter: "A-", min: 90, gpa: 3.7, color: "#c5534a" },
+  { letter: "B+", min: 87, gpa: 3.3, color: "#e8a068" },
+  { letter: "B", min: 83, gpa: 3, color: "#d98e58" },
+  { letter: "B-", min: 80, gpa: 2.7, color: "#c57e4a" },
+  { letter: "C+", min: 77, gpa: 2.3, color: "#d9c058" },
+  { letter: "C", min: 73, gpa: 2, color: "#c8ae48" },
+  { letter: "C-", min: 70, gpa: 1.7, color: "#b59a3a" },
+  { letter: "D+", min: 67, gpa: 1.3, color: "#9898d0" },
+  { letter: "D", min: 63, gpa: 1, color: "#8484be" },
+  { letter: "D-", min: 60, gpa: 0.7, color: "#7070ac" },
+  { letter: "F", min: 0, gpa: 0, color: "#8a8a8a" },
 ]
 
 export interface Course {
@@ -50,6 +52,8 @@ export interface Course {
   passLabel?: string
   failLabel?: string
   passThreshold?: number
+  passColor?: string
+  failColor?: string
   headerColor?: string | null
 }
 
@@ -88,6 +92,8 @@ export interface ApiCourse {
   pass_label?: string
   fail_label?: string
   pass_threshold?: number
+  pass_color?: string
+  fail_color?: string
   letter_grade_scale?: GradeScale[] | null
   assignments: ApiAssignment[]
   created_at: string
@@ -115,6 +121,7 @@ export interface ApiGradeScale {
   letter: string
   min_percentage: number
   gpa_value: number
+  color?: string
   created_at: string
 }
 
@@ -145,6 +152,8 @@ export function apiToFrontendCourse(apiCourse: ApiCourse): Course {
   const passLabel = apiCourse.pass_label || "P"
   const failLabel = apiCourse.fail_label || "F"
   const passThreshold = normalizePercentage(apiCourse.pass_threshold ?? 60)
+  const passColor = apiCourse.pass_color || "#888888"
+  const failColor = apiCourse.fail_color || "#8a8a8a"
   return {
     id: apiCourse.id.toString(),
     name: apiCourse.name,
@@ -164,8 +173,8 @@ export function apiToFrontendCourse(apiCourse: ApiCourse): Course {
     })),
     gradeScale: isPassFail
       ? [
-          { letter: passLabel, min: passThreshold },
-          { letter: failLabel, min: 0 },
+          { letter: passLabel, min: passThreshold, color: passColor },
+          { letter: failLabel, min: 0, color: failColor },
         ]
       : letterGradeScale,
     gradeScaleSnapshot: isPassFail ? letterGradeScale : undefined,
@@ -174,6 +183,8 @@ export function apiToFrontendCourse(apiCourse: ApiCourse): Course {
     passLabel,
     failLabel,
     passThreshold,
+    passColor,
+    failColor,
     headerColor: apiCourse.header_color ?? null,
   }
 }

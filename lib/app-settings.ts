@@ -1,5 +1,6 @@
 import type { GradeScale } from "./types"
 import { DEFAULT_GRADE_SCALE } from "./types"
+import { normalizeGradeScaleMetadata } from "./grade-utils"
 import { settingsApi } from "./api"
 import {
   DEFAULT_ONBOARDING_PROGRESS,
@@ -12,12 +13,13 @@ let settingsSaveQueue: Promise<void> = Promise.resolve()
 
 export interface AppSettings {
   defaultCredits: number
-  aPlusGpaValue: number // 4.0 or 4.33
   defaultGradeScale: GradeScale[]
   defaultIsPassFail: boolean
   defaultPassLabel: string
   defaultFailLabel: string
   defaultPassThreshold: number
+  defaultPassColor: string
+  defaultFailColor: string
   collapseCoursesOnSemesterOpen: boolean
   skipSemesterDeleteConfirm: boolean
   skipCourseDeleteConfirm: boolean
@@ -27,12 +29,13 @@ export interface AppSettings {
 
 const DEFAULT_APP_SETTINGS: AppSettings = {
   defaultCredits: 3,
-  aPlusGpaValue: 4.3,
   defaultGradeScale: DEFAULT_GRADE_SCALE,
   defaultIsPassFail: false,
   defaultPassLabel: "P",
   defaultFailLabel: "F",
   defaultPassThreshold: 60,
+  defaultPassColor: "#888888",
+  defaultFailColor: "#8a8a8a",
   collapseCoursesOnSemesterOpen: true,
   skipSemesterDeleteConfirm: false,
   skipCourseDeleteConfirm: false,
@@ -42,6 +45,7 @@ const DEFAULT_APP_SETTINGS: AppSettings = {
 
 type LegacyAppSettings = Partial<AppSettings> & {
   defaultGradeScaleSnapshot?: unknown
+  aPlusGpaValue?: unknown
 }
 
 const cloneValidGradeScale = (value: unknown): GradeScale[] | null => {
@@ -85,24 +89,45 @@ export function normalizeAppSettings(value: unknown): AppSettings {
   const legacySnapshot = cloneValidGradeScale(
     stored.defaultGradeScaleSnapshot,
   )
-  const defaultGradeScale = legacySnapshot
+  const rawScale = legacySnapshot
     ? legacySnapshot
     : storedScale && !isLegacyPassFailScale(storedScale, stored)
       ? storedScale
       : DEFAULT_GRADE_SCALE.map((grade) => ({ ...grade }))
+  const legacyAPlusValue =
+    typeof stored.aPlusGpaValue === "number" &&
+    Number.isFinite(stored.aPlusGpaValue) &&
+    stored.aPlusGpaValue >= 0
+      ? stored.aPlusGpaValue
+      : 4.33
+  const scaleForMigration = !storedScale && !legacySnapshot && "aPlusGpaValue" in stored
+    ? rawScale.map((grade) => grade.letter === "A+" ? { ...grade, gpa: legacyAPlusValue } : grade)
+    : rawScale
+  const defaultGradeScale = normalizeGradeScaleMetadata(scaleForMigration, legacyAPlusValue)
   const collapseCoursesOnSemesterOpen =
     typeof stored.collapseCoursesOnSemesterOpen === "boolean"
       ? stored.collapseCoursesOnSemesterOpen
       : DEFAULT_APP_SETTINGS.collapseCoursesOnSemesterOpen
   const onboarding = normalizeOnboardingProgress(stored.onboarding)
+  const defaultPassColor =
+    typeof stored.defaultPassColor === "string" && /^#[0-9a-f]{6}$/i.test(stored.defaultPassColor)
+      ? stored.defaultPassColor.toLowerCase()
+      : DEFAULT_APP_SETTINGS.defaultPassColor
+  const defaultFailColor =
+    typeof stored.defaultFailColor === "string" && /^#[0-9a-f]{6}$/i.test(stored.defaultFailColor)
+      ? stored.defaultFailColor.toLowerCase()
+      : DEFAULT_APP_SETTINGS.defaultFailColor
   const merged = {
     ...DEFAULT_APP_SETTINGS,
     ...stored,
     defaultGradeScale,
     collapseCoursesOnSemesterOpen,
+    defaultPassColor,
+    defaultFailColor,
     onboarding,
-  } as AppSettings & { defaultGradeScaleSnapshot?: unknown }
+  } as AppSettings & { defaultGradeScaleSnapshot?: unknown; aPlusGpaValue?: unknown }
   delete merged.defaultGradeScaleSnapshot
+  delete merged.aPlusGpaValue
   return merged
 }
 
