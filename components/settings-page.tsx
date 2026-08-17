@@ -292,7 +292,7 @@ export function SettingsPage({
                     toward GPA.
                   </p>
                 </div>
-                <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
+                <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-[repeat(3,minmax(0,1fr))_max-content_max-content]">
                   <div className="space-y-1">
                     <Label
                       htmlFor="default-pass-label"
@@ -310,25 +310,6 @@ export function SettingsPage({
                       className="border-2 border-primary/20 bg-white"
                     />
                   </div>
-                  {(["pass", "fail"] as const).map((kind) => {
-                    const settingKey = kind === "pass" ? "defaultPassColor" : "defaultFailColor"
-                    const value = kind === "pass" ? defaultPassFailSettings.passColor : defaultPassFailSettings.failColor
-                    return (
-                      <div key={settingKey} className="space-y-1">
-                        <Label className="text-xs text-muted-foreground">{kind === "pass" ? "Pass color" : "Fail color"}</Label>
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="color"
-                            aria-label={`${kind} color`}
-                            value={value}
-                            onChange={(event) => update(settingKey, event.target.value)}
-                            className="h-10 w-12 cursor-pointer rounded border-2 border-primary/20 bg-white p-1"
-                          />
-                          <span className="font-mono text-xs text-muted-foreground">{value}</span>
-                        </div>
-                      </div>
-                    )
-                  })}
                   <div className="space-y-1">
                     <Label
                       htmlFor="default-fail-label"
@@ -372,6 +353,25 @@ export function SettingsPage({
                       className="border-2 border-primary/20 bg-white"
                     />
                   </div>
+                  {(["pass", "fail"] as const).map((kind) => {
+                    const settingKey = kind === "pass" ? "defaultPassColor" : "defaultFailColor"
+                    const value = kind === "pass" ? defaultPassFailSettings.passColor : defaultPassFailSettings.failColor
+                    return (
+                      <div key={settingKey} className="space-y-1">
+                        <Label className="text-xs text-muted-foreground">{kind === "pass" ? "Pass color" : "Fail color"}</Label>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="color"
+                            aria-label={`${kind} color`}
+                            value={value}
+                            onChange={(event) => update(settingKey, event.target.value)}
+                            className="h-10 w-12 cursor-pointer rounded border-2 border-primary/20 bg-white p-1"
+                          />
+                          <span className="font-mono text-xs text-muted-foreground">{value}</span>
+                        </div>
+                      </div>
+                    )
+                  })}
                 </div>
               </div>
 
